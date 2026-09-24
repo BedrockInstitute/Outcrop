@@ -61,7 +61,7 @@ reader opens a chapter outside that selection.
 Related parallel declarations use one Construction header containing individually
 styled Agda names separated by spaces, followed by a bullet per name. Never stack
 statement labels above one shared code block and QED. The mark reserves no extra
-line or bottom padding and becomes more transparent where it overlaps code.
+line or bottom padding and keeps a fixed opacity of 0.25, including over code.
 The [Markdown contract](RENDERER-MARKDOWN.md) defines the unchanged source syntax
 and lint obligations. Agda token streams and anchor identities remain unchanged.
 

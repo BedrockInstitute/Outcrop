@@ -870,10 +870,9 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
 .statement-ending > pre.Agda { min-width: 0; margin: 0; }
 .statement-qed {
   position: absolute; inset-inline-end: .65rem; bottom: .3rem;
-  color: var(--code-fg); opacity: .38; font-size: 1.05rem; line-height: 1;
+  color: var(--code-fg); opacity: .25; font-size: 1.05rem; line-height: 1;
   user-select: none; pointer-events: none;
 }
-.statement-qed.over-code { opacity: .12; }
 @media (max-width: 42rem) {
   .statement-ending { margin-block-end: 2.25rem; }
 }

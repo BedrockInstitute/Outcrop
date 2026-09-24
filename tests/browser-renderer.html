@@ -35,23 +35,23 @@
         check(prefix+'does not reserve height',pre.offsetHeight===ordinary.offsetHeight&&win.getComputedStyle(pre).paddingBottom===win.getComputedStyle(ordinary).paddingBottom);
         check(prefix+'uses exact non-interactive glyph',mark.textContent==='∎'&&win.getComputedStyle(mark).pointerEvents==='none');
         const quiet=Number(win.getComputedStyle(mark).opacity);
-        check(prefix+'is visible over empty space',quiet>0&&quiet<.6&&!mark.classList.contains('over-code'));
-        code.textContent='x'.repeat(240);await until(()=>mark.classList.contains('over-code'));
-        check(prefix+'fades further over visible code',Number(win.getComputedStyle(mark).opacity)<quiet);
-        code.textContent='x'.repeat(240)+'\nx';await until(()=>!mark.classList.contains('over-code'));
-        check(prefix+'ignores a long earlier line',true);
+        check(prefix+'uses fixed opacity over empty space',quiet===.25);
+        code.textContent='x'.repeat(240);await pause(100);
+        check(prefix+'keeps fixed opacity over visible code',Number(win.getComputedStyle(mark).opacity)===quiet);
+        code.textContent='x'.repeat(240)+'\nx';await pause(100);
+        check(prefix+'keeps fixed opacity with a long earlier line',Number(win.getComputedStyle(mark).opacity)===quiet);
       }
     }
     frame.style.width='375px';
     code.textContent='x'.repeat(241)+'\n'+' '.repeat(240)+'y';code.scrollLeft=0;await pause(100);
-    check('QED ignores clipped final-line code',!mark.classList.contains('over-code'));
-    code.scrollLeft=code.scrollWidth;await until(()=>mark.classList.contains('over-code'));
-    check('QED tracks horizontal scroll over the final token',true);
-    code.scrollLeft=0;await until(()=>!mark.classList.contains('over-code'));
-    check('QED restores opacity when code scrolls away',true);
+    check('QED keeps fixed opacity with clipped final-line code',win.getComputedStyle(mark).opacity==='0.25');
+    code.scrollLeft=code.scrollWidth;await pause(100);
+    check('QED keeps fixed opacity when scrolled over the final token',win.getComputedStyle(mark).opacity==='0.25');
+    code.scrollLeft=0;await pause(100);
+    check('QED keeps fixed opacity when code scrolls away',win.getComputedStyle(mark).opacity==='0.25');
     const fold=doc.createElement('details');fold.innerHTML='<summary>Nested statement</summary>';probe.append(fold);fold.append(ending);
-    code.textContent='x'.repeat(240);fold.open=true;await until(()=>mark.classList.contains('over-code'));
-    check('QED detects overlap after opening a submodule-like fold',true);
+    code.textContent='x'.repeat(240);fold.open=true;await pause(100);
+    check('QED keeps fixed opacity after opening a submodule-like fold',win.getComputedStyle(mark).opacity==='0.25');
     check('QED never enters copied code',!pre.textContent.includes('∎'));
     code.textContent=Array.from({length:80},()=> 'x').join('\n');await pause(100);
     check('long Agda blocks grow instead of scrolling vertically',pre.clientHeight>80*parseFloat(win.getComputedStyle(pre).fontSize)&&win.getComputedStyle(code).overflowY==='hidden');

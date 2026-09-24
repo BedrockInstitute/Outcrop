@@ -117,9 +117,8 @@ indented column. Its compact declaration header is not a body-code block. The
 code frames expand to fit all lines and scroll only horizontally; vertical
 reading remains with the page, popup or full-screen reading container. The
 literal rectangular `∎` appears semi-transparently inside the final code frame at
-the lower right without extra padding or a reserved line. The shared
-`statement-ending` reader feature lowers its opacity further where source text
-overlaps it, updating after scrolling, resizing, font loading and DOM changes.
+the lower right without extra padding or a reserved line. Its opacity is fixed
+at 0.25 in CSS, including over code; no overlap measurement or observer is needed.
 It never intercepts pointer events or becomes part of copied code.
 The Markdown and lint contract remains a standalone `∎`
 immediately after each statement's last Agda fence, including inside folds.
