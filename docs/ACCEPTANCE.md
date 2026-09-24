@@ -96,3 +96,13 @@ Verified locally after the changes:
 
 These changes do not modify Bedrock's mathematical sources. Physical iPhone
 Safari remains unverified; narrow and simulated touch fixtures are not a substitute.
+
+### Remote release validation
+
+[CI run 35998881871](https://github.com/BedrockInstitute/Outcrop/actions/runs/35998881871)
+passes both jobs at `b5d0e044a09c79e588d2d5777b5c0e29f918b081`: 401 independent
+tests, example lint/build/link/search checks, REUSE, a fresh Linux/GHC 9.4.8
+compiler build, the cold/warm non-Cubical smoke and semantic example regeneration.
+The first attempted integration run exposed a job-wide `GHCRTS` setting which
+`ghcup` rejected. Runtime guards now apply only to compiler invocations, with a
+regression test covering that scope. The compiler cache was saved successfully.
