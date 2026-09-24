@@ -448,13 +448,15 @@ pre.Agda, pre.sourceCode {
   border: 1px solid var(--code-border); overflow-x: auto; margin: 1.2rem 0;
 }
 /* Exposition introduces the following Agda block, not the preceding one. */
-pre.Agda { margin: .5rem 0 1.6rem; }
+pre.Agda { margin: .5rem 0 1.6rem; height: auto; max-height: none; overflow-y: hidden;
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* Keep padding outside the scrolling viewport, so code never paints against
    either border, even at an intermediate scroll offset. Fold declarations
    deliberately retain their own compact, unwrapped presentation. */
 pre.Agda:has(> .agda-code-content) { overflow: visible; }
 pre.Agda > .agda-code-content {
-  display: block; min-width: 0; max-width: 100%; overflow-x: auto;
+  display: block; min-width: 0; max-width: 100%; height: auto; max-height: none;
+  overflow-x: auto; overflow-y: hidden;
 }
 article :is(p, ul, ol, blockquote, .prose-table-scroll):has(+ pre.Agda, + .statement-ending) {
   margin-block-end: .5rem;
@@ -627,7 +629,7 @@ pre.Agda .expr-node.expr-active,
 .type-inspector-measure { left: -10000px; top: 0; width: max-content;
   max-height: none !important; overflow: visible !important;
   visibility: hidden; pointer-events: none; }
-.type-value { padding-inline: .15rem; overflow-x: auto; }
+.type-value { padding-inline: .15rem; overflow-x: auto; overflow-y: hidden; }
 .type-definition-link { display: none; }
 
 /* Landscape code is a browser-viewport reading surface. It never depends on
@@ -642,7 +644,10 @@ pre.Agda .expr-node.expr-active,
 .code-fullscreen-toggle svg { width: 21px; height: 21px; stroke: currentColor;
   stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .code-fullscreen { position: fixed; inset: 0 auto auto 0; z-index: 180;
-  overflow: hidden; color: var(--text-fg); background: var(--text-bg); }
+  overflow: hidden; color: var(--text-fg); background: var(--text-bg);
+  /* Rotated landscape width is not a request for mobile text inflation.
+     A percentage preserves user zoom; do not use viewport scale restrictions. */
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .code-fullscreen-plane, .code-fullscreen-controls {
   --code-safe-top: env(safe-area-inset-top, 0px);
   --code-safe-right: env(safe-area-inset-right, 0px);
@@ -858,17 +863,17 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
   font: .75rem/1.4 var(--sans); pointer-events: none; opacity: 0; }
 .chapter-review:is(:hover, :focus)::after { opacity: 1; }
 
-/* QED belongs to the frame, not the scrollable code. The reserved bottom
-   padding keeps its quiet watermark clear of even the last long source line. */
+/* QED is a frame watermark: never reserve a line or change code padding. */
 .statement-ending {
   position: relative; margin: .5rem 0 2.75rem; break-inside: avoid;
 }
-.statement-ending > pre.Agda { min-width: 0; margin: 0; padding-block-end: 1.6rem; }
+.statement-ending > pre.Agda { min-width: 0; margin: 0; }
 .statement-qed {
   position: absolute; inset-inline-end: .65rem; bottom: .3rem;
   color: var(--code-fg); opacity: .38; font-size: 1.05rem; line-height: 1;
   user-select: none; pointer-events: none;
 }
+.statement-qed.over-code { opacity: .12; }
 @media (max-width: 42rem) {
   .statement-ending { margin-block-end: 2.25rem; }
 }

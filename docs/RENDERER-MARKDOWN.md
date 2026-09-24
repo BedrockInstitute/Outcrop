@@ -66,7 +66,9 @@ Statement labels use the established localized bold labels (Definition, Lemma,
 Theorem, Construction, Corollary and their Chinese/Japanese counterparts). A
 statement contains its own Agda fence and terminates with a standalone `∎` after
 its last fence. The renderer places this exact Unicode rectangle at the preceding
-block's lower right, semi-transparently inside its frame. This is a visual rule:
+block's lower right as a non-layout overlay inside its frame. No extra bottom
+padding or line is reserved; the mark becomes more transparent over code text.
+This is a visual rule:
 the standalone source mark and structural lint are unchanged. Ordinary and final
 code blocks use the full width of their containing column, with no external QED
 gutter or left outdent; each submodule retains its own indented width.

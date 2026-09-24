@@ -67,7 +67,7 @@ class Publication:
         links = " · ".join([source, *formats])
         year = f'{self.config.copyright_year} ' if self.config.copyright_year else ''
         copyright_ = f'© {year}{htmllib.escape(self.config.publisher)} · {s["license"]} · {links}'
-        credit = (f'{htmllib.escape(self.config.name)}, powered by '
+        credit = ('Powered by '
                   '<a href="https://github.com/BedrockInstitute/Outcrop">Outcrop</a>')
         return (f'<div class="footer-credit">{credit}</div>'
                 f'<div class="footer-copyright">{copyright_}</div>')

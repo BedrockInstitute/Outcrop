@@ -60,7 +60,9 @@ reader opens a chapter outside that selection.
 
 Related parallel declarations use one Construction header containing individually
 styled Agda names separated by spaces, followed by a bullet per name. Never stack
-statement labels above one shared code block and QED. The [Markdown contract](RENDERER-MARKDOWN.md) defines the unchanged source syntax
+statement labels above one shared code block and QED. The mark reserves no extra
+line or bottom padding and becomes more transparent where it overlaps code.
+The [Markdown contract](RENDERER-MARKDOWN.md) defines the unchanged source syntax
 and lint obligations. Agda token streams and anchor identities remain unchanged.
 
 ### Prose comparison tables

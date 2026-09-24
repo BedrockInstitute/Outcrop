@@ -18,12 +18,14 @@ import { initNav, initPageScroll, initHeaderOffset, initSectionTracking,
   initMobileSearchScroll } from './reader/navigation.js';
 import { initCurrentRoute } from './reader/current-route.js';
 import { initCodeFullscreen } from './reader/code-fullscreen.js';
+import { initStatementEndings } from './reader/statement-ending.js';
 
 function start() {
   try { writePreference('lang', cfg.lang); } catch (_) {}
   renderMath();
   initSearch();
   initCodeFullscreen();
+  initStatementEndings();
   initHover();
   initDefinitionModals();
   initOccur();

@@ -87,7 +87,11 @@ import { cfg } from "./document.js";
       else if (event.key === 'Enter') { event.preventDefault(); location.href = shown[Math.max(selected, 0)].href; }
     });
     document.addEventListener('click', event => { if (!out.contains(event.target) && event.target !== box) close(); });
-    box.parentNode.addEventListener('focusout', event => { if (!box.parentNode.contains(event.relatedTarget)) close(); });
+    // Safari can blur the input with relatedTarget=null before clicking a
+    // result. Hiding it on focusout removes the pending native click target.
+    // Close on actual outside focus/click instead; leave link activation,
+    // touch scrolling and modifier-clicks to the browser.
+    document.addEventListener('focusin', event => { if (!box.parentNode.contains(event.target)) close(); });
   }
 
 export { initSearch };

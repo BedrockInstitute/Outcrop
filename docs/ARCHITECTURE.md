@@ -100,7 +100,9 @@ cannot revive a closed modal.
 On compact portrait devices, activating code exposes landscape reading. This is
 a CSS-oriented surface, not a request to lock the device's physical orientation.
 It moves the original code or statement-ending DOM, preserving IDs and AST
-identity. Hover and gestures use the shared transformed coordinates. Close, Escape
+identity. Explicit 100% text-size adjustment prevents mobile text inflation
+from treating different frame wrappers differently, without restricting user zoom.
+Hover and gestures use the shared transformed coordinates. Close, Escape
 and definition navigation restore the normal surface; a modal opens only after
 that restoration. A separate non-scrolling control layer preserves the close
 button and maps physical safe-area insets into landscape coordinates. For code
@@ -112,9 +114,14 @@ acceptance, not just geometry-unit tests.
 Ordinary code uses the full width of its containing column, without an outdent or
 reserved external QED gutter. Each folded submodule keeps its own independently
 indented column. Its compact declaration header is not a body-code block. The
+code frames expand to fit all lines and scroll only horizontally; vertical
+reading remains with the page, popup or full-screen reading container. The
 literal rectangular `∎` appears semi-transparently inside the final code frame at
-the lower right; extra bottom padding keeps it clear of source text. It is not
-part of copied code. The Markdown and lint contract remains a standalone `∎`
+the lower right without extra padding or a reserved line. The shared
+`statement-ending` reader feature lowers its opacity further where source text
+overlaps it, updating after scrolling, resizing, font loading and DOM changes.
+It never intercepts pointer events or becomes part of copied code.
+The Markdown and lint contract remains a standalone `∎`
 immediately after each statement's last Agda fence, including inside folds.
 
 The sidebar's localized Current route label includes its colon; the route name
@@ -140,7 +147,10 @@ Search covers all configured editions, terms, headings, prose and every rendered
 project/external Agda block. Its worker owns index loading/ranking. Preserve IME,
 keyboard selection, explicit empty/error states and retry. Mobile scroll-driven
 visibility must not fight focused input or cause repeated layout jumps. Search
-and appearance changes require narrow-screen and keyboard checks.
+results are native links, not definition-modal actions. Close on outside click
+or actual outside focus, never on an ambiguous input blur: Safari may report a
+null focus destination before the result's click. Search and appearance changes
+require narrow-screen and keyboard checks.
 
 Dependency graph layouts share the same graph, with explicit hub/preview policy.
 Keep edge modes, legend, search, details, keyboard controls, canvas-scoped touch/

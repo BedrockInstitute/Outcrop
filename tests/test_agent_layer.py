@@ -49,7 +49,7 @@ class FooterTests(PublicationCase):
     def test_machine_links_follow_source_on_the_second_line(self):
         footer = self.publication.footer_html("zh", "", "Base.Impredicativity.md")
         self.assertEqual(footer.count("<div"), 2)
-        self.assertIn(self.config.name + ', powered by ', footer)
+        self.assertIn('<div class="footer-credit">Powered by ', footer)
         self.assertIn('href="https://github.com/BedrockInstitute/Outcrop">Outcrop</a>', footer)
         self.assertNotIn('1lab', footer)
         source = footer.index(">源码</a>")

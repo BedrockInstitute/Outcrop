@@ -52,13 +52,16 @@ class PublicationConfigurationTests(unittest.TestCase):
             with self.subTest(overrides=overrides), self.assertRaises(ValueError):
                 self.config(**overrides)
 
-    def test_footer_uses_instance_name_and_links_framework_in_every_edition(self):
+    def test_footer_links_framework_without_repeating_site_name_in_every_edition(self):
         for name in ('Bedrock', 'Category <Notes>'):
             config = self.config(name=name)
             publisher = Publication(config, BookCatalog())
             for language in config.languages:
                 footer = publisher.footer_html(language, '', 'Start.md')
-                self.assertIn(('Bedrock' if name == 'Bedrock' else 'Category &lt;Notes&gt;') + ', powered by ', footer)
+                credit = footer.split('</div>', 1)[0]
+                self.assertTrue(credit.startswith('<div class="footer-credit">Powered by '))
+                self.assertNotIn('Bedrock,', credit)
+                self.assertNotIn('Category', credit)
                 self.assertIn('href="https://github.com/BedrockInstitute/Outcrop">Outcrop</a>', footer)
                 self.assertNotIn('1lab', footer)
 

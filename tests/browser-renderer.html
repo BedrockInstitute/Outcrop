@@ -21,8 +21,44 @@
     check('compiler definitions preserved',doc.querySelectorAll('a[data-type]').length>5);
     check('real expression metadata rendered',doc.querySelectorAll('.expr-node').length>=2);
     check('review status and QED retained',doc.querySelector('.chapter-review')&&doc.querySelector('.statement-qed').textContent==='∎');
+    // QED is a watermark, not an extra source row. Use real reader resources,
+    // including dynamic insertion, resizing, scrolling and folded statements.
+    const probe=doc.createElement('div');
+    probe.innerHTML='<pre class="Agda"><span class="agda-code-content">x</span></pre><div class="statement-ending"><pre class="Agda"><span class="agda-code-content">x</span></pre><span class="statement-qed">∎</span></div>';
+    doc.querySelector('article').append(probe);
+    const ordinary=probe.firstElementChild,ending=probe.lastElementChild,pre=ending.querySelector('pre'),code=pre.firstElementChild,mark=ending.lastElementChild;
+    for(const width of [375,1100]) {
+      frame.style.width=width+'px';
+      for(const mode of ['light','dark']) {
+        win.outcropAppearance.setMode(mode);code.textContent='x';await pause(100);
+        const prefix=width+' '+mode+' QED ';
+        check(prefix+'does not reserve height',pre.offsetHeight===ordinary.offsetHeight&&win.getComputedStyle(pre).paddingBottom===win.getComputedStyle(ordinary).paddingBottom);
+        check(prefix+'uses exact non-interactive glyph',mark.textContent==='∎'&&win.getComputedStyle(mark).pointerEvents==='none');
+        const quiet=Number(win.getComputedStyle(mark).opacity);
+        check(prefix+'is visible over empty space',quiet>0&&quiet<.6&&!mark.classList.contains('over-code'));
+        code.textContent='x'.repeat(240);await until(()=>mark.classList.contains('over-code'));
+        check(prefix+'fades further over visible code',Number(win.getComputedStyle(mark).opacity)<quiet);
+        code.textContent='x'.repeat(240)+'\nx';await until(()=>!mark.classList.contains('over-code'));
+        check(prefix+'ignores a long earlier line',true);
+      }
+    }
+    frame.style.width='375px';
+    code.textContent='x'.repeat(241)+'\n'+' '.repeat(240)+'y';code.scrollLeft=0;await pause(100);
+    check('QED ignores clipped final-line code',!mark.classList.contains('over-code'));
+    code.scrollLeft=code.scrollWidth;await until(()=>mark.classList.contains('over-code'));
+    check('QED tracks horizontal scroll over the final token',true);
+    code.scrollLeft=0;await until(()=>!mark.classList.contains('over-code'));
+    check('QED restores opacity when code scrolls away',true);
+    const fold=doc.createElement('details');fold.innerHTML='<summary>Nested statement</summary>';probe.append(fold);fold.append(ending);
+    code.textContent='x'.repeat(240);fold.open=true;await until(()=>mark.classList.contains('over-code'));
+    check('QED detects overlap after opening a submodule-like fold',true);
+    check('QED never enters copied code',!pre.textContent.includes('∎'));
+    code.textContent=Array.from({length:80},()=> 'x').join('\n');await pause(100);
+    check('long Agda blocks grow instead of scrolling vertically',pre.clientHeight>80*parseFloat(win.getComputedStyle(pre).fontSize)&&win.getComputedStyle(code).overflowY==='hidden');
+    check('Agda code retains horizontal scrolling',win.getComputedStyle(code).overflowX==='auto');
+    probe.remove();frame.style.width='390px';await pause(100);
     check('no horizontal overflow at 390',doc.documentElement.scrollWidth<=390);
-    check('footer uses instance name and framework repository',doc.querySelector('.footer-credit').textContent==='Lantern Notes, powered by Outcrop'&&doc.querySelector('.footer-credit a').href==='https://github.com/BedrockInstitute/Outcrop');
+    check('footer uses concise framework credit and repository',doc.querySelector('.footer-credit').textContent==='Powered by Outcrop'&&doc.querySelector('.footer-credit a').href==='https://github.com/BedrockInstitute/Outcrop');
     check('upstream credit is not a reader footer',!doc.querySelector('#site-footer').textContent.includes('1lab'));
     win.outcropAppearance.setMode('light');win.outcropAppearance.setPalette('light','github');
     doc.querySelector('.compact-done').click();
@@ -30,7 +66,7 @@
     check('first namespace theme written',localStorage.getItem('lantern-notes-theme')==='light');
     [doc,win]=await load('/prism/en/Sample.Use.html');
     check('second brand and prefix',doc.querySelector('#brand').textContent==='Prism Reader'&&doc.querySelector('#brand').getAttribute('href')==='/prism/en/index.html');
-    check('second footer also uses its own brand',doc.querySelector('.footer-credit').textContent==='Prism Reader, powered by Outcrop');
+    check('second footer uses the same concise framework credit',doc.querySelector('.footer-credit').textContent==='Powered by Outcrop');
     check('second completion starts independent',doc.querySelector('.compact-done').getAttribute('aria-pressed')==='false');
     check('second palette starts independent',doc.documentElement.dataset.codePalette==='default');
     win.outcropAppearance.setMode('dark');win.outcropAppearance.setPalette('dark','solarized');
@@ -48,6 +84,30 @@
     check('real compiler sidecar applications',Object.keys(types.$expressions||{}).length>=2);
     const content=await fetch('/academy/search-content.json').then(r=>r.json());
     check('index has three languages and code', ['en','zh','ja','*'].every(lang=>content.some(x=>x.lang===lang)));
+    for(const width of [390,1100]) {
+      frame.style.width=width+'px';
+      [doc,win]=await load('/academy/en/Sample.Use.html');
+      const box=doc.querySelector('#search-box'),results=doc.querySelector('#search-results');
+      box.value='twice';box.focus();
+      await until(()=>results.querySelector('a.res'));
+      const result=results.querySelector('a.res'),target=new URL(result.href);
+      check(width+' search result is a native link',target.pathname.startsWith('/academy/en/')&&!!target.hash);
+      box.dispatchEvent(new win.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true,cancelable:true}));
+      check(width+' keyboard result selection remains accessible',box.getAttribute('aria-activedescendant')===result.id);
+      // Safari pointer activation may blur to the body, not focus the link.
+      result.dispatchEvent(new win.PointerEvent('pointerdown',{bubbles:true,pointerType:width===390?'touch':'mouse'}));
+      box.blur();
+      check(width+' input blur cannot remove the pending click target',!results.hidden&&result.getClientRects().length>0);
+      result.click();
+      await until(()=>win.location.pathname===target.pathname&&win.location.hash===target.hash);
+      check(width+' result activates its real page anchor without a modal',!!doc.getElementById(decodeURIComponent(target.hash.slice(1)))&&!doc.querySelector('.definition-modal'));
+      box.focus();await until(()=>!results.hidden&&results.querySelector('a.res'));
+      doc.querySelector('#theme-toggle').focus();
+      check(width+' moving focus outside dismisses results',results.hidden);
+      box.focus();await until(()=>!results.hidden&&results.querySelector('a.res'));
+      box.dispatchEvent(new win.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+      check(width+' Escape dismisses results',results.hidden&&box.getAttribute('aria-expanded')==='false');
+    }
     const plain=await fetch('/plain.html').then(r=>r.text());
     check('raw core renders unknown code without fake semantic links',plain.includes('unknown value')&&!plain.includes('data-type=')&&!plain.includes('expr-node'));
     document.querySelector('#test-status').textContent='PASS '+checks.length+'/'+checks.length;
