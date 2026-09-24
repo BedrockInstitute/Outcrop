@@ -20,8 +20,6 @@ jobs:
   agda-integration:
     needs: independent-package
     runs-on: ubuntu-latest
-    env:
-      GHCRTS: '-A64m -I0 -M8g'
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -43,5 +41,11 @@ jobs:
           ghc-version: ${{ steps.lock.outputs.ghc }}
           cabal-version: ${{ steps.lock.outputs.cabal }}
       - run: python -m outcrop agda-build --build-dir _build/outcrop-agda
+        env:
+          GHCRTS: '-A64m -I0 -M8g'
       - run: python scripts/smoke-agda.py --agda _build/outcrop-agda/bin/outcrop-agda
+        env:
+          GHCRTS: '-A64m -I0 -M8g'
       - run: python examples/renderer/refresh_semantics.py --agda _build/outcrop-agda/bin/outcrop-agda --staging _build/semantic-smoke
+        env:
+          GHCRTS: '-A64m -I0 -M8g'
