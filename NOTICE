@@ -1,0 +1,39 @@
+Outcrop Core and Outcrop Site
+Copyright (C) 2026 Bedrock Institute
+
+Extracted from https://github.com/BedrockInstitute/Bedrock, baseline
+956682cba77d75259b7b2584dd0e071a6ab7b42d, with the subsequent extraction and
+interaction changes recorded in this repository. Original software was under
+AGPL-3.0-only; documents moved from dev/ retain CC BY-NC-SA 4.0. REUSE.toml
+declares per-file terms, and LICENSES/ contains the complete license texts.
+Extraction does not relicense the original work or bundle Bedrock's textbook.
+
+Corresponding source for Outcrop, including its browser runtime:
+https://github.com/BedrockInstitute/Outcrop
+Deployed consumers must also provide the source of their covered modifications
+under AGPL-3.0 section 13. The reader's source link identifies its configured
+instance; that instance must retain its pinned framework source reference.
+
+1lab: https://1lab.dev and https://github.com/the1lab/1lab
+Copyright (C) 2021 Amelia Liao and contributors, AGPL-3.0-only.
+Outcrop inherits the adapted Agda palette and type-hover design from Bedrock.
+The vendored upstream tree is src/outcrop/site/resources/vendor/1lab/ and keeps
+its source commit and license. Its bundled component notices are retained in
+vendor/1lab/static/licenses (KaTeX and octicons MIT, Noto Emoji Apache-2.0,
+fast-fuzzy ISC, and fonts SIL OFL-1.1).
+
+KaTeX: https://katex.org, MIT. The page loads the pinned KaTeX CSS and JavaScript
+from a CDN; mathematics rendering does not block other reader interactions.
+
+Self-hosted fonts under src/outcrop/site/resources/static/fonts/, SIL OFL-1.1:
+- EB Garamond: https://github.com/octaviopardo/EBGaramond12
+- Inria Sans: https://github.com/BlackFoundryCom/InriaFonts
+- JuliaMono: https://github.com/cormullion/juliamono
+- Noto Sans Math 3.000: https://github.com/notofonts/math
+
+Bedrock Dotted Operators is the existing JuliaMono-derived two-cluster subset.
+Bedrock Universe Levels is the existing Noto subset, with Unicode script digits
+derived from its MATH metrics. Their historical internal family names and
+outlines are retained to avoid changing typography during extraction. They are
+font identifiers, not a website-brand default. Each upstream license is beside
+the fonts. Reproduction scripts are in scripts/build-*-font.py.

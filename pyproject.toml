@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "outcrop"
+version = "0.1.0"
+description = "Interactive multilingual textbooks with optional formal semantics"
+requires-python = ">=3.11"
+license = "AGPL-3.0-only"
+
+[project.urls]
+Source = "https://github.com/BedrockInstitute/Outcrop"
+Documentation = "https://github.com/BedrockInstitute/Outcrop/tree/main/docs"
+
+[project.scripts]
+outcrop = "outcrop.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"outcrop.site" = ["resources/**/*"]

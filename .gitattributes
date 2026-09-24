@@ -1,0 +1,2 @@
+# Preserve the upstream JuliaMono license's CRLF line endings verbatim.
+src/outcrop/site/resources/static/fonts/LICENSE-JuliaMono.txt -text whitespace=cr-at-eol
