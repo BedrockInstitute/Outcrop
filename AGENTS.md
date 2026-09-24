@@ -3,6 +3,8 @@
 Outcrop Core and Outcrop Site are reusable software. Bedrock is one consumer,
 not an implicit project, corpus or brand. Follow the current task and preserve
 unrelated work. Do not commit or publish without authorization.
+Commit-only authorization does not permit a push or deployment, including when
+Outcrop is checked out as a consumer's submodule.
 
 ## Boundaries
 
@@ -44,11 +46,29 @@ when the browser is available; do not equate narrow Chrome with iPhone Safari.
 Landscape code reading moves the original DOM. It shares hover, semantic lookup
 and gesture selection, transforms coordinates once, preserves source IDs, and
 restores the normal reading surface before opening a definition modal.
+Keep standard and WebKit `text-size-adjust: 100%` scoped to code frames and
+fullscreen reading without disabling user zoom. Check rendered glyph sizes,
+not only computed font sizes, when testing mobile autosizing.
+
+Agda code frames grow to their full content height and scroll only horizontally;
+their page, modal or fullscreen reading plane may scroll vertically. Preserve
+right-end scroll padding and independently indented submodules with compact
+declaration headers. Code uses its full containing width, with no QED outdent or
+external gutter. The exact rectangular `∎` is a noninteractive absolute overlay
+inside the final frame at fixed opacity `.25`, even when overlapping code. It
+reserves no row, height or extra padding. Do not restore overlap measurement or
+dynamic opacity; the Markdown statement grammar remains unchanged.
 
 Retain trilingual search independent of edition, IME and keyboard controls,
 appearance persistence, diagram interactions, dependency graph gestures,
 sidebar title/disclosure hit regions, reading progress and Ask AI copying.
 Use theme tokens, accessible controls and reduced-motion handling.
+Search results remain native navigation links, not modal targets. Dismiss on
+outside click or outside `focusin`; input `focusout` with null `relatedTarget`
+may precede Safari's result click and must not hide its target prematurely.
+The shared footer credit is "Powered by Outcrop", linked to the Outcrop
+repository, separate from instance copyright. Keep upstream acknowledgments in
+the repository rather than adding them to every reader footer.
 
 ## Verification and licensing
 
@@ -57,6 +77,8 @@ the installable distribution includes templates, JS modules, workers and fonts.
 Use actual browser interactions for changed behavior and record the tested
 runtime generation; no stale copied assets. Keep tests of no-toolchain builds,
 ordinary Markdown, optional semantics and multi-project isolation.
+Attribute user-reported real-device acceptance to the user and tested revision;
+it does not establish acceptance of later changes.
 
 Source Markdown and compiler evidence are authoritative; a renderer refactor
 must preserve code text and anchors. Raw authored HTML is trusted, not sanitized.
