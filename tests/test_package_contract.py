@@ -15,7 +15,8 @@ class PackageContractTests(unittest.TestCase):
     def test_subcommand_help_is_owned_by_the_subcommand(self):
         for command, option in [('build', '--out'), ('lint', '--literary'),
                                 ('extract-types', '--entry'), ('extract-expressions', '--trace'),
-                                ('check-links', 'published site directory')]:
+                                ('check-links', 'published site directory'), ('check-search', '--languages'),
+                                ('agda-build', '--identity'), ('agda-libraries', '--lock'), ('agda-check', '--root')]:
             with self.subTest(command=command):
                 result = subprocess.run([sys.executable, '-m', 'outcrop', command, '--help'],
                                         capture_output=True, text=True, check=True)

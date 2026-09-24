@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Normalize bedrock-agda's type trace and verify hover coverage.
+"""Normalize outcrop-agda's type trace and verify hover coverage.
 
 The compiler produces every type while checking, either in one combined
 checking/HTML traversal or in independently buffered parallel module checks.
@@ -33,17 +33,30 @@ UNLINKED_BOUND_RE = re.compile(
 IMPRECISE_RE = re.compile(r"_[\w.']+_\d+|(?<![\w'])_\d+\b|\?\d+")
 KIND_PRIORITY = {"name": 1, "binding": 2, "application": 3}
 DUMMY_TYPE_RE = re.compile(r'__DUMMY_(?:TYPE|SORT|TERM|LEVEL|DOM)__|dummy(?:Type|Sort|Term|Level):')
+SOURCE_SUFFIXES = (".lagda.md", ".agda")
 
 
 def module_name(path: Path, source_root: Path) -> str:
-    return path.relative_to(source_root).as_posix()[:-len(".lagda.md")].replace("/", ".")
+    relative = path.relative_to(source_root).as_posix()
+    for suffix in SOURCE_SUFFIXES:
+        if relative.endswith(suffix):
+            return relative[:-len(suffix)].replace("/", ".")
+    raise ValueError(f"unsupported Agda source suffix: {path}")
 
 
 def source_paths(source_root: Path) -> dict[Path, tuple[str, Path]]:
-    return {
-        path.resolve(): (module_name(path, source_root), path)
-        for path in sorted(source_root.glob("**/*.lagda.md"))
-    }
+    paths = {}
+    modules = {}
+    for path in sorted(path for suffix in SOURCE_SUFFIXES
+                       for path in source_root.rglob(f"*{suffix}") if path.is_file()):
+        module = module_name(path, source_root)
+        if module in modules:
+            raise RuntimeError(
+                f"duplicate module {module}: {modules[module]} and {path}"
+            )
+        modules[module] = path
+        paths[path.resolve()] = (module, path)
+    return paths
 
 
 def source_hash(path: Path) -> str:
@@ -89,11 +102,13 @@ def read_latest_trace(trace_path: Path, known_paths: set[Path]) -> dict[Path, li
                 records[path] = []
             records[path].append(record)
     if errors:
-        raise RuntimeError("invalid bedrock-agda trace:\n" + "\n".join(errors[:20]))
+        raise RuntimeError("invalid outcrop-agda trace:\n" + "\n".join(errors[:20]))
     return records
 
 
-def code_intervals(source: str) -> list[tuple[int, int]]:
+def code_intervals(source: str, *, literate: bool = True) -> list[tuple[int, int]]:
+    if not literate:
+        return [(1, len(source) + 1)]
     return [(match.start(1) + 1, match.end(1) + 1) for match in AGDA_FENCE_RE.finditer(source)]
 
 
@@ -189,7 +204,7 @@ def normalize(source_root: Path, html_dir: Path, trace_path: Path,
         if selected and module not in selected:
             continue
         source = path.read_text(encoding="utf-8")
-        intervals = code_intervals(source)
+        intervals = code_intervals(source, literate=path.name.endswith(".lagda.md"))
         targets, labels, bound_occurrences = bound_metadata(
             highlighted_source(html_dir, module), module
         )
@@ -294,11 +309,11 @@ def normalize(source_root: Path, html_dir: Path, trace_path: Path,
             for target_module, target, module, occurrence, label in uncovered[:20]
         )
         raise RuntimeError(
-            f"bedrock-agda trace left {len(uncovered)} binding target(s) without a type:\n  {detail}"
+            f"outcrop-agda trace left {len(uncovered)} binding target(s) without a type:\n  {detail}"
         )
     if unresolved:
         raise RuntimeError(
-            f"bedrock-agda emitted {len(unresolved)} unresolved type(s):\n  "
+            f"outcrop-agda emitted {len(unresolved)} unresolved type(s):\n  "
             + "\n  ".join(unresolved[:20])
         )
 

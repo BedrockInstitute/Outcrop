@@ -10,7 +10,7 @@ tree, glossary, mathematical policy or brand.
 | --- | --- | --- |
 | Outcrop Core | `from outcrop.core import MarkdownDocument, CodeContext` | Explicit Markdown and optional compiler evidence become HTML, an outline and a usable Markdown mirror |
 | Outcrop Site | `from outcrop.site import SiteConfig, build_site` | Complete static textbook composition, configuration, metadata, publication, packaged resources and reusable lint |
-| Optional adapters | `outcrop.adapters` | Compiler data extraction and published-link validation with explicit input paths |
+| Optional adapters | `outcrop.adapters` | Agda toolchain/build/trace production, semantic extraction, weaving and published-link/search validation with explicit paths/options |
 
 Site depends on Core. Core does not import Site, discover a repository, load a
 catalog or glossary by default, or run Agda. A document without compiler evidence
@@ -171,10 +171,31 @@ inferred from project names. `lint_site(config, project_checks=...)` can receive
 additional diagnostic-producing callables; JSON configuration cannot execute
 commands.
 
-A consumer owns its mathematical correctness gates, toolchain installation,
-compiler trace production, caches and deployment credentials. Outcrop does not
-typecheck merely because it renders or lints. Bedrock's host-LEM inventory and
-Origin closure are examples of project policy, not generic Markdown rules.
+The shared gate checks both figure source structure and the framework stylesheets:
+non-link diagram relations cannot inherit navigation-link colours. Shared CJK
+prose diagnostics use the same marker/fence grammar in Core and consumer adapters.
+`AgdaPolicy.options_pragma` supplies the exact setup contract to chapter lint and
+rendering; `MarkdownDocument(..., options=...)` accepts that explicit pragma, so
+a project using only `--safe` does not inherit Cubical boilerplate assumptions.
+
+Framework tests own synthetic hover/modal/navigation, publication, terminology,
+chapter, source-rule and route scenarios. They use explicit policy or the
+independent example, never a consumer's catalog or project configuration. Consumer
+tests retain actual-corpus conformance, editorial metadata and domain exceptions.
+`outcrop.core.source_metrics.count(text)` shares Agda fence extraction with lint.
+`python -m outcrop.adapters.weave` provides batch weaving and marker validation;
+it needs explicit files or a root and never invents a compiler-library dependency.
+Its optional library file is copied verbatim. A consumer adapter can instead supply
+per-language library metadata while keeping its source paths and archive policy.
+
+A consumer owns its mathematical correctness gates, dependency lock, entry
+modules, invocation/resource/cache policy and deployment credentials. Outcrop
+owns the reusable mechanisms, including optional compiler installation and trace
+production in `outcrop.adapters.agda`. An optional dependency is not a reason to
+leave its generic implementation in one consumer. These adapters belong to Core's
+Agda integration, not a third product layer. Outcrop does not typecheck merely
+because it renders or lints. Bedrock's host-LEM inventory and Origin closure are
+examples of project policy, not generic Markdown rules. See [AGDA.md](AGDA.md).
 
 ## Verification
 

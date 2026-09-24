@@ -87,6 +87,29 @@ class SiteConfig:
         self.topics = values.get('topics', [])
         if not isinstance(self.topics, list) or any(not isinstance(item, str) for item in self.topics):
             raise ValueError('topics: expected strings')
+        self.programming_language = values.get('programming_language')
+        self.copyright_year = values.get('copyright_year')
+        if self.copyright_year is not None and (type(self.copyright_year) is not int or not 1 <= self.copyright_year <= 9999):
+            raise ValueError('copyright_year: expected a positive year or null')
+        if self.programming_language is not None:
+            item = self.programming_language
+            if not isinstance(item, dict) or not isinstance(item.get('name'), str) or not item['name'].strip():
+                raise ValueError('programming_language: expected name and url')
+            web_url(item.get('url'), 'programming_language.url')
+        self.external_libraries = values.get('external_libraries', [])
+        if not isinstance(self.external_libraries, list):
+            raise ValueError('external_libraries: expected a list')
+        prefixes = set()
+        for item in self.external_libraries:
+            if (not isinstance(item, dict) or any(not isinstance(item.get(key), str) or not item[key].strip()
+                    for key in ('prefix', 'name'))):
+                raise ValueError('external_libraries: expected prefix, name and url')
+            if not re.fullmatch(r'[^./\\\s<>"\x00]+(?:\.[^./\\\s<>"\x00]+)*', item['prefix']):
+                raise ValueError('external_libraries.prefix: invalid module prefix')
+            if item['prefix'] in prefixes:
+                raise ValueError('external_libraries: duplicate prefix')
+            prefixes.add(item['prefix'])
+            web_url(item.get('url'), 'external_libraries.url')
         self.agent = values.get('agent', {})
         if not isinstance(self.agent, dict):
             raise ValueError('agent: expected an object')
@@ -176,6 +199,11 @@ class SiteConfig:
 
     def with_overrides(self, **overrides):
         return SiteConfig({**self.values, **overrides}, root=self.root)
+
+    def external_library(self, module):
+        matches = [item for item in self.external_libraries
+                   if module == item['prefix'] or module.startswith(item['prefix'] + '.')]
+        return max(matches, key=lambda item: len(item['prefix'])) if matches else None
 
     def validate_references(self, modules):
         references = set(self.hubs) | set(self.values.get('visible_import_chapters', []))

@@ -8,7 +8,6 @@ from pathlib import Path
 from dataclasses import dataclass
 import argparse
 import json
-import re
 from outcrop.site.site_config import SiteConfig
 from outcrop.site.site_inputs import source_paths
 from outcrop.core.reading_order import prerequisite_order_errors
@@ -20,9 +19,9 @@ from outcrop.core.chapter_structure import opening_errors
 from outcrop.core.prose_lint import analyze, ProsePolicy
 from outcrop.core.agda_lint import lint_text, AgdaPolicy, agda_lines
 from outcrop.core.fence_lint import fenced_comments, tight_language_boundaries, suspects
-from outcrop.core.diagram_style import check_text as diagram_errors
+from outcrop.core.diagram_style import check_sources as diagram_errors
 from outcrop.core.glossary_lint import build_checks, build_presence, check_text, master_presence_violations
-from outcrop.core.i18n_markers import parse, lint_markers
+from outcrop.core.i18n_markers import lint_markers, shared_cjk_errors
 
 
 @dataclass(frozen=True)
@@ -36,7 +35,7 @@ class Diagnostic:
         return f'{self.source}:{self.line}: [{self.rule}] {self.message}'
 
 
-def lint_site(config, *, literary=False, project_checks=()):
+def lint_site(config, *, literary=False, project_checks=(), stylesheets=None):
     """Validate the configured corpus and all authored metadata; never mutate it."""
     root = config.path(config.sources)
     paths = source_paths(root, config.source_extension)
@@ -52,6 +51,12 @@ def lint_site(config, *, literary=False, project_checks=()):
     results = []
     def report(source, rule, message, line=1):
         results.append(Diagnostic(str(source), line, rule, message))
+    # The figure grammar includes the framework's semantic colour contract, not
+    # only authored markup. All consumers must run both halves of that gate.
+    if stylesheets is None:
+        stylesheets = sorted((Path(__file__).parent / 'resources/static').glob('*.css'))
+    for error in diagram_errors(paths.values(), stylesheets=stylesheets):
+        report('diagrams', 'diagram', error)
     for error in check_terms(sources, entries, reading):
         report('terms', 'term-introduction', error)
     order = [node['id'] for node in reading['nodes']]
@@ -65,7 +70,7 @@ def lint_site(config, *, literary=False, project_checks=()):
             raise ValueError('variable_legacy: expected version 1')
         legacy = {chapter: set(lines) for chapter, lines in recorded['lines'].items()}
     agda_policy = AgdaPolicy(**config.values.get('agda_policy', {}))
-    pragma = '{-# OPTIONS ' + ' '.join(agda_policy.options) + ' #-}'
+    pragma = agda_policy.options_pragma
     for module, text in sources.items():
         path = paths[module]
         marker_errors = lint_markers(text)
@@ -92,13 +97,8 @@ def lint_site(config, *, literary=False, project_checks=()):
                 errors.append('missing chapter title')
             for error in errors:
                 report(path, 'chapter-outline', error)
-            for kind, payload in parse(text):
-                if kind == 'shared' and re.search(r'[\u3000-\u303f\u3400-\u9fff\uff01-\uff5e]', '\n'.join(payload)):
-                    # Formal code is language-neutral, and its own character
-                    # rule already diagnoses invalid prose inside a fence.
-                    shared = re.sub(r'(?ms)^```.*?^```\s*$', '', '\n'.join(payload))
-                    if re.search(r'[\u3000-\u303f\u3400-\u9fff\uff01-\uff5e]', shared):
-                        report(path, 'shared-language', 'CJK prose outside a language group')
+            for line, message in shared_cjk_errors(text):
+                report(path, 'shared-language', message, line)
         if config.policies.get('formal_setup', True):
             for error in opening_errors(text, module, sources, options=pragma,
                     visible_import_chapters=config.values.get('visible_import_chapters', ())):
@@ -112,8 +112,6 @@ def lint_site(config, *, literary=False, project_checks=()):
             report(path, 'fence-language-boundary', 'insert a blank line before the language marker', line)
         for line, _ in suspects(text, 3):
             report(path, 'unfenced-agda', 'declaration-shaped code outside a fence', line)
-        for error in diagram_errors(text):
-            report(path, 'diagram', error)
         for line, _, message in check_text(text, checks):
             report(path, 'glossary', message, line)
         for _, message in master_presence_violations(str(path), text, presence):

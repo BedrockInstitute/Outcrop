@@ -40,8 +40,10 @@ build_site(config, ['--out', '_build/renderer-fixture/academy'])
 ```
 
 `python -m outcrop build --help` and `lint --help` describe their own arguments.
-The optional `extract-types`, `extract-expressions` and `check-links` subcommands
-accept explicit compiler/source/output paths. There is no legacy Python facade.
+The optional `agda-build`, `agda-libraries`, `agda-check`, `extract-types`,
+`extract-expressions`, `weave`, `check-links` and `check-search` subcommands accept
+explicit compiler/source/output paths. [AGDA.md](AGDA.md) documents the optional
+producer; it needs no consumer repository. There is no legacy Python facade.
 Bedrock's retained CLI is an instance adapter, not the generic entry point.
 Tests copy the installed package without a Bedrock `src`, `dev` or
 `site/project.json`, set `PATH=/no-toolchain`, and build/lint the example there.
@@ -61,6 +63,7 @@ not a sandbox for executing untrusted authors' documents.
 | --- | --- |
 | `version` | Required integer `1` |
 | `name`, `publisher` | Visible site and copyright identity |
+| `copyright_year` | Optional positive year; omitted means a copyright notice without a year, not an inherited project date |
 | `storage_namespace` | Preference isolation; Bedrock explicitly retains `bedrock` |
 | `languages` | Nonempty unique subset of `en`, `zh`, `ja` |
 | `canonical` | Public origin plus optional deployment path, no trailing slash |
@@ -78,6 +81,8 @@ not a sandbox for executing untrusted authors' documents.
 | `prerequisites` | Optional per-chapter overrides; omitted chapters keep their inferred imports |
 | `descriptions` | Text for each enabled language |
 | `topics` | Site-level metadata keywords |
+| `programming_language` | Optional metadata object with `name` and HTTP(S) `url`; absent means no language claim |
+| `external_libraries` | Optional list of `{prefix, name, url}`; the longest module-prefix match supplies the external-library label; unknown libraries receive a neutral label, never an assumed Cubical identity |
 | `license` | Required `name` and HTTP(S) `url` |
 | `legacy_pages` | Flat old `.html` filenames mapped to local target pages/anchors |
 | `source_links` | Extra agent-guide references: `url`, `description` |

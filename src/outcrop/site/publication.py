@@ -18,11 +18,13 @@ class Publication:
     def page_description(self, module, lang, is_landing, is_external):
         """The page's own <meta name=description>, never the bare site name."""
         if is_external:
+            library = self.config.external_library(module)
+            name = library['name'] if library else {'en': 'an external library', 'zh': '外部库', 'ja': '外部ライブラリ'}[lang]
             return {
-                "en": f"{module}, a module of the Cubical standard library, rendered for reference "
+                "en": f"{module}, a module of {name}, rendered for reference "
                       f"inside the {self.config.name} textbook.",
-                "zh": f"{module}：Cubical 标准库的一个模块，在 {self.config.name} 教科书中渲染以供查阅。",
-                "ja": f"{module}：Cubical 標準ライブラリのモジュール。{self.config.name} の教科書内に参照用として"
+                "zh": f"{module}：{name}的一个模块，在 {self.config.name} 教科书中渲染以供查阅。",
+                "ja": f"{module}：{name}のモジュール。{self.config.name} の教科書内に参照用として"
                       "描画したものです。",
             }[lang]
         if is_landing:
@@ -63,8 +65,11 @@ class Publication:
             formats.insert(0, f'<a href="{md_href}" title="{htmllib.escape(s["mdtitle"])}" '
                               f'type="text/markdown">{s["markdown"]}</a>')
         links = " · ".join([source, *formats])
-        copyright_ = f'© 2026 {htmllib.escape(self.config.publisher)} · {s["license"]} · {links}'
-        return (f'<div class="footer-credit">{s["credit"]}</div>'
+        year = f'{self.config.copyright_year} ' if self.config.copyright_year else ''
+        copyright_ = f'© {year}{htmllib.escape(self.config.publisher)} · {s["license"]} · {links}'
+        credit = (f'{htmllib.escape(self.config.name)}, powered by '
+                  '<a href="https://github.com/BedrockInstitute/Outcrop">Outcrop</a>')
+        return (f'<div class="footer-credit">{credit}</div>'
                 f'<div class="footer-copyright">{copyright_}</div>')
 
 
@@ -109,7 +114,7 @@ class Publication:
             "name": self.config.name,
             "url": self.config.canonical + "/",
             "inLanguage": list(langs),
-            "description": self.config.descriptions.get(lang, self.config.descriptions["en"]),
+            "description": self.config.descriptions.get(lang, self.config.descriptions[self.config.languages[0]]),
             "about": self.config.topics,
             "license": self.config.license['url'],
             "author": {"@type": "Organization", "name": self.config.publisher, "url": self.config.repository},
@@ -125,10 +130,10 @@ class Publication:
             "inLanguage": lang,
             "isPartOf": {"@id": f"{self.config.canonical}/#book"},
             "license": self.config.license['url'],
-            "programmingLanguage": {"@type": "ComputerLanguage", "name": "Cubical Agda",
-                                    "url": "https://github.com/agda/cubical"},
             "isAccessibleForFree": True,
         }
+        if self.config.programming_language:
+            page['programmingLanguage'] = {'@type': 'ComputerLanguage', **self.config.programming_language}
         if not is_external:
             page["identifier"] = module
             position = self.book.meta.get(module, {}).get("order")

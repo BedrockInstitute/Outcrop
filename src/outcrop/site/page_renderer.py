@@ -13,6 +13,7 @@ from outcrop.core.agda_help import annotate_keywords
 from outcrop.core.agda_semantics import write_type_sidecar
 from outcrop.site.search_index import passages
 from outcrop.core.document_renderer import MarkdownDocument
+from outcrop.core.agda_lint import AgdaPolicy
 
 class PageRenderer:
     def __init__(self, config, book, publication):
@@ -205,10 +206,15 @@ class PageRenderer:
         return label
 
 
-    def ext_banner(self, lang):
+    def ext_banner(self, lang, module=''):
         """Prominent header marking a page as external to this textbook (links home)."""
         s = self.ui[lang]
-        return (f'<div class="ext-banner">⚠ {htmllib.escape(s["external"])} '
+        library = self.config.external_library(module)
+        label = ({'en': 'You are viewing the {name} library.',
+                  'zh': '您正在浏览 {name} 库。',
+                  'ja': '{name} ライブラリを閲覧しています。'}[lang].format(name=library['name'])
+                 if library else s['external'])
+        return (f'<div class="ext-banner">⚠ {htmllib.escape(label)} '
                 f'<a href="index.html">{htmllib.escape(s["back"])}</a></div>')
 
 
@@ -228,6 +234,7 @@ class PageRenderer:
             code=code,
             terms=terms, formal_setup=module in internal and self.config.policies.get('formal_setup', True),
             visible_import_chapters=self.config.values.get('visible_import_chapters', []),
+            options=AgdaPolicy(**self.config.values.get('agda_policy', {})).options_pragma,
             overview=is_landing) if literate else None
 
         def page_body(lang):
@@ -299,7 +306,7 @@ class PageRenderer:
                     CONFIG=self.publication.page_config(module, lang, page_name, md_name, base, site,
                                        is_landing, is_external),
                     BODYCLASS=body_class,
-                    EXTBANNER=self.ext_banner(lang) if is_external else "",
+                    EXTBANNER=self.ext_banner(lang, module) if is_external else "",
                     HREFLANG=hreflang_links(page_name, langs, base),
                     LANGNAV=lang_nav(page_name, lang, langs),
                     MODNAV=self.modules_nav(current if page_name == out_name else module,

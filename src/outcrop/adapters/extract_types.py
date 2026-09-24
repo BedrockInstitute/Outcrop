@@ -5,7 +5,7 @@ This is what makes type-on-hover possible WITHOUT forking 1lab's Agda-as-a-libra
 We drive Agda's batch interaction protocol (`agda --interaction-json`,
 `Cmd_show_module_contents_toplevel`), which returns {name, type} for a module's contents.
 
-To also cover the cubical / Agda library identifiers Bedrock references (so cubical defs get
+To also cover the external Agda library identifiers a project references (so their defs get
 hover too), we extract types for the WHOLE reachable module graph, i.e. every module that
 `agda --html` emitted. We generate a small build-only loader that `import`s every reachable
 module directly, load it once, then query each module.
@@ -55,13 +55,44 @@ def reachable_modules(html_dir, entry=None):
     return sorted(seen)
 
 
-def run_agda(commands, agda):
+def run_agda(commands, agda, *, cwd=None):
     proc = subprocess.run([agda, "--interaction-json"], input=commands,
-                          capture_output=True, text=True)
-    if proc.returncode != 0 and not proc.stdout:
+                          capture_output=True, text=True, cwd=cwd)
+    if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
         raise SystemExit(f"agda --interaction-json failed (exit {proc.returncode})")
     return proc.stdout
+
+
+# Set is always available, unlike string/numeral literals whose built-in
+# bindings a perfectly valid small project need not import. Only our commands
+# compute a normal form; inferred types use a distinct protocol response kind.
+PROTOCOL_MARK = 'Set'
+PROTOCOL_FORMS = {'Set', 'Agda.Primitive.Set'}
+
+
+def load_commands(loader_abs):
+    loader = json.dumps(loader_abs)
+    return (f'IOTCM {loader} NonInteractive Direct (Cmd_load {loader} [])\n'
+            f'IOTCM {loader} None Direct (Cmd_compute_toplevel DefaultCompute {json.dumps(PROTOCOL_MARK)})\n')
+
+
+def after_load(stdout):
+    """A failed loader is fatal; later inaccessible private queries may be absent."""
+    lines = stdout.splitlines()
+    for index, line in enumerate(lines):
+        try:
+            message = json.loads(line.strip().removeprefix('JSON> '))
+        except json.JSONDecodeError:
+            continue
+        if message.get('kind') != 'DisplayInfo':
+            continue
+        info = message.get('info', {})
+        if info.get('kind') == 'Error':
+            raise RuntimeError('Agda type loader failed: ' + json.dumps(info, ensure_ascii=False))
+        if info.get('kind') == 'NormalForm' and info.get('expr') in PROTOCOL_FORMS:
+            return '\n'.join(lines[index + 1:])
+    raise RuntimeError('Agda type loader did not acknowledge successful loading')
 
 
 def parse_contents(stdout):
@@ -108,7 +139,7 @@ def parse_inferred(stdout):
         elif info.get("kind") == "Error":
             pending = None
         elif (info.get("kind") == "NormalForm"
-              and str(info.get("expr", "")).startswith('"BEDROCK-TYPE-MARK-')):
+              and info.get("expr") in PROTOCOL_FORMS):
             out.append(pending)
             pending = None
     return out
@@ -140,11 +171,13 @@ def definition_names(html_dir, modules):
 
 
 def query(loader_abs, modules, agda):
-    cmds = f'IOTCM "{loader_abs}" NonInteractive Direct (Cmd_load "{loader_abs}" [])\n'
+    cmds = load_commands(loader_abs)
     for m in modules:
         cmds += (f'IOTCM "{loader_abs}" None Direct '
                  f'(Cmd_show_module_contents_toplevel Simplified "{m}")\n')
-    responses = parse_contents(run_agda(cmds, agda))
+    responses = parse_contents(after_load(run_agda(cmds, agda, cwd=os.path.dirname(loader_abs))))
+    if len(responses) != len(modules) or any(contents is None for contents in responses):
+        raise RuntimeError('Agda module type query failed or returned incomplete responses')
     result = {}
     for i, m in enumerate(modules):
         contents = responses[i] if i < len(responses) else None
@@ -162,7 +195,7 @@ def query_missing(loader_abs, missing, agda):
     """
     if not missing:
         return {}
-    commands = f'IOTCM {json.dumps(loader_abs)} NonInteractive Direct (Cmd_load {json.dumps(loader_abs)} [])\n'
+    commands = load_commands(loader_abs)
     expressions = []
     for index, (module, name) in enumerate(missing):
         expression = f"{module}.{name}"
@@ -172,9 +205,11 @@ def query_missing(loader_abs, missing, agda):
             f'(Cmd_infer_toplevel Simplified {json.dumps(expression)})\n'
             f'IOTCM {json.dumps(loader_abs)} None Direct '
             f'(Cmd_compute_toplevel DefaultCompute '
-            f'{json.dumps(json.dumps(f"BEDROCK-TYPE-MARK-{index}"))})\n'
+            f'{json.dumps(PROTOCOL_MARK)})\n'
         )
-    inferred = parse_inferred(run_agda(commands, agda))
+    inferred = parse_inferred(after_load(run_agda(commands, agda, cwd=os.path.dirname(loader_abs))))
+    if len(inferred) != len(expressions):
+        raise RuntimeError('Agda declaration type query returned incomplete responses')
     result = {}
     for (module, name), type_ in zip(expressions, inferred):
         if type_:
@@ -182,12 +217,13 @@ def query_missing(loader_abs, missing, agda):
     return result
 
 
-def write_loader(typeext_dir, src_abs, modules, *, libraries=()):
+def write_loader(typeext_dir, src_abs, modules, *, libraries=(), options=()):
     os.makedirs(typeext_dir, exist_ok=True)
     with open(os.path.join(typeext_dir, "typeext.agda-lib"), "w", encoding="utf-8") as fh:
         fh.write(f"name: textbook-typeext\ninclude: . {src_abs}\ndepend: {' '.join(libraries)}\n"
                  f"flags: -WnoUnsupportedIndexedMatch\n")
-    body = "{-# OPTIONS --cubical --safe --guardedness #-}\nmodule types-loader where\n"
+    body = ('{-# OPTIONS ' + ' '.join(options) + ' #-}\n') if options else ''
+    body += "module types-loader where\n"
     body += "".join(f"import {m}\n" for m in modules)
     path = os.path.join(typeext_dir, "types-loader.agda")
     with open(path, "w", encoding="utf-8") as fh:
@@ -195,7 +231,9 @@ def write_loader(typeext_dir, src_abs, modules, *, libraries=()):
     return os.path.abspath(path)
 
 
-def extract(html_dir, src, agda="agda", *, entry=None, libraries=()):
+def extract(html_dir, src, agda="agda", *, entry=None, libraries=(), options=()):
+    if os.path.dirname(agda):
+        agda = os.path.abspath(agda)
     reachable = reachable_modules(html_dir, entry)
     queryable = reachable
     if not queryable:
@@ -203,7 +241,7 @@ def extract(html_dir, src, agda="agda", *, entry=None, libraries=()):
 
     # Preferred path: a loader importing every reachable module, so all are in scope.
     typeext = os.path.join(os.path.dirname(html_dir) or ".", "typeext")
-    loader = write_loader(typeext, os.path.abspath(src), reachable, libraries=libraries)
+    loader = write_loader(typeext, os.path.abspath(src), reachable, libraries=libraries, options=options)
     result, hits = query(loader, queryable, agda)
     if not hits:
         sys.stderr.write("warning: reachable-set loader yielded no type responses\n")
@@ -235,9 +273,11 @@ def main(argv=None):
     parser.add_argument('--out')
     parser.add_argument('--entry')
     parser.add_argument('--libraries', default='')
+    parser.add_argument('--options', default='', help='space-separated options for the generated loader')
     args = parser.parse_args(argv)
     data = extract(args.html_dir, args.src, args.agda, entry=args.entry,
-                   libraries=[name for name in args.libraries.split(',') if name])
+                   libraries=[name for name in args.libraries.split(',') if name],
+                   options=args.options.split())
     out = args.out
     text = json.dumps(data, ensure_ascii=False, indent=2)
     if out:

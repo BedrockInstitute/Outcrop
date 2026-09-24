@@ -15,6 +15,7 @@ lint:
 example:
 	$(PY) -m outcrop build --config examples/renderer/project.json --project-root examples/renderer --out _build/example/academy
 	$(PY) -m outcrop check-links _build/example/academy
+	$(PY) -m outcrop check-search _build/example/academy
 
 check: test lint example
 

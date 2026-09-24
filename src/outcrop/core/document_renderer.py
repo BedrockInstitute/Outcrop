@@ -21,6 +21,7 @@ from outcrop.core.agda_semantics import (
     AgdaSemantics, inline_ref_link, annotate_expression_nodes, annotate_unlinked_bound_types,
 )
 from outcrop.core.boilerplate import mirror_boilerplate
+from outcrop.core.chapter_structure import OPTIONS
 from outcrop.core.term_registry import TERM_MARK_RE
 
 
@@ -48,11 +49,12 @@ class RenderedDocument:
 
 class MarkdownDocument:
     def __init__(self, text, *, module='', code=None, terms=(), formal_setup=False,
-                 visible_import_chapters=(), overview=False):
+                 visible_import_chapters=(), overview=False, options=OPTIONS):
         self.module = module
         self.code = code or CodeContext()
         self.terms = terms
         self.formal_setup = formal_setup
+        self.options = options
         self.visible_import_chapters = visible_import_chapters
         self.languages = group_languages(text)
         self.blocks = []
@@ -134,6 +136,7 @@ class MarkdownDocument:
         body = annotate_keywords(body, lang)
         if self.formal_setup:
             body = mirror_boilerplate(body, self.module, self.code.internal,
-                                     visible_import_chapters=self.visible_import_chapters)
+                                     visible_import_chapters=self.visible_import_chapters,
+                                     options=self.options)
         body = auto_link_terms(body, lang, self.module, self.terms)
         return RenderedDocument(render_code_scroll_content(body), toc, mirror, tuple(self.blocks))

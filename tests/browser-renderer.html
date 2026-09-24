@@ -22,12 +22,15 @@
     check('real expression metadata rendered',doc.querySelectorAll('.expr-node').length>=2);
     check('review status and QED retained',doc.querySelector('.chapter-review')&&doc.querySelector('.statement-qed').textContent==='∎');
     check('no horizontal overflow at 390',doc.documentElement.scrollWidth<=390);
+    check('footer uses instance name and framework repository',doc.querySelector('.footer-credit').textContent==='Lantern Notes, powered by Outcrop'&&doc.querySelector('.footer-credit a').href==='https://github.com/BedrockInstitute/Outcrop');
+    check('upstream credit is not a reader footer',!doc.querySelector('#site-footer').textContent.includes('1lab'));
     win.outcropAppearance.setMode('light');win.outcropAppearance.setPalette('light','github');
     doc.querySelector('.compact-done').click();
     check('first completion persists',JSON.parse(localStorage.getItem('lantern-notes-reading-progress-v1')).includes('Sample.Use'));
     check('first namespace theme written',localStorage.getItem('lantern-notes-theme')==='light');
     [doc,win]=await load('/prism/en/Sample.Use.html');
     check('second brand and prefix',doc.querySelector('#brand').textContent==='Prism Reader'&&doc.querySelector('#brand').getAttribute('href')==='/prism/en/index.html');
+    check('second footer also uses its own brand',doc.querySelector('.footer-credit').textContent==='Prism Reader, powered by Outcrop');
     check('second completion starts independent',doc.querySelector('.compact-done').getAttribute('aria-pressed')==='false');
     check('second palette starts independent',doc.documentElement.dataset.codePalette==='default');
     win.outcropAppearance.setMode('dark');win.outcropAppearance.setPalette('dark','solarized');

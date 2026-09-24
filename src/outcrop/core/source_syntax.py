@@ -2,7 +2,11 @@
 import re
 
 AGDA_FENCE = re.compile(r'^```agda\s*\n(.*?)^```\s*$', re.M | re.S)
-IMPORT = re.compile(r'^\s*(?:open\s+)?import\s+([\w.]+)', re.M)
+# Agda names are tokens, not Python identifiers: hyphens, primes and many
+# mathematical characters are legal. Never silently turn a complete module
+# name into an unrelated prefix. Its internal qualified-name grammar remains
+# the compiler's responsibility.
+IMPORT = re.compile(r'^\s*(?:open\s+)?import\s+([^\s(){};]+)', re.M)
 ROUTE_METADATA_RE = re.compile(r'<!--\s*outcrop-routes\s*\{.*?\}\s*-->', re.S)
 
 

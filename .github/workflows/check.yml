@@ -16,3 +16,32 @@ jobs:
       - run: python -m pip install . 'reuse[charset-normalizer]==6.2.0'
       - run: make check PY=python
       - run: reuse lint
+
+  agda-integration:
+    needs: independent-package
+    runs-on: ubuntu-latest
+    env:
+      GHCRTS: '-A64m -I0 -M8g'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install .
+      - name: Read compiler host lock
+        id: lock
+        run: |
+          python -c 'import json; from outcrop.adapters.agda.build import RESOURCES; m=json.loads((RESOURCES/"manifest.json").read_text()); print("ghc="+m["tested_ghc_version"]); print("cabal="+m["tested_cabal_version"])' >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        id: compiler
+        with:
+          path: _build/outcrop-agda
+          key: outcrop-agda-${{ runner.os }}-${{ hashFiles('src/outcrop/adapters/agda/resources/**', 'src/outcrop/adapters/agda/build.py', 'src/outcrop/adapters/agda/archive.py') }}
+      - uses: haskell-actions/setup@v2
+        if: steps.compiler.outputs.cache-hit != 'true'
+        with:
+          ghc-version: ${{ steps.lock.outputs.ghc }}
+          cabal-version: ${{ steps.lock.outputs.cabal }}
+      - run: python -m outcrop agda-build --build-dir _build/outcrop-agda
+      - run: python scripts/smoke-agda.py --agda _build/outcrop-agda/bin/outcrop-agda
+      - run: python examples/renderer/refresh_semantics.py --agda _build/outcrop-agda/bin/outcrop-agda --staging _build/semantic-smoke

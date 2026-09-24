@@ -24,7 +24,7 @@ for path in (example / 'chapters').rglob('*.md'):
 output = staging / 'html'
 trace = staging / 'trace.jsonl'
 environment = {**os.environ, 'GHCRTS': '-A64m -I0 -M8g',
-    'BEDROCK_AGDA_TYPES': str(trace), 'BEDROCK_AGDA_RUN': 'lantern-fixture'}
+    'OUTCROP_AGDA_TYPES': str(trace), 'OUTCROP_AGDA_RUN': 'lantern-fixture'}
 subprocess.run([str(args.agda.resolve()), '--no-libraries', '-i', str(sources),
     '--html', '--html-highlight=code', '--html-dir=' + str(output),
     str(sources / 'Welcome.lagda.md')], env=environment, check=True)
@@ -34,5 +34,6 @@ subprocess.run([sys.executable, '-m', 'outcrop', 'extract-expressions',
 subprocess.run([sys.executable, '-m', 'outcrop', 'extract-types',
     '--agda', str(args.agda.resolve()), '--src', str(sources),
     '--html-dir', str(output), '--entry', 'Welcome', '--libraries', '',
+    '--options=--cubical --safe --guardedness',
     '--out', str(staging / 'types.json')], env=environment, check=True)
 print(staging)

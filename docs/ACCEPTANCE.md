@@ -52,3 +52,47 @@ remain with its real corpus in `scripts/tests/`; its local regression server
 must point to the newly built output. Network timing probes impose a 500ms type
 request delay and record events in the same frame's clock. They do not claim
 Core Web Vitals or mobile-device performance measurements.
+
+## Producer boundary audit, 2026-09-24
+
+The follow-up audit moves the optional Agda producer, compiler/library installers,
+parallel scheduler, weaving, metrics and generic tests into Outcrop. Site metadata
+and external-library labels now come from explicit configuration. Reader pages
+credit Outcrop; upstream acknowledgements remain in this repository. This record
+does not assert that the newly added compiler CI job has run remotely.
+
+Verified locally after the changes:
+
+- 400 reusable tests pass from a wheel installed into an isolated Python 3.11
+  environment outside the Bedrock checkout. The same installation passes strict
+  example lint, builds three editions and resolves all 393 relative links and
+  141 search destinations. No Agda is needed for that build.
+- The packaged compiler identity matches the checkout's identity, and an installed
+  compiler is reused without GHC/Cabal or network access. The fingerprint is
+  `6ce18b7df486911557edebfe0affc86eeb5346341ab97042534e642b29bc81c2`.
+- A real local Agda build completes with explicitly selected GHC 9.12. A safe,
+  non-Cubical two-module smoke project passes twice, preserving trace evidence
+  across a warm traversal. Name recovery resolves both omitted declarations;
+  module application never publishes internal Dummy diagnostics. The independent
+  semantic example also regenerates successfully. CI's configured GHC 9.4.8
+  matrix is separate from this local-build evidence.
+- Plain `.agda` and mixed literate sources retain Unicode ranges and trace data;
+  duplicate module identities fail before either output or trace is replaced.
+- Bedrock's `make check` passes, including its remaining 28 instance tests and
+  the shared 400 tests. The Origin closure gate and both REUSE audits pass.
+- Chrome's independent two-brand browser fixture passes 25 assertions, including
+  footer attribution. A real Bedrock footer click opens
+  `https://github.com/BedrockInstitute/Outcrop`; its dark appearance was inspected.
+  The existing reader runtime remains `f0e5481f2e1a2907`.
+- A fresh 120-module compiler traversal produces 141,065 application ranges and
+  99,725 binding/name ranges. The complete 282-module, three-edition site rebuild
+  passes 1,116,324 relative links across 854 pages and 80,016 search destinations.
+  Its 44,808 search records are identical to the previous release build. The
+  earlier record's 80,196 destination count was a transcription error.
+- Chrome reruns pass hover/modal (132), directory/search/graph (90), appearance
+  (136), universe notation (65), nested scroll padding (28), dotted fonts (15),
+  and 390px simulated mobile interactions (25). No browser runtime source changed
+  in this boundary correction.
+
+These changes do not modify Bedrock's mathematical sources. Physical iPhone
+Safari remains unverified; narrow and simulated touch fixtures are not a substitute.

@@ -5,8 +5,9 @@ an independently highlighted copy of a declaration or import.
 """
 from dataclasses import dataclass
 import re
+from outcrop.core.agda_lint import AgdaPolicy
 
-OPTIONS = '{-# OPTIONS --cubical --safe --guardedness #-}'
+OPTIONS = AgdaPolicy().options_pragma
 FENCE = re.compile(r'^```agda\n(?P<code>.*?)^```[ \t]*$', re.M | re.S)
 IMPORT = re.compile(r'^(?:open\s+)?import\s+(\S+)')
 # A result registry teaches through its public re-exports, not hidden setup.

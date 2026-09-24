@@ -12,6 +12,10 @@ class AgdaPolicy:
     forbid_monomorphic_empty: bool = False
     hprop_projection: bool = False
 
+    @property
+    def options_pragma(self):
+        return '{-# OPTIONS ' + ' '.join(self.options) + ' #-}'
+
 KEEP_MARK = "lint-agda: keep"
 FORBIDDEN_PRAGMAS = ("TERMINATING", "NON_TERMINATING",
                      "NO_TERMINATION_CHECK", "NO_POSITIVITY_CHECK")

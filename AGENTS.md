@@ -11,8 +11,11 @@ unrelated work. Do not commit or publish without authorization.
 - Site owns complete website composition, configuration, routes, search,
   publication, browser resources and lint orchestration. Every consuming project
   gets the same full feature set.
-- Adapters receive explicit paths/options. Mathematical policies and compiler
-  installation belong to the consuming project.
+- Adapters receive explicit paths/options. Outcrop owns optional Agda compiler
+  instrumentation, builds, library installation and parallel trace production.
+  Consumers choose when to invoke them and supply dependencies, entry modules,
+  safety flags, resource budgets, cache directories and deployment policy.
+  Rendering/linting Markdown never implicitly installs or invokes Agda.
 - Keep instance names, icons, source/canonical URLs, storage keys, vocabulary,
   source extensions and exceptions in configuration. Do not add Bedrock defaults.
 - Read docs/RENDERER-MARKDOWN.md and docs/SITE-CONFIG.md before changing contracts.

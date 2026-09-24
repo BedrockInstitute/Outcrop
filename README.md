@@ -54,12 +54,15 @@ AST ranges or definition links.
 
 `src/outcrop/core` is the document engine. `src/outcrop/site` contains the site
 builder and packaged browser resources. `src/outcrop/adapters` contains explicit
-compiler-data and validation tools. `examples/renderer` is a small independent
+compiler build/trace, library installation, weaving and validation tools.
+The optional `outcrop-agda` producer ships here too, including its source adapter
+and checksummed build manifest; see [Agda integration](docs/AGDA.md).
+`examples/renderer` is a small independent
 textbook with a genuine checked semantic fixture; it is not Bedrock content.
 `tests` exercises those reusable contracts.
 
 The consuming project owns its mathematics, filenames and reading catalog,
-terminology, domain proof gates, selected compiler/toolchain, build cache and
+terminology, domain proof gates, library lock, compiler invocation policy, build cache and
 deployment credentials. Configuration provides the site's name, publisher,
 icons, URLs, storage namespace and narrow policy exceptions. It is data, not an
 arbitrary command-execution interface.
@@ -68,6 +71,11 @@ Bedrock consumes this repository as a pinned Git submodule. Changes to shared
 behavior belong here and receive independent tests; changes to the textbook's
 mathematical policies remain in Bedrock. See [AGENTS.md](AGENTS.md) for contributor
 rules and [NOTICE](NOTICE) for inherited attribution.
+
+Published pages identify their configured name followed by `powered by Outcrop`,
+linked to this repository. Upstream acknowledgements remain here: Outcrop adapts
+code and assets from [1lab](https://1lab.dev), by Amelia Liao and contributors;
+see [NOTICE](NOTICE) and the retained upstream license files.
 
 ## License
 

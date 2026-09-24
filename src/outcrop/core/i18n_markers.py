@@ -14,6 +14,7 @@ never appear inside a code fence (``` / ~~~), where code is language-neutral.
 """
 
 import re
+from outcrop.core.source_syntax import strip_route_metadata
 
 LANGS = ["en", "zh", "ja"]
 FALLBACK = "en"  # language used when a group lacks the requested one
@@ -38,6 +39,28 @@ def marker(line):
     """Return the marker code ('en'/'zh'/'ja'/'/') for a marker line, else None."""
     m = MARKER_RE.match(line)
     return m.group(1) if m else None
+
+
+def shared_cjk_errors(text):
+    """Return source-located untranslated shared prose, ignoring fenced code.
+
+    The same marker/fence grammar is used by the reader and lint. Legacy route
+    annotations are metadata, not prose; blanking them retains line numbers.
+    """
+    errors = []
+    in_fence, language = False, None
+    for line_number, line in enumerate(strip_route_metadata(text).splitlines(), 1):
+        if FENCE_RE.match(line):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        code = marker(line)
+        if code:
+            language = None if code == '/' else code
+        elif language is None and re.search(r'[\u3000-\u303f\u3400-\u9fff\uff01-\uff5e]', line):
+            errors.append((line_number, 'CJK prose outside a language group'))
+    return errors
 
 
 def parse(text):
