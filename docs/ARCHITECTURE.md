@@ -206,12 +206,20 @@ From the Outcrop checkout after installation:
 .venv/bin/python -m outcrop lint --config examples/renderer/project.json --project-root examples/renderer
 .venv/bin/python -m outcrop build --config examples/renderer/project.json --project-root examples/renderer --out _build/example/academy
 .venv/bin/python -m outcrop check-links _build/example/academy
+.venv/bin/python -m outcrop check-search _build/example/academy
 ```
 
 `scripts/build-renderer-fixtures.py --out ...` builds two differently configured
 instances plus the project-free core page and browser fixture. No Agda toolchain
 is needed because the small checked semantic package is committed. Its refresh
 script is an explicit maintainer operation, not a hidden build step.
+
+Serve the fixture output with a local static server and open
+`/renderer-regression.html` in a real browser. The 390px embedded frames exercise
+independent brands and namespaces. Compiler integration is separately checked by
+`scripts/smoke-agda.py --agda PATH`, which runs a safe non-Cubical project twice
+and verifies cold/warm trace preservation and both semantic extractors. Do not
+require that toolchain merely to run the recorded renderer example.
 
 Test ordinary Markdown, optional semantics, isolated installed distributions,
 same-process multi-project builds, configuration validation and resource packaging.

@@ -1,8 +1,8 @@
 """Generate and embed the per-language dependency map from the masters.
 
 The page is derived, never hand-maintained: nodes and edges
-come from the `import` lines of the masters under src/, while the reading order,
-descriptions and learning stages come from `dev/reading-catalog.json`. Lanes
+come from the supplied sources' `import` lines, while the reading order,
+descriptions and learning stages come from the configured reading catalog. Lanes
 group chapters by module namespace, and the default layout follows
 dependency depth vertically. The generated fragment is embedded into each
 language's index and also written separately for testing.

@@ -37,7 +37,7 @@ FULLWIDTH = {",": "，", ";": "；", ":": "：", "!": "！", "?": "？"}
 EM_DASHES = {"—", "―"}            # U+2014, U+2015  (en dash U+2013 and hyphen are allowed)
 SKIP = set(" \t\r*_~()[]")        # whitespace, markdown emphasis, transparent brackets
 
-# i18n language markers (see dev/STYLE-i18n.md). Treated as hard block boundaries so the
+# i18n language markers. Treated as hard block boundaries so the
 # CJK reflow never merges prose across (or into) a language switch.
 MARKER_RE = re.compile(r"^\s*<!--\s*(en|zh|ja|/)\s*-->\s*$")
 SINGLE_LINE_CODE_RE = re.compile(

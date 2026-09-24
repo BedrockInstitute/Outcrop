@@ -16,7 +16,7 @@ IGNORE_RE = re.compile(r"<!--\s*glossary-ignore(?::([^>]*?))?\s*-->")
 # ---- glossary data -----------------------------------------------------------
 
 def load_glossary(path):
-    """Parse dev/glossary.toml into (term, zh, ja, avoid, presence) rows.
+    """Parse the supplied glossary into (term, zh, ja, avoid, presence) rows.
 
     `avoid` is a list of known wrong renderings (each optionally `en:`/`zh:`/`ja:`-tagged);
     `presence` is the safety-net opt-in bool. Array order is preserved (tomllib keeps it).

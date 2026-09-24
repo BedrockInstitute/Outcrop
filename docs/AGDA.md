@@ -33,6 +33,9 @@ Install Python 3.11+, GHC/Cabal, `patch` and a native C toolchain. CI tests GHC
 the host also has a newer unsupported release; the builder does not change a
 global compiler selection.
 
+Scope `GHCRTS` to compiler/build invocations, not the entire setup job. Tools such
+as `ghcup` reject RTS flags even though Agda accepts them; CI tests this boundary.
+
 ```sh
 python -m outcrop agda-build --identity
 python -m outcrop agda-build --build-dir _build/outcrop-agda
@@ -104,5 +107,5 @@ entries into the explicitly supplied local registry. It does not inherit or edit
 a global registry, infer Cubical, or retain stale library versions in the list.
 Run subsequent Agda commands with `AGDA_DIR` set to that local directory.
 
-Bedrock's `dev/agda-libraries.json` is one consumer of this format, not a default.
+Bedrock's `site/agda-libraries.json` is one consumer of this format, not a default.
 The small example and compiler smoke test need no external library.
