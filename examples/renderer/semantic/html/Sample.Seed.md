@@ -38,7 +38,6 @@ The declaration below specifies its only constructor.
 <pre class="Agda"><a id="825" class="Keyword">data</a> <a id="Marker"></a><a id="830" href="Sample.Seed.html#830" class="Datatype">Marker</a> <a id="837" class="Symbol">:</a> <a id="839" href="Agda.Primitive.html#388" class="Primitive">Set</a> <a id="843" class="Keyword">where</a>
   <a id="Marker.mark"></a><a id="851" href="Sample.Seed.html#851" class="InductiveConstructor">mark</a> <a id="856" class="Symbol">:</a> <a id="858" href="Sample.Seed.html#830" class="Datatype">Marker</a>
 </pre>
-∎
 
 <!--en-->
 ## Returning an input
@@ -60,7 +59,6 @@ The next function returns the supplied marker unchanged.
 **定義** (`keep`{.Agda}) 結果は入力そのものである。
 <!--/-->
 
-<pre class="Agda"><a id="keep"></a><a id="1183" href="Sample.Seed.html#1183" class="Function">keep</a> <a id="1188" class="Symbol">:</a> <a id="1190" href="Sample.Seed.html#830" class="Datatype">Marker</a> <a id="1197" class="Symbol">→</a> <a id="1199" href="Sample.Seed.html#830" class="Datatype">Marker</a>
-<a id="1206" href="Sample.Seed.html#1183" class="Function">keep</a> <a id="1211" href="Sample.Seed.html#1211" class="Bound">value</a> <a id="1217" class="Symbol">=</a> <a id="1219" href="Sample.Seed.html#1211" class="Bound">value</a>
+<pre class="Agda"><a id="keep"></a><a id="1181" href="Sample.Seed.html#1181" class="Function">keep</a> <a id="1186" class="Symbol">:</a> <a id="1188" href="Sample.Seed.html#830" class="Datatype">Marker</a> <a id="1195" class="Symbol">→</a> <a id="1197" href="Sample.Seed.html#830" class="Datatype">Marker</a>
+<a id="1204" href="Sample.Seed.html#1181" class="Function">keep</a> <a id="1209" href="Sample.Seed.html#1209" class="Bound">value</a> <a id="1215" class="Symbol">=</a> <a id="1217" href="Sample.Seed.html#1209" class="Bound">value</a>
 </pre>
-∎

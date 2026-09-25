@@ -237,23 +237,6 @@ def md_to_html(text):
     return "\n".join(out), toc
 
 
-def render_statement_endings(body, lang):
-    """Keep the QED outside the final pre, never across a fold boundary.
-
-    Code anchors, hover descendants and horizontal scrolling remain untouched.
-    The layout wrapper reserves a separate column for the mark on narrow screens.
-    """
-    label = {'en': 'End of statement', 'zh': '陈述结束', 'ja': '記述の終わり'}[lang]
-    def ending(match):
-        identifier = re.search(r'\bid="[^"]*"', match[2] or '')
-        anchor = (' ' + identifier[0]) if identifier else ''
-        return ('<div class="statement-ending">' + match[1]
-                + '<span class="statement-qed"' + anchor
-                + ' role="img" aria-label="' + label + '">∎</span></div>')
-    return re.sub(
-        r'(<pre class="Agda">(?:(?!<pre\b).)*?</pre>)\s*<p(\s+[^>]*)?>\s*∎\s*</p>',
-        ending,
-        body, flags=re.DOTALL)
 
 
 def render_code_scroll_content(body):

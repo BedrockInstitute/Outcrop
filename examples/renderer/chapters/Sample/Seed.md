@@ -42,7 +42,6 @@ data Marker : Set where
   mark : Marker
 ```
 
-∎
 
 <!--en-->
 ## Returning an input
@@ -68,5 +67,3 @@ The next function returns the supplied marker unchanged.
 keep : Marker → Marker
 keep value = value
 ```
-
-∎

@@ -15,7 +15,8 @@
   "Sample.Seed": {
     "Marker": "Set",
     "keep": "Sample.Seed.Marker → Sample.Seed.Marker",
-    "mark": "Sample.Seed.Marker"
+    "mark": "Sample.Seed.Marker",
+    "Marker.mark": "Sample.Seed.Marker"
   },
   "Sample.Use": {
     "twice": "Sample.Seed.Marker → Sample.Seed.Marker"

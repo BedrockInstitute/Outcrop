@@ -54,15 +54,15 @@ reader opens a chapter outside that selection.
 | `code.boilerplate` | `.boilerplate-hover` linked to a generated template; `.boilerplate-hover-popup` shell | Chapter title and learning-route direct prerequisites | Dashed underline plus code mark; actual compiler-highlighted setup; code-block background/border, subtle blue left edge and floating shadow distinguish revealed source from type hints; shared recursive code hover and mobile modal action |
 | `code.syntax-help` | `.syntax-hover` on compiler-classified keywords | OPTIONS, module declarations, imports and body code | Amber active background distinct from definition highlighting; trilingual explanation and versioned official documentation link |
 | `code.submodule-fold` | Default-open `details.submodule-fold` whose complete Agda module declaration occupies the clickable `summary`; see template below | [Impredicativity](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Impredicativity.lagda.md), `CodedTruth` | Animated folding, rendered code without module-scope indentation, and at most one nested child fold; whole-tree coverage, declaration, scope and depth checked by `outcrop.core.prose_lint` |
-| `prose.statement` | `**Definition** (`name`{.Agda}) Text`; also Construction, Fact, Lemma, Theorem, Corollary with localized labels | [Impredicativity](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Impredicativity.lagda.md), `hasSize` | `.prose-statement`; every statement encloses Agda code and its own immediate `∎`, including in folds; checked in all three languages |
-| `prose.proof` | `**Proof** Text`, alternating explanation and code, with standalone `∎` directly after the final code block | [Impredicativity](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Impredicativity.lagda.md), `ΩResizing→Resizing` | `.prose-proof`; continues one statement or starts a standalone proof; must enclose code after its label |
-| `prose.statement-ending` | Final Agda fence followed by standalone `∎` | [Choice](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Choice.lagda.md), `SetChoice` and nested helpers | `.statement-ending` and `.statement-qed`; exact semi-transparent ∎ inside the lower-right code frame, full containing-column width, no outdent or external gutter, shared by pages and modal mirrors |
+| `prose.statement` | `**Definition** (`name`{.Agda}) Text`; also Construction, Fact, Lemma, Theorem, Corollary with localized labels | [Impredicativity](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Impredicativity.lagda.md), `hasSize` | `.prose-statement`; statements enclose Agda code, including in folds; no authored QED |
+| `prose.proof` | `**Proof** Text`, alternating explanation and code | [Impredicativity](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Impredicativity.lagda.md), `ΩResizing→Resizing` | `.prose-proof`; contains code after its label and preserves compact proof/code spacing independently of QED |
+| `code.definition-end` | Compiler signature/equation boundaries; no Markdown marker | [Choice](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Choice.lagda.md), `SetChoice` and submodule definitions | `.agda-definition-end`; semi-transparent ∎ at the definition's final line, excluding where-local helpers, shared by pages and modal mirrors |
 
 Related parallel declarations use one Construction header containing individually
 styled Agda names separated by spaces, followed by a bullet per name. Never stack
-statement labels above one shared code block and QED. The mark reserves no extra
+empty statement labels above one shared code block. The mark reserves no extra
 line or bottom padding and keeps a fixed opacity of 0.25, including over code.
-The [Markdown contract](RENDERER-MARKDOWN.md) defines the unchanged source syntax
+The [Markdown contract](RENDERER-MARKDOWN.md) defines the source syntax
 and lint obligations. Agda token streams and anchor identities remain unchanged.
 
 ### Prose comparison tables
@@ -109,11 +109,11 @@ Example の最初の構成を説明する。
 
 The declaration occupies the summary's only code block and remains visible when
 collapsed. The content starts directly below it and ends after the last code fence
-in that submodule and its QED; a closing proof mark stays inside the fold. The block has a theme-aware
+in that submodule; no authored proof mark is needed. The block has a theme-aware
 background and an indented frame, with less padding on mobile. Body-code edges align
 within each submodule's own column, not across nesting levels. The declaration keeps
 its original compact summary style. Body code fills its own column; neither
-ordinary nor statement-ending code reserves an external QED gutter or outdent.
+ordinary nor semantically decorated code reserves an external QED gutter or outdent.
 The website animates both
 directions and retains native keyboard semantics.
 

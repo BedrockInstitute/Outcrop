@@ -1,27 +1,41 @@
 {
   "Sample.Seed": [
     {
-      "start": 1211,
-      "end": 1216,
+      "start": 1181,
+      "end": 1222,
+      "kind": "definition-end",
+      "name": "keep",
+      "id": 1
+    },
+    {
+      "start": 1209,
+      "end": 1214,
       "kind": "binding",
       "source": "value",
       "type": "Marker",
       "targetModule": "Sample.Seed",
-      "target": 1211,
-      "id": 1
+      "target": 1209,
+      "id": 2
     },
     {
-      "start": 1219,
-      "end": 1224,
+      "start": 1217,
+      "end": 1222,
       "kind": "variable",
       "source": "value",
       "type": "Marker",
       "targetModule": "Sample.Seed",
-      "target": 1211,
-      "id": 2
+      "target": 1209,
+      "id": 3
     }
   ],
   "Sample.Use": [
+    {
+      "start": 811,
+      "end": 866,
+      "kind": "definition-end",
+      "name": "twice",
+      "id": 4
+    },
     {
       "start": 841,
       "end": 846,
@@ -30,7 +44,7 @@
       "type": "Marker",
       "targetModule": "Sample.Use",
       "target": 841,
-      "id": 3
+      "id": 5
     },
     {
       "start": 849,
@@ -38,7 +52,7 @@
       "kind": "application",
       "source": "keep (keep value)",
       "type": "Marker",
-      "id": 4
+      "id": 6
     },
     {
       "start": 855,
@@ -46,7 +60,7 @@
       "kind": "application",
       "source": "keep value",
       "type": "Marker",
-      "id": 5
+      "id": 7
     },
     {
       "start": 860,
@@ -56,7 +70,7 @@
       "type": "Marker",
       "targetModule": "Sample.Use",
       "target": 841,
-      "id": 6
+      "id": 8
     }
   ],
   "Welcome": []

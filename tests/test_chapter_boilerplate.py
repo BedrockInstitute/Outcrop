@@ -76,17 +76,16 @@ class OpeningTests(unittest.TestCase):
 
 
 class BoilerplateTests(unittest.TestCase):
-    def test_milestone_statement_imports_remain_visible_with_their_qed(self):
+    def test_milestone_statement_imports_remain_visible_without_qed(self):
         code = '<pre class="Agda">open import Base.Prelude public using ( <a id="90">Result</a> )</pre>'
         body = (f'<pre class="Agda">{OPTIONS}\nmodule Origin where</pre><h1>Title</h1>'
-                '<p><strong>Theorem 0</strong> Result.</p><div class="statement-ending">'
-                + code + '<span class="statement-qed">∎</span></div>')
+                '<p><strong>Theorem 0</strong> Result.</p>' + code)
         output = mirror_boilerplate(body, 'Origin', {'Origin', 'Base.Prelude'}, visible_import_chapters={'Origin'})
         self.assertIn(code, output)
         self.assertIn('boilerplate-header-Origin', output)
         self.assertIn('boilerplate-import-Origin-Base.Prelude', output)
         self.assertEqual(output.count('id="90"'), 1)
-        self.assertIn('<span class="statement-qed">∎</span>', output)
+        self.assertNotIn('agda-definition-end', output)
 
     def test_boilerplate_shell_is_scoped_to_source_templates(self):
         javascript = source('hover', 'code-targets', 'type-store', 'hover-branch', 'definition-modal')

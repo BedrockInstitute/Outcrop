@@ -17,7 +17,6 @@ import sys
 from outcrop.core.agda_semantics import inline_ref_link
 from outcrop.core.markdown_core import (
     dedent_submodule_code, md_to_html, plain_code, render_code_scroll_content,
-    render_statement_endings,
 )
 from outcrop.core.agda_semantics import AgdaSemantics
 semantics = AgdaSemantics(prelude_module='Base.Prelude')
@@ -95,19 +94,6 @@ class SiteNavigationTests(PublicationCase):
         legacy = body.replace(code, '<pre class="Agda"><span class="agda-code-content">' + inner + '</span></pre>')
         self.assertEqual(render_code_scroll_content(legacy), rendered)
 
-    def test_statement_ending_preserves_code_and_stays_inside_fold(self):
-        code = '<pre class="Agda"><a id="123" href="A.html#123">x</a> = y</pre>'
-        body = '<details><div>' + code + '\n<p id="p-1">∎</p></div></details>'
-        rendered = render_statement_endings(body, 'zh')
-        self.assertIn(code, rendered)
-        self.assertIn('class="statement-ending"', rendered)
-        self.assertIn('aria-label="陈述结束"', rendered)
-        self.assertIn('id="p-1"', rendered)
-        self.assertLess(rendered.index('statement-qed'), rendered.index('</details>'))
-        invalid = code + '</details><p>∎</p>'
-        self.assertEqual(render_statement_endings(invalid, 'en'), invalid)
-        prose = code + '<p>Explanation</p><p>∎</p>'
-        self.assertEqual(render_statement_endings(prose, 'en'), prose)
 
     def test_formal_labels_have_shared_semantic_classes(self):
         body, _ = md_to_html('**定义** (`x`) Text.\n\n**证明** Reason.')

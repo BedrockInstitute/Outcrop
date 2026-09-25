@@ -73,7 +73,7 @@ export function initCodeFullscreen() {
     if (view || !activeBlock?.isConnected) return;
     pendingRestore = null;
     const block = activeBlock;
-    const content = block.parentElement.matches('.statement-ending') ? block.parentElement : block;
+    const content = block;
     const marker = document.createElement('div');
     marker.style.height = content.getBoundingClientRect().height + 'px';
     marker.style.margin = getComputedStyle(content).margin;

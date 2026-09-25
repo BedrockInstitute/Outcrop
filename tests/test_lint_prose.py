@@ -70,190 +70,49 @@ class TheoremLabelTests(unittest.TestCase):
 
     def test_numbered_statement_cannot_bypass_the_rule(self):
         self.assertTrue(self.violations("**Theorem 1.** Text."))
-        self.assertTrue(prose_rules.qed_violations("**Theorem 1.** Text."))
+        self.assertTrue(prose_rules.statement_violations("**Theorem 1.** Text."))
 
-    def test_numbered_registry_labels_are_scoped_and_still_require_code_and_qed(self):
-        text = '**Theorem 0** Text.\n\n```agda\nopen import Base.Choice public using ( SetChoice→LEM )\n```\n\n∎\n'
+    def test_numbered_registry_labels_are_scoped_and_still_require_code(self):
+        text = '**Theorem 0** Text.\n\n```agda\nopen import Base.Choice public using ( SetChoice→LEM )\n```\n\n'
         self.assertEqual(prose_rules.theorem_label_violations(text, numbered_theorems=range(5)), [])
         self.assertTrue(prose_rules.theorem_label_violations(text))
-        self.assertEqual(prose_rules.qed_violations(text), [])
-        self.assertTrue(prose_rules.qed_violations(text.replace('∎', '')))
+        self.assertEqual(prose_rules.statement_violations(text), [])
+        self.assertTrue(prose_rules.statement_violations(text.replace('```agda', '```text')))
         self.assertTrue(prose_rules.theorem_label_violations(text.replace('Theorem', 'Lemma'), numbered_theorems=range(5)))
 
     def test_labels_inside_agda_fences_are_ignored(self):
         self.assertEqual(self.violations("```agda\n**Lemma.**\n```"), [])
 
 
-class QedTests(unittest.TestCase):
-    def test_each_fold_statement_closes_before_leaving_its_scope(self):
-        text = '''**Theorem** (`result`{.Agda}) Text.
-```agda
-result = helper
-```
-∎
-<details open class="submodule-fold"><summary class="submodule-fold-heading">Helper</summary>
-<div class="submodule-fold-content">
-**Lemma** (`helper`{.Agda}) Text.
-```agda
-helper = proof
-```
-∎
-</div>
-</details>
-'''
-        self.assertEqual(prose_rules.qed_violations(text), [])
-        self.assertTrue(prose_rules.qed_violations(text.replace('∎\n</div>', '</div>') + '∎\n'))
-
-    def test_margin_note_does_not_make_following_statement_nested(self):
-        text = '''**Theorem** (`result`{.Agda}) Text.
-<aside class="prose-annotation-note">Note.</aside>
-```agda
-result = proof
-```
-∎
-**Lemma** (`next`{.Agda}) Text.
-```agda
-next = proof
-```
-'''
-        self.assertEqual(len(prose_rules.qed_violations(text)), 1)
-
-    def test_top_level_construction_and_lemma_end_after_final_code_block(self):
-        text = """<!--en-->
-**Construction** (`make`{.Agda}) Text.
-<!--zh-->
-**构造** (`make`{.Agda}) 正文。
-<!--ja-->
-**構成** (`make`{.Agda}) 本文。
-<!--/-->
-```agda
-make = value
-```
-
-∎
-
-<!--en-->
-**Lemma** (`law`{.Agda}) Text.
-<!--zh-->
-**引理** (`law`{.Agda}) 正文。
-<!--ja-->
-**補題** (`law`{.Agda}) 本文。
-<!--/-->
-```agda
-law = proof
-```
-
-∎
-"""
-        self.assertEqual(prose_rules.qed_violations(text), [])
-
-    def test_outer_qed_cannot_replace_nested_statement_endings(self):
-        text = """## Result
-**Theorem** (`result`{.Agda}) Text.
-```agda
-result = helper
-```
-<details>
-**Construction** (`value`{.Agda}) Text.
-```agda
-value = item
-```
-**Lemma** (`helper`{.Agda}) Text.
-```agda
-helper = proof
-```
-</details>
-
-∎
-"""
-        self.assertTrue(prose_rules.qed_violations(text))
-
-    def test_missing_outer_qed_is_rejected_despite_nested_statements(self):
-        text = """## Result
-**Theorem** (`result`{.Agda}) Text.
-```agda
-result = helper
-```
-<details>
-**Lemma** (`helper`{.Agda}) Text.
-```agda
-helper = proof
-```
-</details>
-"""
-        violations = prose_rules.qed_violations(text)
-        self.assertEqual(len(violations), 2)
-
-    def test_missing_qed_is_rejected(self):
-        text = """**Lemma** (`law`{.Agda}) Text.
-```agda
-law = proof
-```
-</details>
-"""
-        violations = prose_rules.qed_violations(text)
-        self.assertEqual(len(violations), 1)
-
-    def test_fact_requires_qed(self):
-        text = """**Fact** (`property`{.Agda}) Text.
-```agda
-property = proof
-```
-"""
-        violations = prose_rules.qed_violations(text)
-        self.assertEqual(len(violations), 1)
-
-    def test_corollary_requires_qed(self):
-        text = """**Corollary** (`consequence`{.Agda}) Text.
-```agda
-consequence = proof
-```
-"""
-        violations = prose_rules.qed_violations(text)
-        self.assertEqual(len(violations), 1)
-
-    def test_explanation_may_follow_completed_proof(self):
-        text = """**Lemma** (`helper`{.Agda}) Text.
-```agda
-helper = proof
-```
-∎
-
-The result has this broader interpretation.
-
-**Theorem** (`result`{.Agda}) Text.
-```agda
-result = helper
-```
-∎
-"""
-        self.assertEqual(prose_rules.qed_violations(text), [])
-
-    def test_definitions_and_standalone_proofs_need_code_and_qed(self):
-        for label in ('Definition', '定义', '定義', 'Proof', '证明', '証明'):
+class StatementCodeTests(unittest.TestCase):
+    def test_labels_keep_code_requirement_without_authored_end_mark(self):
+        for label in ('Definition', '定义', '定義', 'Proof', '证明', '証明', 'Fact', 'Corollary'):
             prefix = f'**{label}** (`x`{{.Agda}}) Text.\n'
-            self.assertTrue(prose_rules.qed_violations(prefix))
-            self.assertTrue(prose_rules.qed_violations(prefix + '∎\n'))
-            self.assertTrue(prose_rules.qed_violations(prefix + '```agda\n\n```\n∎\n'))
-            self.assertEqual(prose_rules.qed_violations(prefix + '```agda\nx = y\n```\n∎\n'), [])
+            self.assertTrue(prose_rules.statement_violations(prefix))
+            self.assertTrue(prose_rules.statement_violations(prefix + '```agda\n\n```\n'))
+            self.assertEqual(prose_rules.statement_violations(prefix + '```agda\nx = y\n```\n'), [])
 
-    def test_mark_must_follow_agda_not_prose_or_another_language(self):
-        prefix = '**Definition** (`x`{.Agda}) Text.\n```agda\nx = y\n```\n'
-        self.assertTrue(prose_rules.qed_violations(prefix + 'More prose.\n∎\n'))
-        self.assertTrue(prose_rules.qed_violations(prefix.replace('```agda', '```text') + '∎\n'))
-        self.assertTrue(prose_rules.qed_violations(prefix + '∎\n∎\n'))
+    def test_nested_and_adjacent_statements_close_structurally(self):
+        text = '**Theorem** (`result`{.Agda}) Text.\n```agda\nresult = helper\n```\n'
+        nested = '<details>\n**Lemma** (`helper`{.Agda}) Text.\n```agda\nhelper = proof\n```\n</details>\n'
+        following = '**Fact** (`next`{.Agda}) Text.\n```agda\nnext = result\n```\n'
+        self.assertEqual(prose_rules.statement_violations(text + nested + following), [])
+        self.assertTrue(prose_rules.statement_violations(text + nested.replace('```agda\nhelper = proof\n```\n', '') + following))
 
-    def test_parallel_statements_cannot_share_a_mark(self):
-        text = '**Construction** (`x`{.Agda}) First.\n\n**Construction** (`y`{.Agda}) Second.\n```agda\nx = y\n```\n∎\n'
-        self.assertTrue(prose_rules.qed_violations(text))
+    def test_proof_requires_its_own_code_and_may_have_following_exposition(self):
+        text = '**Lemma** (`x`{.Agda}) Text.\n```agda\nx : Set\n```\n**Proof** Explanation.\n'
+        self.assertTrue(prose_rules.statement_violations(text))
+        self.assertEqual(prose_rules.statement_violations(text + '```agda\nx = y\n```\nMore explanation.\n'), [])
 
-    def test_proof_requires_code_after_its_label(self):
-        text = '**Lemma** (`x`{.Agda}) Text.\n```agda\nx = y\n```\n**Proof** Words only.\n∎\n'
-        self.assertTrue(prose_rules.qed_violations(text))
+    def test_empty_parallel_statements_and_non_agda_code_remain_errors(self):
+        text = '**Construction** (`x`{.Agda}) First.\n**Construction** (`y`{.Agda}) Second.\n```agda\nx = y\n```\n'
+        self.assertTrue(prose_rules.statement_violations(text))
+        self.assertTrue(prose_rules.statement_violations('**Proof** Text.\n```text\nx = y\n```\n'))
 
-    def test_all_translated_routes_are_checked(self):
-        text = '<!--en-->\n**Definition** (`x`{.Agda}) Text.\n<!--zh-->\n**定义** (`x`{.Agda}) 正文。\n**定义** (`y`{.Agda}) 多余。\n<!--ja-->\n**定義** (`x`{.Agda}) 本文。\n<!--/-->\n```agda\nx = y\n```\n∎\n'
-        self.assertTrue(prose_rules.qed_violations(text))
+    def test_all_language_routes_and_heading_boundaries_are_checked(self):
+        text = '<!--en-->\n**Definition** (`x`{.Agda}) Text.\n<!--zh-->\n**定义** (`x`{.Agda}) 正文。\n**定义** (`y`{.Agda}) 多余。\n<!--ja-->\n**定義** (`x`{.Agda}) 本文。\n<!--/-->\n```agda\nx = y\n```\n'
+        self.assertTrue(prose_rules.statement_violations(text))
+        self.assertTrue(prose_rules.statement_violations('**Proof** Text.\n## Next\n```agda\nx = y\n```\n'))
 
     def test_grouped_construction_has_named_bullets(self):
         prefix = '**Construction** (`x`{.Agda} `y`{.Agda})\n\n'

@@ -9,7 +9,7 @@
 # 入力の利用
 <!--/-->
 
-<pre class="Agda"><a id="166" class="Keyword">open</a> <a id="171" class="Keyword">import</a> <a id="178" href="Sample.Seed.html" class="Module">Sample.Seed</a> <a id="190" class="Keyword">using</a> <a id="196" class="Symbol">(</a> <a id="198" href="Sample.Seed.html#830" class="Datatype">Marker</a> <a id="205" class="Symbol">;</a> <a id="207" href="Sample.Seed.html#1183" class="Function">keep</a> <a id="212" class="Symbol">)</a>
+<pre class="Agda"><a id="166" class="Keyword">open</a> <a id="171" class="Keyword">import</a> <a id="178" href="Sample.Seed.html" class="Module">Sample.Seed</a> <a id="190" class="Keyword">using</a> <a id="196" class="Symbol">(</a> <a id="198" href="Sample.Seed.html#830" class="Datatype">Marker</a> <a id="205" class="Symbol">;</a> <a id="207" href="Sample.Seed.html#1181" class="Function">keep</a> <a id="212" class="Symbol">)</a>
 </pre>
 <!--en-->
 We apply the earlier function twice. The [marker]{.term-ref #marker} link returns to its introduction.
@@ -38,9 +38,8 @@ The nested application exercises semantic expression selection.
 <!--/-->
 
 <pre class="Agda"><a id="twice"></a><a id="811" href="Sample.Use.html#811" class="Function">twice</a> <a id="817" class="Symbol">:</a> <a id="819" href="Sample.Seed.html#830" class="Datatype">Marker</a> <a id="826" class="Symbol">→</a> <a id="828" href="Sample.Seed.html#830" class="Datatype">Marker</a>
-<a id="835" href="Sample.Use.html#811" class="Function">twice</a> <a id="841" href="Sample.Use.html#841" class="Bound">value</a> <a id="847" class="Symbol">=</a> <a id="849" href="Sample.Seed.html#1183" class="Function">keep</a> <a id="854" class="Symbol">(</a><a id="855" href="Sample.Seed.html#1183" class="Function">keep</a> <a id="860" href="Sample.Use.html#841" class="Bound">value</a><a id="865" class="Symbol">)</a>
+<a id="835" href="Sample.Use.html#811" class="Function">twice</a> <a id="841" href="Sample.Use.html#841" class="Bound">value</a> <a id="847" class="Symbol">=</a> <a id="849" href="Sample.Seed.html#1181" class="Function">keep</a> <a id="854" class="Symbol">(</a><a id="855" href="Sample.Seed.html#1181" class="Function">keep</a> <a id="860" href="Sample.Use.html#841" class="Bound">value</a><a id="865" class="Symbol">)</a>
 </pre>
-∎
 
 <!--en-->
 The ordinary [earlier chapter](Sample.Seed.html) link remains a normal page link.

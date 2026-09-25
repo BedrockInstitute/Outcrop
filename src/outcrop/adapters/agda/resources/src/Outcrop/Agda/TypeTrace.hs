@@ -7,6 +7,7 @@
 module Outcrop.Agda.TypeTrace
   ( traceCheckedType
   , traceType
+  , traceDeclaration
   , flushPendingTypes
   , flushTypeTrace
   ) where
@@ -14,7 +15,7 @@ module Outcrop.Agda.TypeTrace
 import Control.Concurrent.MVar
 import Control.Exception (IOException, try)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad (forM_)
+import Control.Monad (forM_, when)
 import Data.Aeson (encode, object, (.=))
 import Data.Bits (xor)
 import qualified Data.ByteString as BS
@@ -28,9 +29,11 @@ import System.IO
 import System.IO.Unsafe (unsafePerformIO)
 
 import Agda.Syntax.Internal (Type, Term(Dummy))
+import qualified Agda.Syntax.Abstract as A
+import qualified Agda.Syntax.Concrete as C
 import Agda.Syntax.Internal.Generic (foldTerm)
 import Agda.Syntax.Position
-import Agda.TypeChecking.Monad (TCM, Closure, buildClosure, enterClosure)
+import Agda.TypeChecking.Monad (TCM, Closure, buildClosure, enterClosure, asksTC, envCheckingWhere)
 import Agda.TypeChecking.Pretty (prettyTCM)
 import Agda.Utils.FileName (filePath)
 import qualified Agda.Utils.Maybe.Strict as Strict
@@ -125,6 +128,52 @@ traceCheckedType = recordCheckedType
 
 traceType :: HasRange a => String -> a -> Type -> TCM ()
 traceType = recordType
+
+-- | Declaration boundaries come from the checked language's abstract syntax,
+-- not from Markdown or a scan for equals signs. Where-local declarations are
+-- part of their enclosing definition, not independently marked definitions.
+traceDeclaration :: A.Declaration -> TCM ()
+traceDeclaration declaration = case declaration of
+  -- The nicifier gives an inferred underscore the name's own range. An
+  -- explicitly authored type (including an explicit _) has its own range.
+  A.Axiom _ _ _ _ name type_
+    | getRange type_ /= noRange
+    , getRange type_ /= A.nameBindingSite (A.qnameName name) ->
+    recordSpan "signature" $ fuseRange (A.nameBindingSite $ A.qnameName name) type_
+  A.FunDef _ name clauses -> do
+    checkingWhere <- asksTC envCheckingWhere
+    when (checkingWhere == C.NoWhere_ && any (hasEquation . A.clauseRHS) clauses) $
+      recordSpan "definition-end" $ fuseRange (A.nameBindingSite $ A.qnameName name) clauses
+  _ -> pure ()
+  where
+    hasEquation A.RHS{} = True
+    hasEquation A.AbsurdRHS = False
+    hasEquation (A.WithRHS _ _ clauses) = any (hasEquation . A.clauseRHS) clauses
+    hasEquation (A.RewriteRHS _ _ rhs _) = hasEquation rhs
+
+recordSpan :: String -> Range -> TCM ()
+recordSpan kind range = case rangeToIntervalWithFile $ continuous range of
+  Nothing -> pure ()
+  Just interval -> case srcFile $ iStart interval of
+    Strict.Nothing -> pure ()
+    Strict.Just source -> liftIO $ do
+      sink <- getTraceSink
+      case sink of
+        TraceDisabled -> pure ()
+        TraceSink handle run -> do
+          let path = filePath (rangeFilePath source)
+              start = posPos (iStart interval)
+              end = posPos (iEnd interval)
+              key = (path, start, end, kind)
+          hash <- sourceHash path
+          written <- Map.member key <$> readMVar writtenTypes
+          when (not written) $ do
+            let record = object
+                  [ "version" .= (1 :: Int), "run" .= run, "kind" .= kind
+                  , "path" .= path, "sourceHash" .= hash
+                  , "start" .= start, "end" .= end, "type" .= ("" :: String) ]
+            _ <- try @IOException $ LBS.hPutStrLn handle (encode record)
+            modifyMVar_ writtenTypes $ pure . Map.insert key ()
 
 flushPendingTypes :: TCM ()
 flushPendingTypes = do

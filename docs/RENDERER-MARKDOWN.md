@@ -86,16 +86,21 @@ Markdown corpus. That does not disable marker integrity checks.
 
 Statement labels use the established localized bold labels (Definition, Lemma,
 Theorem, Construction, Corollary and their Chinese/Japanese counterparts). A
-statement contains its own Agda fence and terminates with a standalone `∎` after
-its last fence. The renderer places this exact Unicode rectangle at the preceding
-block's lower right as a non-layout overlay inside its frame. No extra bottom
-padding or line is reserved; the mark has a fixed opacity of 0.25, even over code text.
-This is a visual rule:
-the standalone source mark and structural lint are unchanged. Ordinary and final
+statement contains Agda code, and a proof contains code after its label. There is
+no Markdown QED delimiter and no special statement-ending frame. Prose labels
+retain their typography and tight proof/code spacing independently of decoration.
+With compiler evidence, the renderer automatically places the exact rectangular
+`∎` just below each eligible definition's last line, inside the code frame at the
+right, even when another definition follows in that same block. Its opacity is
+0.25; it reserves no row or padding and never enters copied code. Definitions
+have an explicit type signature and equation clauses. Submodule definitions are
+included, where-local definitions are excluded; the enclosing definition ends
+after its complete body including where declarations. Signature-only imports,
+postulates, records and data declarations are not equation definitions.
+Missing semantic evidence produces no guessed mark. Ordinary and final
 code blocks use the full width of their containing column, with no external QED
 gutter or left outdent; each submodule retains its own indented width.
-Adjacent independent statements must not share an end
-marker. Proof labels are explanatory prose, not additional statement wrappers.
+Proof labels are explanatory prose, not additional statement wrappers.
 See `outcrop.core.statement_structure` for the authoritative label vocabulary and
 `outcrop.core.prose_lint` for diagnostics. Numbered theorem allowances are explicit project
 data, not an exception inferred from a chapter's name.
@@ -152,7 +157,8 @@ Visible theorem imports at an overview chapter require an explicit
 
 `CodeContext` from `outcrop.core` is the explicit enhanced-rendering input: semantic operations,
 internal/rendered module sets, name and canonical-name indices, type records,
-expression records, vocabulary/reexport index and token aspects.
+expression records, vocabulary/reexport index, token aspects and definition-end
+records (`CodeContext.definition_ends`, keyed by module).
 `outcrop.site.site_inputs.SourceCorpus` and
 `outcrop.site.compiler_index.build_code_context` adapt a supplied compiler package for the website. The
 core does not run a compiler or infer a type from displayed text.
@@ -172,7 +178,11 @@ Raw expression JSON maps modules to compiler records containing `id`, `start`,
 `end`, `source`, `type` and `kind`. The supplied extraction adapters validate source
 hashes and filter compiler Dummy records before publication. The browser sidecars
 contain position-to-HTML signatures plus `$names`, `$expressions` and `$syntax`
-metadata. They are generated outputs, not an alternative handwritten AST format.
+metadata. The extraction package also carries `kind: "definition-end"` records
+with `start`, exclusive `end` and `name`. These may cross literate fences and are
+kept separate from expression/hover nodes. Both endpoints come from Agda AST
+ranges, joined to explicit signature records and validated against source hashes.
+They are generated outputs, not an alternative handwritten AST format.
 Use the example's `refresh_semantics.py` to reproduce a small genuine package.
 
 Missing signatures leave code visible and links usable without a fake structural

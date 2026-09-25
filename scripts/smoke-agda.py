@@ -50,6 +50,33 @@ result = identity mark
 boxed : Marker → Marker
 boxed x = same x
   where open Box Marker
+
+local : Marker → Marker
+local x = helper x
+  where
+  helper : Marker → Marker
+  helper y = y
+
+split : Marker → Marker
+```
+
+The body is deliberately in a separate literate fence.
+
+```agda
+split x = x
+
+inferred = mark
+
+explicitHole : _
+explicitHole = mark
+
+withClause : Marker → Marker
+withClause x with x
+... | mark = mark
+
+data Empty : Set where
+absurd : Empty → Marker
+absurd ()
 ```
 ''', encoding='utf-8')
         environment = {**os.environ, 'GHCRTS': '-A64m -I0 -M8g',
@@ -75,6 +102,13 @@ boxed x = same x
         assert '__DUMMY_TYPE__' not in trace and 'dummyType' not in trace
         expressions = json.loads((root / 'expressions.json').read_text())
         assert expressions['Start'], expressions
+        ends = {module: {node['name']: node for node in nodes if node['kind'] == 'definition-end'}
+                for module, nodes in expressions.items()}
+        assert set(ends['Seed']) == {'identity', 'same'}, ends
+        assert set(ends['Start']) == {'result', 'boxed', 'local', 'split', 'explicitHole', 'withClause'}, ends
+        text = (source / 'Start.lagda.md').read_text()
+        assert text[ends['Start']['local']['end'] - 2] == 'y', ends
+        assert text[ends['Start']['split']['start'] - 1:].startswith('split :'), ends
         print('Outcrop Agda smoke: real safe non-Cubical source, Unicode ranges, name types, expression trace and module application passed')
     return 0
 

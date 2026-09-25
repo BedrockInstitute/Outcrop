@@ -37,6 +37,7 @@ class OutcropAgdaAdapterTests(unittest.TestCase):
             "src/full/Agda/Main.hs",
             "src/full/Agda/Interaction/Imports.hs",
             "src/full/Agda/TypeChecking/Rules/Application.hs",
+            "src/full/Agda/TypeChecking/Rules/Decl.hs",
             "src/full/Agda/TypeChecking/Rules/LHS.hs",
             "src/full/Agda/TypeChecking/Rules/Term.hs",
         })

@@ -127,4 +127,6 @@ def build_code_context(corpus, internal, rendered, semantics, types_raw, express
 
     return CodeContext(semantics, set(internal), rendered_set, name2pos,
                        canonical_names, types_by_module, expression_types,
-                       prelude_reexports, pos_aspect)
+                       prelude_reexports, pos_aspect,
+                       {module: [node for node in nodes if node.get('kind') == 'definition-end']
+                        for module, nodes in expression_types_raw.items()})

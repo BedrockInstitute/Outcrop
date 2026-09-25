@@ -17,6 +17,12 @@
 +        Bench.billTo [Bench.Typing] $
 +          mapM_ (\ declaration -> checkDeclCached declaration >> flushPendingTypes) ds
 +            `finally_` cacheCurrentLog
+--- a/src/full/Agda/TypeChecking/Rules/Decl.hs
++++ b/src/full/Agda/TypeChecking/Rules/Decl.hs
+@@ -64,0 +65 @@
++import qualified Outcrop.Agda.TypeTrace as Outcrop
+@@ -139,0 +141 @@
++    Outcrop.traceDeclaration d
 --- a/src/full/Agda/TypeChecking/Rules/Application.hs
 +++ b/src/full/Agda/TypeChecking/Rules/Application.hs
 @@ -38,0 +39 @@

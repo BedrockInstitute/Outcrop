@@ -21,7 +21,7 @@ Outcrop is checked out as a consumer's submodule.
 - Keep instance names, icons, source/canonical URLs, storage keys, vocabulary,
   source extensions and exceptions in configuration. Do not add Bedrock defaults.
 - Read docs/RENDERER-MARKDOWN.md and docs/SITE-CONFIG.md before changing contracts.
-  The Markdown statement/QED grammar is distinct from its visual rendering.
+  Prose labels and compiler-certified definition endings are independent.
 - Site's default inline-math lint permits figures, standalone displays and
   figure-reference paragraphs using the localized fixed wording `图中的` /
   `in the figure` / `図中の`. This mechanical allowance never extends to other
@@ -64,9 +64,11 @@ their page, modal or fullscreen reading plane may scroll vertically. Preserve
 right-end scroll padding and independently indented submodules with compact
 declaration headers. Code uses its full containing width, with no QED outdent or
 external gutter. The exact rectangular `∎` is a noninteractive absolute overlay
-inside the final frame at fixed opacity `.25`, even when overlapping code. It
+at each compiler-certified definition's last line at fixed opacity `.25`, even when overlapping code. It
 reserves no row, height or extra padding. Do not restore overlap measurement or
-dynamic opacity; the Markdown statement grammar remains unchanged.
+dynamic opacity. Markdown has no authored QED delimiter. Require a signature and
+equation clauses; exclude where-local definitions, retain submodule definitions.
+Keep proof prose close to its code without introducing a special frame wrapper.
 
 Retain trilingual search independent of edition, IME and keyboard controls,
 appearance persistence, diagram interactions, dependency graph gestures,

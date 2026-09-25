@@ -10,6 +10,32 @@ from outcrop.adapters import extract_expression_types as extractor
 
 
 class ExpressionSourceTests(unittest.TestCase):
+    def test_definition_end_requires_signature_and_allows_separate_fences(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            src, highlighted = root / 'src', root / 'html'
+            src.mkdir(); highlighted.mkdir()
+            source = '```agda\nf : Set\n```\nProse.\n```agda\nf = Set\n```\n'
+            path = src / 'A.lagda.md'
+            path.write_text(source)
+            start, end = source.index('f :') + 1, source.index('f = Set') + len('f = Set') + 1
+            (highlighted / 'A.md').write_text(f'<a id="{start}" href="A.html#{start}" class="Function">f</a>')
+            records = [dict(version=1, run='one', path=str(path), sourceHash=extractor.source_hash(path),
+                            start=start, end=stop, kind=kind, type='')
+                       for kind, stop in [('signature', start + 7), ('definition-end', end)]]
+            trace = root / 'trace.jsonl'
+            trace.write_text(''.join(json.dumps(record) + '\n' for record in records))
+            data, compact = extractor.normalize(src, highlighted, trace)
+            self.assertEqual([(n['start'], n['end'], n['kind'], n['name']) for n in data['A']],
+                             [(start, end, 'definition-end', 'f')])
+            self.assertEqual(len(compact), 2)
+            for invalid in (dict(records[1], sourceHash='stale'),
+                            dict(records[1], end=source.index('Prose.') + 2)):
+                trace.write_text(json.dumps(records[0]) + '\n' + json.dumps(invalid) + '\n')
+                self.assertEqual(extractor.normalize(src, highlighted, trace)[0]['A'], [])
+            trace.write_text(json.dumps(records[1]) + '\n')
+            self.assertEqual(extractor.normalize(src, highlighted, trace)[0]['A'], [])
+
     def test_plain_and_mixed_sources_keep_unicode_nodes_and_compacted_trace(self):
         for mixed in (False, True):
             with self.subTest(mixed=mixed), tempfile.TemporaryDirectory() as directory:

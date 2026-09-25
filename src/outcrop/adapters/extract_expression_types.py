@@ -32,6 +32,7 @@ UNLINKED_BOUND_RE = re.compile(
 )
 IMPRECISE_RE = re.compile(r"_[\w.']+_\d+|(?<![\w'])_\d+\b|\?\d+")
 KIND_PRIORITY = {"name": 1, "binding": 2, "application": 3}
+DECLARATION_KINDS = {'signature', 'definition-end'}
 DUMMY_TYPE_RE = re.compile(r'__DUMMY_(?:TYPE|SORT|TERM|LEVEL|DOM)__|dummy(?:Type|Sort|Term|Level):')
 SOURCE_SUFFIXES = (".lagda.md", ".agda")
 
@@ -82,7 +83,7 @@ def read_latest_trace(trace_path: Path, known_paths: set[Path]) -> dict[Path, li
                 run = str(record["run"])
                 if record.get("version") != 1:
                     raise ValueError(f"unsupported trace version {record.get('version')!r}")
-                if record.get("kind") not in KIND_PRIORITY:
+                if record.get("kind") not in KIND_PRIORITY.keys() | DECLARATION_KINDS:
                     continue
                 if not isinstance(record.get("start"), int) or not isinstance(record.get("end"), int):
                     raise ValueError("start/end must be integers")
@@ -225,8 +226,21 @@ def normalize(source_root: Path, html_dir: Path, trace_path: Path,
         path_records = [record for record in path_records if not DUMMY_TYPE_RE.search(record['type'])]
         compact.extend(path_records)
         by_range: dict[tuple[int, int], dict] = {}
+        signatures = {record['start'] for record in path_records
+                      if record['kind'] == 'signature'
+                      and inside_code(record['start'], record['start'] + 1, intervals)}
+        endings = {}
         for record in path_records:
             start, end = record["start"], record["end"]
+            if record['kind'] in DECLARATION_KINDS:
+                # A declaration may cross prose-separated code fences. Only
+                # its endpoints need to lie in code; expression nodes may not.
+                if (record['kind'] == 'definition-end' and start in signatures
+                        and 1 <= start < end <= len(source) + 1
+                        and inside_code(end - 1, end, intervals)):
+                    endings[start, end] = {'start': start, 'end': end,
+                        'kind': 'definition-end', 'name': labels.get(start, '')}
+                continue
             if record["kind"] == "binding" and start in labels:
                 end = start + len(labels[start])
                 record = {**record, "end": end}
@@ -240,7 +254,7 @@ def normalize(source_root: Path, html_dir: Path, trace_path: Path,
             key = (start, end)
             by_range[key] = prefer_record(by_range.get(key), record)
 
-        nodes = []
+        nodes = list(endings.values())
         for (start, end), record in sorted(by_range.items()):
             type_ = normalize_type(record["type"])
             fragment = " ".join(source[start - 1:end - 1].split())
@@ -363,8 +377,10 @@ def main(argv=None) -> int:
         compact_trace(trace, compact)
     total = sum(len(nodes) for nodes in data.values())
     applications = sum(node["kind"] == "application" for nodes in data.values() for node in nodes)
+    endings = sum(node['kind'] == 'definition-end' for nodes in data.values() for node in nodes)
     print(
-        f"normalized {applications} application node(s) and {total - applications} binding/name node(s) "
+        f"normalized {applications} application node(s), {total - applications - endings} binding/name node(s) "
+        f"and {endings} definition ending(s) "
         f"from one Agda trace",
         file=sys.stderr,
     )

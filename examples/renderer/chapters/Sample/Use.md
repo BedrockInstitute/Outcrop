@@ -46,7 +46,6 @@ twice : Marker → Marker
 twice value = keep (keep value)
 ```
 
-∎
 
 <!--en-->
 The ordinary [earlier chapter](Sample.Seed.html) link remains a normal page link.

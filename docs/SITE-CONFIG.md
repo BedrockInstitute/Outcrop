@@ -133,7 +133,7 @@ project text are supplied by configuration.
 ## Lint and publication
 
 `outcrop.site.site_lint.lint_site(config)` returns structured diagnostics. Its strict shared
-rules cover language grammar, parallel outlines, statements/QED, folds, syntax
+rules cover language grammar, parallel outlines, statement/code association, folds, syntax
 safety/style, glossary forms, term introductions, prerequisite order, chapter
 setup, figures and fence boundaries. Project mathematical policies are additional
 gates, not silently disabled generic rules; the complete original gate mapping is

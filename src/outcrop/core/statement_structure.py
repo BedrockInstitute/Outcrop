@@ -1,4 +1,4 @@
-"""Shared statement vocabulary and source-level statement/QED validation."""
+"""Shared statement vocabulary and prose/code association, independent of QED."""
 import re
 
 STATEMENT_LABELS = frozenset((
@@ -38,11 +38,10 @@ def route_lines(text, language):
 
 
 def statement_issues(text):
-    """Each statement owns code and one directly adjacent QED, at every fold depth.
+    """Statements/proofs own code until the next label, heading or fold end.
 
-    A Proof continues its statement, or starts a standalone proof. A second
-    statement never silently closes the first. A fold creates a nested scope,
-    not an exemption; its statements must close before its closing tag.
+    No authored end marker is required or interpreted. Definition boundaries
+    used by visual QED decorations belong exclusively to compiler evidence.
     """
     issues = set()
     for language in ('en', 'zh', 'ja'):
@@ -50,14 +49,15 @@ def statement_issues(text):
         fence = None
         code = False
         has_code = False
-        last = None
 
         def report(position, message):
             issues.add((position, message))
 
         def unfinished(entry):
-            if entry:
-                report(entry['start'], 'statement/proof must contain Agda code and end with its own standalone ∎')
+            if entry and not entry['code']:
+                report(entry['start'], 'statement/proof must contain Agda code')
+            if entry and entry['proof'] is not None and not entry['proof_code']:
+                report(entry['proof'], 'Proof must contain Agda code after its label')
 
         for offset, line in route_lines(text, language):
             stripped = line.strip()
@@ -69,7 +69,6 @@ def statement_issues(text):
                                 entry['code'] += 1
                                 if entry['proof'] is not None:
                                     entry['proof_code'] += 1
-                    last = 'agda' if code and has_code else 'other'
                     fence = None
                 elif stripped:
                     has_code = True
@@ -94,20 +93,6 @@ def statement_issues(text):
                 else:
                     unfinished(scopes[-1])
                     scopes[-1] = dict(start=offset, code=0, proof=None, proof_code=0)
-                last = 'prose'
-                continue
-            if stripped == '∎':
-                entry = scopes[-1]
-                if entry is None:
-                    report(offset, 'standalone ∎ must close a statement/proof in the same fold')
-                elif not entry['code']:
-                    report(entry['start'], 'statement/proof must enclose at least one Agda code block')
-                if entry and entry['proof'] is not None and not entry['proof_code']:
-                    report(entry['proof'], 'Proof must enclose at least one Agda code block before ∎')
-                if last != 'agda':
-                    report(offset, 'standalone ∎ must immediately follow an Agda code block, inside its fold')
-                scopes[-1] = None
-                last = 'qed'
                 continue
             if re.match(r'^#{1,6}\s', stripped):
                 unfinished(scopes[-1])
@@ -118,7 +103,6 @@ def statement_issues(text):
                         unfinished(scopes.pop())
                 else:
                     scopes.append(None)
-            last = 'other'
         for entry in scopes:
             unfinished(entry)
     return sorted(issues)

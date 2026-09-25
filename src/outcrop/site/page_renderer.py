@@ -13,6 +13,7 @@ from outcrop.core.agda_help import annotate_keywords
 from outcrop.core.agda_semantics import write_type_sidecar
 from outcrop.site.search_index import passages
 from outcrop.core.document_renderer import MarkdownDocument
+from outcrop.core.definition_endings import render_code_frames
 from outcrop.core.agda_lint import AgdaPolicy
 
 class PageRenderer:
@@ -241,7 +242,8 @@ class PageRenderer:
             if not document:
                 markup = code.semantics.rewrite_links('<pre class="Agda">' + raw + '</pre>', rendered,
                     code.types, code.canonical_names, module)
-                return annotate_keywords(markup, lang), [], None
+                return render_code_frames(annotate_keywords(markup, lang),
+                    code.definition_ends.get(module, ()), lang), [], None
             result = document.render(lang)
             return result.body, result.toc, result.mirror
 

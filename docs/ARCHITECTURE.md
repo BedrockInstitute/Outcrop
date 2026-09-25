@@ -102,7 +102,7 @@ cannot revive a closed modal.
 
 On compact portrait devices, activating code exposes landscape reading. This is
 a CSS-oriented surface, not a request to lock the device's physical orientation.
-It moves the original code or statement-ending DOM, preserving IDs and AST
+It moves the original code DOM, including its definition-end decoration, preserving IDs and AST
 identity. Explicit 100% text-size adjustment prevents mobile text inflation
 from treating different frame wrappers differently, without restricting user zoom.
 Hover and gestures use the shared transformed coordinates. Close, Escape
@@ -119,12 +119,16 @@ reserved external QED gutter. Each folded submodule keeps its own independently
 indented column. Its compact declaration header is not a body-code block. The
 code frames expand to fit all lines and scroll only horizontally; vertical
 reading remains with the page, popup or full-screen reading container. The
-literal rectangular `∎` appears semi-transparently inside the final code frame at
-the lower right without extra padding or a reserved line. Its opacity is fixed
+literal rectangular `∎` appears semi-transparently at each compiler-certified
+definition's final line, at the right without extra padding or a reserved line. Its opacity is fixed
 at 0.25 in CSS, including over code; no overlap measurement or observer is needed.
 It never intercepts pointer events or becomes part of copied code.
-The Markdown and lint contract remains a standalone `∎`
-immediately after each statement's last Agda fence, including inside folds.
+Markdown carries no authored end marker. Signature/equation boundaries are traced
+from Agda ASTs; where-local helpers are excluded, submodule definitions included.
+Source-hash validation prevents stale offsets. Core maps endpoints through
+highlighted Unicode anchors to code-local lines. CSS line units preserve the
+line-relative position during font changes and fullscreen rotation. Prose-proof
+spacing depends on semantic paragraph/code structure, not a QED wrapper.
 
 The sidebar's localized Current route label includes its colon; the route name
 follows it, while the disclosure arrow remains on the right. Section titles link

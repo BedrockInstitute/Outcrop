@@ -302,7 +302,7 @@ def theorem_label_violations(text, path=None, *, numbered_theorems=()):
     return out
 
 
-def qed_violations(text):
+def statement_violations(text):
     """Validate every language and every fold; definitions have no exemption."""
     return [Violation(position, message, False)
             for position, message in statement_issues(text)]
@@ -490,9 +490,9 @@ def submodule_fold_violations(text, check_all=False):
                               for child in children)]
         last_end = max([fence.end() for fence in direct] +
                        [child[1] for child in children], default=body_start)
-        if last_end == body_start or text[last_end:body_end].strip() not in ('', '∎'):
+        if last_end == body_start or text[last_end:body_end].strip():
             out.append(Violation(body_start,
-                'submodule fold must end after its last Agda code block and optional ∎', False))
+                'submodule fold must end after its last Agda code block', False))
         for fence in direct:
             for line in fence.group('code').splitlines():
                 if line.strip() and len(line) - len(line.lstrip(' \t')) <= indent:
@@ -727,8 +727,8 @@ def analyze(text, path=None, *, policy=None):
 
     # Rule 9: theorem-style labels have one named, punctuation-free form.
     manual.extend(theorem_label_violations(text, numbered_theorems=policy.numbered_theorems))
-    # Rule 10: completed constructions and lemmas visibly close after their code.
-    manual.extend(qed_violations(text))
+    # Rule 10: prose statements/proofs contain code, without authored end marks.
+    manual.extend(statement_violations(text))
     # Rule 12: Japanese prose consistently uses plain style.
     manual.extend(japanese_polite_violations(text, prot))
     # Rule 13: a standalone declaration may be a bare link; expressions are boxed.

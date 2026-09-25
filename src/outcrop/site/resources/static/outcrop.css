@@ -448,7 +448,7 @@ pre.Agda, pre.sourceCode {
   border: 1px solid var(--code-border); overflow-x: auto; margin: 1.2rem 0;
 }
 /* Exposition introduces the following Agda block, not the preceding one. */
-pre.Agda { margin: .5rem 0 1.6rem; height: auto; max-height: none; overflow-y: hidden;
+pre.Agda { position: relative; margin: .5rem 0 1.6rem; height: auto; max-height: none; overflow-y: hidden;
   -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* Keep padding outside the scrolling viewport, so code never paints against
    either border, even at an intermediate scroll offset. Fold declarations
@@ -458,7 +458,7 @@ pre.Agda > .agda-code-content {
   display: block; min-width: 0; max-width: 100%; height: auto; max-height: none;
   overflow-x: auto; overflow-y: hidden;
 }
-article :is(p, ul, ol, blockquote, .prose-table-scroll):has(+ pre.Agda, + .statement-ending) {
+article :is(p, ul, ol, blockquote, .prose-table-scroll):has(+ pre.Agda) {
   margin-block-end: .5rem;
 }
 pre.Agda a { text-decoration: none; color: var(--code-fg); }
@@ -670,7 +670,7 @@ pre.Agda .expr-node.expr-active,
 .code-fullscreen-close { position: absolute; pointer-events: auto;
   right: max(.5rem, var(--code-safe-right)); top: max(.35rem, var(--code-safe-top));
   font: 1.5rem/1 var(--sans); }
-.code-fullscreen-plane > :is(pre.Agda, .statement-ending) { margin: 0; min-width: 0; }
+.code-fullscreen-plane > pre.Agda { margin: 0; min-width: 0; }
 .code-fullscreen-plane .hover-popup { max-width: min(42rem, calc(var(--code-surface-width) - 1rem)); }
 body.code-fullscreen-open { overflow: hidden; }
 body.code-fullscreen-open > .ast-swipe-hint { display: none; }
@@ -863,18 +863,18 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
   font: .75rem/1.4 var(--sans); pointer-events: none; opacity: 0; }
 .chapter-review:is(:hover, :focus)::after { opacity: 1; }
 
-/* QED is a frame watermark: never reserve a line or change code padding. */
-.statement-ending {
-  position: relative; margin: .5rem 0 2.75rem; break-inside: avoid;
-}
-.statement-ending > pre.Agda { min-width: 0; margin: 0; }
-.statement-qed {
-  position: absolute; inset-inline-end: .65rem; bottom: .3rem;
-  color: var(--code-fg); opacity: .25; font-size: 1.05rem; line-height: 1;
+/* Compiler-certified definition ends. Each anchor follows a source line, not
+   the frame bottom. CSS line units track font/zoom/fullscreen changes without
+   layout observers or geometry reads, and reserve no source row or padding. */
+.agda-definition-end {
+  position: absolute; inset-inline-end: .65rem;
+  top: calc(.8rem + var(--definition-line) * 1lh); height: 1lh; width: 0;
   user-select: none; pointer-events: none;
 }
-@media (max-width: 42rem) {
-  .statement-ending { margin-block-end: 2.25rem; }
+.agda-definition-end::after {
+  content: "∎"; position: absolute; right: 0; bottom: -.5rem;
+  color: var(--code-fg); opacity: .25; font-size: 1.05rem; line-height: 1;
+  user-select: none; pointer-events: none;
 }
 
 /* ---- math ---- */

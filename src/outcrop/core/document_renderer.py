@@ -12,7 +12,7 @@ from outcrop.core.html_contract import (
 )
 from outcrop.core.markdown_core import (
     anchor_prose_blocks, auto_link_terms, dedent_submodule_code, markdown_body, md_to_html,
-    render_code_scroll_content, render_statement_endings, render_summary_inline,
+    render_summary_inline,
     restore_toc_labels,
 )
 from outcrop.core.i18n_markers import weave_for_site, group_languages
@@ -22,6 +22,7 @@ from outcrop.core.agda_semantics import (
 )
 from outcrop.core.boilerplate import mirror_boilerplate
 from outcrop.core.chapter_structure import OPTIONS
+from outcrop.core.definition_endings import render_code_frames
 from outcrop.core.term_registry import TERM_MARK_RE
 
 
@@ -37,6 +38,7 @@ class CodeContext:
     expressions: dict = field(default_factory=dict)
     vocabulary: dict = field(default_factory=dict)
     aspects: dict = field(default_factory=dict)
+    definition_ends: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -132,11 +134,11 @@ class MarkdownDocument:
             body = self.code.semantics.rewrite_links(body, self.code.rendered, self.code.types,
                 self.code.canonical_names, self.module, self.code.vocabulary)
         body = dedent_submodule_code(body)
-        body = render_statement_endings(body, lang)
         body = annotate_keywords(body, lang)
         if self.formal_setup:
             body = mirror_boilerplate(body, self.module, self.code.internal,
                                      visible_import_chapters=self.visible_import_chapters,
                                      options=self.options)
         body = auto_link_terms(body, lang, self.module, self.terms)
-        return RenderedDocument(render_code_scroll_content(body), toc, mirror, tuple(self.blocks))
+        body = render_code_frames(body, self.code.definition_ends.get(self.module, ()), lang)
+        return RenderedDocument(body, toc, mirror, tuple(self.blocks))

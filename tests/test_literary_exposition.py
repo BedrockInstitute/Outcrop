@@ -23,12 +23,12 @@ class LiteraryExpositionTests(unittest.TestCase):
   self.assertEqual(rules(meta+group()+'```agda\na\n```\n'),[])
  def test_shared_english_prose_is_rejected(self):
   self.assertIn('shared-prose',rules('An English explanation lives here.\n\n'+group()+'```agda\na\n```\n'))
- def test_shared_disclosure_wrappers_and_qed_are_structural(self):
-  text='<details class="agda-proof-details">\n'+group()+'```agda\na\n```\n</details>\n∎\n'
+ def test_shared_disclosure_wrappers_are_structural(self):
+  text='<details class="agda-proof-details">\n'+group()+'```agda\na\n```\n</details>\n'
   self.assertNotIn('shared-prose',rules(text))
  def test_default_open_submodule_wrapper_is_structural_but_its_prose_is_not(self):
   opening='<details open class="submodule-fold">\n<div class="submodule-fold-content">\n'
-  text=opening+group()+'```agda\na\n```\n</div>\n</details>\n∎\n'
+  text=opening+group()+'```agda\na\n```\n</div>\n</details>\n'
   self.assertNotIn('shared-prose',rules(text))
   self.assertIn('shared-prose',rules(opening+'Untranslated explanation.\n\n'+group()+'```agda\na\n```\n</div>\n</details>\n'))
  def test_fold_heading_shares_its_introduction_with_first_body_code(self):
