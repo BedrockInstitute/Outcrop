@@ -5,8 +5,12 @@ permissions:
 jobs:
   independent-package:
     runs-on: ubuntu-latest
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
@@ -14,11 +18,15 @@ jobs:
         with:
           node-version: '22'
       - run: python -m pip install . 'reuse[charset-normalizer]==6.2.0'
+      - name: Classify changes
+        id: scope
+        run: python -m outcrop.adapters.ci_scope --project-root . --policy .github/docs-only.json
       - run: make check PY=python
       - run: reuse lint
 
   agda-integration:
     needs: independent-package
+    if: needs.independent-package.outputs.full == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

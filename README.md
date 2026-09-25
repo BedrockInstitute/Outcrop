@@ -72,10 +72,43 @@ behavior belong here and receive independent tests; changes to the textbook's
 mathematical policies remain in Bedrock. See [AGENTS.md](AGENTS.md) for contributor
 rules and [NOTICE](NOTICE) for inherited attribution.
 
-Published pages identify their configured name followed by `powered by Outcrop`,
-linked to this repository. Upstream acknowledgements remain here: Outcrop adapts
+The reader footer credit is exactly `Powered by Outcrop`, linked to this
+repository and separate from the instance's copyright notice. Upstream acknowledgements remain here: Outcrop adapts
 code and assets from [1lab](https://1lab.dev), by Amelia Liao and contributors;
 see [NOTICE](NOTICE) and the retained upstream license files.
+
+## Development and verification
+
+The [architecture guide](docs/ARCHITECTURE.md) maps implementation owners and
+interaction invariants. `docs/` holds the public contracts; `scripts/` holds
+fixture/font builders and the optional compiler smoke test, not project-specific
+proof gates. Build products and acceptance logs belong under ignored `_build/`.
+
+From this repository root, after the editable install above:
+
+```sh
+.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v
+.venv/bin/python -m outcrop lint --config examples/renderer/project.json --project-root examples/renderer
+.venv/bin/python -m outcrop build --config examples/renderer/project.json --project-root examples/renderer --out _build/example/academy
+.venv/bin/python -m outcrop check-links _build/example/academy
+.venv/bin/python -m outcrop check-search _build/example/academy
+```
+
+When working inside a consumer's submodule, use that consumer's installed Python
+environment instead of assuming an Outcrop-local `.venv`. Reader changes also
+require actual browser testing against freshly published runtime assets; unit
+tests alone do not establish mobile Safari acceptance. Compiler changes require
+the additional producer checks in [AGDA](docs/AGDA.md), but ordinary Markdown
+rendering and lint must remain usable without the toolchain.
+
+CI always runs the independent package checks, example build and REUSE audit.
+Only the Agda integration job is skipped for changes confined to the reference
+documents in `.github/docs-only.json`. Example Markdown is executable renderer
+input and is not exempt. Mixed/unknown changes, missing comparison history and
+manual dispatch run fully. `outcrop.adapters.ci_scope` provides the shared,
+explicit-policy Git comparison helper; a consuming project supplies its own
+allowlist rather than inheriting Outcrop's directory assumptions. The Actions
+job summary records the decision. Local `make check` is unchanged.
 
 ## License
 

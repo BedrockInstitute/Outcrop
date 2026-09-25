@@ -1,0 +1,5 @@
+{
+  "files": ["README.md", "AGENTS.md", "CONTRIBUTING.md"],
+  "markdown_trees": ["docs"],
+  "submodules": {}
+}
