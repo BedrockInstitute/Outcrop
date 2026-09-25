@@ -87,6 +87,13 @@ class SchemaTests(PublicationCase):
         self.assertTrue(any("ambiguous automatic en form" in error for error in
                             terms.schema_errors([entry(abbreviations={"en": "HIT"}), other])))
 
+    def test_auto_exclusion_requires_an_audited_proper_phrase(self):
+        carrier = entry(ja="台", auto_exclude_ja=["土台", "舞台"])
+        self.assertEqual(terms.schema_errors([carrier]), [])
+        for bad in (["台"], ["背景"], [""], "土台"):
+            self.assertTrue(any("auto_exclude_ja" in error for error in
+                                terms.schema_errors([entry(ja="台", auto_exclude_ja=bad)])))
+
 
 class RenderingTests(PublicationCase):
     def test_auto_links_prose_but_not_code_or_introduction(self):
@@ -100,6 +107,15 @@ class RenderingTests(PublicationCase):
     def test_english_matching_uses_word_boundaries(self):
         rendered = auto_link_terms("<p>host hosting host-level</p>", "en", "M", [entry()])
         self.assertEqual(rendered.count('class="term-ref"'), 2)
+
+    def test_japanese_carrier_skips_unrelated_compounds_only(self):
+        carrier = entry(id="carrier", ja="台", auto_exclude_ja=["土台", "舞台"])
+        body = "<p>構造の台と台集合を扱う。土台と舞台は別の意味である。</p>"
+        rendered = auto_link_terms(body, "ja", "M", [carrier])
+        self.assertEqual(rendered.count('data-term="carrier"'), 2)
+        self.assertIn('>台</a>と', rendered)
+        self.assertIn('>台</a>集合', rendered)
+        self.assertIn('土台と舞台', rendered)
 
     def test_explicit_term_is_not_automatically_linked(self):
         rendered = auto_link_terms("<p>host</p>", "en", "M",
@@ -138,6 +154,13 @@ class RenderingTests(PublicationCase):
 
 
 class IntroductionGateTests(PublicationCase):
+    def test_japanese_carrier_exclusions_align_with_renderer(self):
+        carrier = entry(id="carrier", ja="台", auto_exclude_ja=["土台", "舞台"])
+        text = "構造の台と台集合を扱う。土台と舞台は別の意味である。"
+        matches = prerequisite_occurrences(text, carrier, "ja", "Other")
+        self.assertEqual([match.start() for match in matches],
+                         [text.index("台と"), text.index("台集合")])
+
     def test_abbreviation_use_has_the_same_prerequisite_rule_as_full_name(self):
         value = entry(abbreviations={"en": "HIT"})
         self.assertEqual(len(prerequisite_occurrences("A HIT appears.", value, "en", "Other")), 1)

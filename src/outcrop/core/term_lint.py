@@ -1,6 +1,7 @@
 """Strict term introduction and prerequisite rules over an explicit corpus."""
 import re
-from outcrop.core.term_registry import LANGS, TERM_MARK_RE, localized_forms, reader_terms, schema_errors
+from outcrop.core.term_registry import (LANGS, TERM_MARK_RE, auto_match_allowed,
+                                        localized_forms, reader_terms, schema_errors)
 from outcrop.core.i18n_markers import weave
 from outcrop.core.prose_lint import build_protected
 LANG_MARK = re.compile(r"^\s*<!--\s*(en|zh|ja|/)\s*-->\s*$")
@@ -58,7 +59,8 @@ def prerequisite_occurrences(text, entry, language, module):
         if other_concept or explicit_lookup:
             protected[reference.start():reference.end()] = [True] * len(reference[0])
     return [match for match in term_pattern(entry, language).finditer(text)
-            if not protected[match.start()]]
+            if not protected[match.start()] and
+            auto_match_allowed(text, match.start(), match.end(), entry, language)]
 
 
 def check_terms(sources, entries, reading):

@@ -61,6 +61,16 @@ def schema_errors(entries):
             forms = entry.get(f"forms_{lang}", [])
             if not isinstance(forms, list) or any(not isinstance(form, str) or not form for form in forms):
                 errors.append(f"term {entry.get('en', index)!r}: forms_{lang} must be a string list")
+            exclusions = entry.get(f"auto_exclude_{lang}", [])
+            if (not isinstance(exclusions, list) or
+                    any(not isinstance(value, str) or not value.strip() or
+                        value != value.strip() for value in exclusions)):
+                errors.append(f"term {entry.get('en', index)!r}: auto_exclude_{lang} must be a string list")
+            elif exclusions and (matching != "auto" or not all(
+                    any(form in value and form != value for form in localized_forms(entry, lang))
+                    for value in exclusions)):
+                errors.append(f"term {entry.get('en', index)!r}: auto_exclude_{lang} must contain "
+                              "a proper automatic form and requires matching = auto")
             abbreviation = localized_abbreviation(entry, lang)
             if abbreviation and isinstance(forms, list) and abbreviation in forms:
                 errors.append(f"term {entry.get('en', index)!r}: {lang} abbreviation belongs "
@@ -94,3 +104,16 @@ def localized_abbreviation(entry, lang):
     abbreviations = entry.get("abbreviations", {})
     abbreviation = abbreviations.get(lang) if isinstance(abbreviations, dict) else None
     return abbreviation if isinstance(abbreviation, str) and abbreviation.strip() else None
+
+
+def auto_match_allowed(text, start, end, entry, lang):
+    """Reject an automatic form only when it is inside an audited non-term phrase."""
+    for excluded in entry.get(f"auto_exclude_{lang}", ()):
+        first = max(0, end - len(excluded))
+        for offset in range(first, start + 1):
+            fragment = text[offset:offset + len(excluded)]
+            same = (fragment.casefold() == excluded.casefold() if lang == "en"
+                    else fragment == excluded)
+            if same and offset <= start and end <= offset + len(excluded):
+                return False
+    return True

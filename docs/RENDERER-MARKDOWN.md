@@ -139,6 +139,11 @@ Bare automatic terminology remains subject to prerequisite/introduction order;
 one explicit lookup does not exempt other bare occurrences. No glossary is read
 unless supplied by the caller. Bedrock's particular translations are not built
 into the renderer.
+An automatic glossary entry may list language-local `auto_exclude_en`,
+`auto_exclude_zh` or `auto_exclude_ja` phrases. A term form wholly inside an
+excluded phrase stays plain text in both rendering and prerequisite lint;
+unrelated occurrences in the same text remain automatic. This is for audited
+lexical collisions, not a general replacement for explicit term references.
 
 ## Optional formal chapter convention
 

@@ -12,7 +12,7 @@ from outcrop.core.html_contract import (
 )
 from outcrop.core.statement_structure import LABEL_RE, PROOF_LABELS
 from outcrop.core.submodule_structure import module_header_line
-from outcrop.core.term_registry import TERM_MARK_RE, localized_forms
+from outcrop.core.term_registry import TERM_MARK_RE, auto_match_allowed, localized_forms
 
 def dedent_submodule_code(body):
     """Hide module-scope indentation in HTML without changing Agda source offsets.
@@ -403,6 +403,8 @@ def auto_link_terms(body, lang, module, terms):
             shown = match.group(0)
             key = shown.casefold() if lang == "en" else shown
             entry = forms[key]
+            if not auto_match_allowed(text, match.start(), match.end(), entry, lang):
+                return shown
             href = f'{entry["introduced_in"]}.html#term-{entry["id"]}'
             return (f'<a class="term-ref" data-term="{entry["id"]}" '
                     f'href="{href}">{shown}</a>')
