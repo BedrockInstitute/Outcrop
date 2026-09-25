@@ -112,6 +112,15 @@ preview build, not a complete publish; it includes compiler dependencies and
 refreshes assets/type sidecars. The Makefile's `site` target remains Bedrock's
 backend-plus-website adapter.
 
+For a caller that already has a complete site, `--incremental --module M` updates
+exactly the named page, its sidecars, global publication files and the complete
+search index. It keeps passage entries for untouched modules from the existing
+index. The caller must ensure unchanged compiler evidence and the same effective
+site configuration; missing prior search output is an error. Optional
+`--code-cache PATH --code-cache-key KEY` stores the compiler-derived book-wide
+`CodeContext` as compressed JSON. The caller supplies a key covering highlighted
+code, type data, catalog and renderer version; a key mismatch rebuilds it.
+
 ## Isolation and compatibility
 
 Each build owns `BookCatalog`, `Publication`, `PageRenderer`, `CodeContext` and

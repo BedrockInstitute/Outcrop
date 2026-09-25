@@ -105,6 +105,46 @@ class RendererLibraryTests(unittest.TestCase):
                 self.assertIn('CC0-1.0', page)
                 self.assertEqual((output / 'static/assets/logo.svg').read_bytes(), (EXAMPLE / 'lantern.svg').read_bytes())
 
+    def test_incremental_page_updates_global_search_without_rewriting_other_pages(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            book = root / 'book'
+            shutil.copytree(EXAMPLE, book)
+            config = SiteConfig.load(book / 'project.json', root=book)
+            output = root / 'site'
+            cache = root / 'code-context.json.gz'
+            cache_args = ['--code-cache', str(cache), '--code-cache-key', 'fixture-v1']
+            self.assertEqual(build_site(config, ['--out', str(output), *cache_args]), 0)
+            cache_mtime = cache.stat().st_mtime_ns
+            other_page = output / 'en/Sample.Use.html'
+            other_mtime = other_page.stat().st_mtime_ns
+            other_search = [item for item in json.loads((output / 'search-content.json').read_text())
+                            if item['module'] == 'Sample.Use']
+
+            highlighted = book / 'semantic/html/Sample.Seed.md'
+            old = highlighted.read_text()
+            highlighted.write_text(old.replace('The declaration below specifies its only constructor.',
+                                               'The cached declaration still has one constructor.'))
+            self.assertEqual(build_site(config, ['--out', str(output), '--incremental',
+                                                 '--module', 'Sample.Seed', *cache_args]), 0)
+            self.assertEqual(cache.stat().st_mtime_ns, cache_mtime)
+            self.assertEqual(other_page.stat().st_mtime_ns, other_mtime)
+            self.assertIn('The cached declaration still has one constructor.',
+                          (output / 'en/Sample.Seed.html').read_text())
+            search = json.loads((output / 'search-content.json').read_text())
+            self.assertEqual([item for item in search if item['module'] == 'Sample.Use'],
+                             other_search)
+            self.assertTrue(any('The cached declaration still has one constructor.' in item.get('text', '')
+                                for item in search))
+            self.assertFalse(any('The declaration below specifies its only constructor.' in item.get('text', '')
+                                 for item in search))
+            reference = root / 'reference'
+            self.assertEqual(build_site(config, ['--out', str(reference), *cache_args]), 0)
+            for relative in ('search-content.json', 'en/Sample.Seed.html',
+                             'zh/Sample.Seed.html', 'ja/Sample.Seed.html'):
+                self.assertEqual((output / relative).read_bytes(),
+                                 (reference / relative).read_bytes(), relative)
+
     def test_isolated_distribution_has_no_instance_or_toolchain(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

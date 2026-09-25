@@ -10,6 +10,7 @@ import os
 import sys
 from outcrop.core.agda_semantics import AgdaSemantics
 from outcrop.site.compiler_index import build_code_context
+from outcrop.site.code_cache import read_context, write_context
 from outcrop.site.site_config import SiteConfig, BookCatalog
 from outcrop.site.site_inputs import SourceCorpus, sort_reader_terms
 from outcrop.site.site_localization import interface_copy
@@ -34,6 +35,12 @@ def _arguments(*, project=False):
         parser.add_argument('--' + option)
     parser.add_argument('--out', default='_build/site')
     parser.add_argument('--module', action='append', default=[])
+    parser.add_argument('--incremental', action='store_true',
+                        help='update selected pages and the complete search index in an existing site')
+    parser.add_argument('--code-cache', type=Path,
+                        help='optional compiler-derived code context cache')
+    parser.add_argument('--code-cache-key',
+                        help='caller-owned identity for the code context inputs')
     return parser
 
 
@@ -67,6 +74,12 @@ def _build_site(config, args):
     publication = Publication(config, book)
     pages = PageRenderer(config, book, publication)
     selected_modules = {name for value in args.module for name in value.split(',') if name}
+    if args.incremental and not selected_modules:
+        sys.stderr.write('--incremental requires at least one --module\n')
+        return 2
+    if bool(args.code_cache) != bool(args.code_cache_key):
+        sys.stderr.write('--code-cache and --code-cache-key must be supplied together\n')
+        return 2
 
     corpus = SourceCorpus(config, source_dir=src, highlighted_dir=html_dir)
     diagram_errors = check_diagrams(corpus.sources.values(), stylesheets=sorted(Path(static_dir).glob('*.css')))
@@ -109,7 +122,16 @@ def _build_site(config, args):
     assets = AssetBundle(static_dir, project_assets=project_assets)
     tpl = assets.template(tpl)
 
-    code = build_code_context(corpus, internal, rendered, semantics, types_raw, expression_types_raw)
+    code = (read_context(args.code_cache, args.code_cache_key, semantics, internal, rendered)
+            if args.code_cache else None)
+    if code is None:
+        code = build_code_context(corpus, internal, rendered, semantics,
+                                  types_raw, expression_types_raw)
+        if args.code_cache:
+            write_context(args.code_cache, args.code_cache_key, code)
+            print('code context cache: rebuilt', file=sys.stderr)
+    else:
+        print('code context cache: hit', file=sys.stderr)
     name2pos = code.names
     types_by_module = code.types
     pos_aspect = code.aspects
@@ -119,8 +141,16 @@ def _build_site(config, args):
         if unknown:
             sys.stderr.write(f"unknown rendered module(s): {', '.join(sorted(unknown))}\n")
             return 2
-        preview_modules = corpus.closure(selected_modules)
-        modules_to_render = [m for m in rendered if m in preview_modules]
+        if args.incremental:
+            search_path = Path(out_dir) / 'search-content.json'
+            if not search_path.is_file():
+                sys.stderr.write(f'--incremental needs an existing full site: {search_path}\n')
+                return 2
+            previous_search = json.loads(search_path.read_text(encoding='utf-8'))
+            modules_to_render = [m for m in rendered if m in selected_modules]
+        else:
+            preview_modules = corpus.closure(selected_modules)
+            modules_to_render = [m for m in rendered if m in preview_modules]
     else:
         modules_to_render = rendered
 
@@ -141,7 +171,7 @@ def _build_site(config, args):
         with open(os.path.join(directory, '$syntax.json'), 'w', encoding='utf-8') as output:
             json.dump({key: help_html(key, lang) for key in HELP}, output, ensure_ascii=False)
 
-    if selected_modules:
+    if selected_modules and not args.incremental:
         print(f"rendered {len(selected_modules)} selected module(s) and "
               f"{len(modules_to_render) - len(selected_modules)} reachable page(s) "
               f"x {len(langs)} "
@@ -189,15 +219,27 @@ def _build_site(config, args):
             search_entries.append({'name': name, 'module': module, 'lang': '*',
                 'kind': 'definition', 'text': plain_code(types_by_module.get(module, {}).get(position, '')),
                 'href': book.href(module, '#' + position)})
+    passage_modules = {}
+    if args.incremental:
+        for entry in previous_search:
+            if entry.get('kind') in {'code', 'heading', 'prose'} and entry.get('module') not in selected_modules:
+                passage_modules.setdefault(entry['module'], []).append(entry)
     for entry in pages.search_passages:
-        key = (entry['lang'], entry['href'], entry['kind'], entry['text'])
-        if key not in seen:
-            seen.add(key); search_entries.append(entry)
+        passage_modules.setdefault(entry['module'], []).append(entry)
+    for module in rendered:
+        for entry in passage_modules.get(module, ()):
+            key = (entry['lang'], entry['href'], entry['kind'], entry['text'])
+            if key not in seen:
+                seen.add(key); search_entries.append(entry)
     with open(os.path.join(out_dir, 'search-content.json'), 'w', encoding='utf-8') as output:
         json.dump(search_entries, output, ensure_ascii=False, separators=(',', ':'))
 
-    print(f"rendered {len(rendered)} module(s) ({len(internal)} internal) "
-          f"x {len(langs)} language(s) -> {out_dir}", file=sys.stderr)
+    if args.incremental:
+        print(f"updated {len(modules_to_render)} module(s), global publication and search "
+              f"x {len(langs)} language(s) -> {out_dir}", file=sys.stderr)
+    else:
+        print(f"rendered {len(rendered)} module(s) ({len(internal)} internal) "
+              f"x {len(langs)} language(s) -> {out_dir}", file=sys.stderr)
     print(f"agent layer: {len(internal) * len(langs)} Markdown twin(s), llms.txt, "
           f"sitemap.xml, robots.txt, _headers", file=sys.stderr)
     return 0

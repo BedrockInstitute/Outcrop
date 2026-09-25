@@ -20,11 +20,14 @@ def build_code_context(corpus, internal, rendered, semantics, types_raw, express
     prelude_reexports = {"by_href": {}, "by_name": {}}
     for m in rendered:
         content, literate = corpus.read(m)
-        compiler_scopes[m] = compiler_reference_scope(content)
-        notations.extend(syntax_notations(content))
+        # Compiler references and notation come from highlighted code, not
+        # authored prose. This also lets prose edits reuse the code index.
+        code_content = '\n'.join(PRE_RE.findall(content)) if literate else content
+        compiler_scopes[m] = compiler_reference_scope(code_content)
+        notations.extend(syntax_notations(code_content))
         if literate:
             if m == semantics.prelude_module:
-                prelude_reexports = semantics.prelude_reexport_index(content)
+                prelude_reexports = semantics.prelude_reexport_index(code_content)
             for blk in PRE_RE.findall(content):
                 index_definitions(blk, m, name2pos, pos_aspect)
                 local_types.setdefault(m, {}).update(local_signature_types(blk, m))
