@@ -124,6 +124,8 @@ class SiteConfig:
             raise ValueError('favicon: a project SVG is required; no instance icon is inherited')
         if values.get('variable_legacy'):
             relative_path(values['variable_legacy'], 'variable_legacy')
+        if values.get('inline_math_approvals'):
+            relative_path(values['inline_math_approvals'], 'inline_math_approvals')
         agda = values.get('agda_policy', {})
         if not isinstance(agda, dict):
             raise ValueError('agda_policy: expected an object')
@@ -152,7 +154,7 @@ class SiteConfig:
         if not isinstance(self.policies, dict):
             raise ValueError('policies: expected an object')
         for field, value in self.policies.items():
-            if field not in {'formal_setup', 'trilingual', 'level_name_convention'}:
+            if field not in {'formal_setup', 'trilingual', 'level_name_convention', 'inline_math_review'}:
                 raise ValueError(f'policies.{field}: unsupported policy')
             if type(value) is not bool:
                 raise ValueError(f'policies.{field}: expected a boolean')

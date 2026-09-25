@@ -50,7 +50,7 @@ def plain_title(text):
 
 
 
-def _load_catalog(path):
+def load_catalog(path):
     with open(path, encoding="utf-8") as source:
         data = json.load(source)
     if not isinstance(data, dict) or data.get("version") != 1:
@@ -161,7 +161,7 @@ def build_reading_data(src, catalog_path, *,
     """Return ``version``, route metadata, and dependency-backed catalog nodes."""
     sources = {module: path.read_text(encoding='utf-8')
                for module, path in source_paths(src, extension).items()}
-    metadata, catalog = _load_catalog(catalog_path)
+    metadata, catalog = load_catalog(catalog_path)
     chapters = set(sources)
     order = [entry["id"] for entry in metadata["chapters"]]
     if len(order) != len(set(order)) or set(order) != chapters:

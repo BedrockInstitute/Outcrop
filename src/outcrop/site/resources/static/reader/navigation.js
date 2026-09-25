@@ -75,52 +75,6 @@ import { cfg, isDefinitionModalDocument, modalReadingScroller } from "./document
     return inset;
   }
 
-  /* On narrow phones, the search row gives its space back while reading down. */
-  function initMobileSearchScroll() {
-    var form = document.querySelector("#topbar .search-form");
-    if (!form || !window.matchMedia) return;
-    var mobile = window.matchMedia("(max-width: 28rem)");
-    var anchorY = window.scrollY;
-    var settlingUntil = 0;
-    var pending = null;
-    var timer = null;
-    function cancelPending() {
-      window.clearTimeout(timer);
-      pending = null;
-    }
-    function setHidden(hidden) {
-      cancelPending();
-      hidden = hidden && mobile.matches && !form.contains(document.activeElement);
-      if (document.body.classList.contains("mobile-search-hidden") === hidden) return;
-      document.body.classList.toggle("mobile-search-hidden", hidden);
-      /* Header resizing and scroll anchoring produce scroll events of their
-         own. Ignore the whole transition, not just its first animation frame. */
-      settlingUntil = performance.now() + 220;
-      anchorY = window.scrollY;
-    }
-    function requestHidden(hidden) {
-      if (pending === hidden) return;
-      cancelPending();
-      if (document.body.classList.contains("mobile-search-hidden") === hidden) return;
-      pending = hidden;
-      timer = window.setTimeout(function () { setHidden(hidden); }, 110);
-    }
-    window.addEventListener("scroll", function () {
-      var y = window.scrollY;
-      if (!mobile.matches || y <= 8) { setHidden(false); anchorY = y; return; }
-      if (performance.now() < settlingUntil) { anchorY = y; return; }
-      if (Math.abs(y - anchorY) >= 28) {
-        requestHidden(y > anchorY);
-        anchorY = y;
-      }
-    }, { passive: true });
-    form.addEventListener("focusin", function () { setHidden(false); });
-    (mobile.addEventListener ? mobile.addEventListener.bind(mobile, "change")
-                             : mobile.addListener.bind(mobile))(function () {
-      setHidden(false);
-      anchorY = window.scrollY;
-    });
-  }
 
   function sectionOutline(headings) {
     var roots = [], stack = [];
@@ -513,4 +467,4 @@ import { cfg, isDefinitionModalDocument, modalReadingScroller } from "./document
   }
 
 
-export { initPageScroll, initHeaderOffset, updateAnchorInset, initMobileSearchScroll, sectionOutline, initSectionTracking, initNav };
+export { initPageScroll, initHeaderOffset, updateAnchorInset, sectionOutline, initSectionTracking, initNav };

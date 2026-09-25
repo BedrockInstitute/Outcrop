@@ -84,7 +84,10 @@ intact. No semantic evidence means no fake range highlight or result type.
 Desktop hover grows downward. Each branch has a disappearance delay, entering a
 descendant retains ancestors, and leaving the complete chain eventually clears
 every source highlight. Touch first opens persistent hover; its explicit window
-action opens the definition modal. Hold-and-slide selection can return from a
+action opens the definition modal. Touch-down alone does not activate ranges,
+help or hover. Activation requires a completed tap or stationary hold; movement,
+scrolling, cancellation and multi-touch cancel a pending hold.
+Hold-and-slide selection can return from a
 parent expression to its leaf and clears the previous selection. Precise universe
 and primitive stop rules prevent meaningless recursion without a depth cap.
 
@@ -144,8 +147,10 @@ inside the stopped hover, never globally in ordinary source code.
 
 Search covers all configured editions, terms, headings, prose and every rendered
 project/external Agda block. Its worker owns index loading/ranking. Preserve IME,
-keyboard selection, explicit empty/error states and retry. Mobile scroll-driven
-visibility must not fight focused input or cause repeated layout jumps. Search
+keyboard selection, explicit empty/error states and retry. Compact headers expose
+separate language and search icon buttons with labelled, mutually exclusive
+disclosures, Escape/outside dismissal and focus restoration. Scrolling never
+opens or closes these controls; wide headers retain their inline controls. Search
 results are native links, not definition-modal actions. Close on outside click
 or actual outside focus, never on an ambiguous input blur: Safari may report a
 null focus destination before the result's click. Search and appearance changes

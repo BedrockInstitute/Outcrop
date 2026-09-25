@@ -148,7 +148,7 @@ main th { background: var(--surface-muted); }
 }
 @media (max-width: 28rem) {
   #topbar { gap: .25rem; padding-inline: .65rem; }
-  #topbar .topbar-spacer { display: none; }
+  #topbar .topbar-spacer { min-width: 0; }
   #brand { font-size: 1.05rem; gap: .3rem; }
   #brand .brand-logo { width: 1.2rem; height: 1.2rem; }
   #lang-switch { margin-inline-start: auto; font-size: .82rem; gap: .1rem; }

@@ -14,8 +14,8 @@ import { initOccur } from './reader/occurrences.js';
 import { initCodeNotes } from './reader/notes.js';
 import { initTermHover } from './reader/terms.js';
 import { initSubmoduleFolds } from './reader/disclosure.js';
-import { initNav, initPageScroll, initHeaderOffset, initSectionTracking,
-  initMobileSearchScroll } from './reader/navigation.js';
+import { initNav, initPageScroll, initHeaderOffset, initSectionTracking } from './reader/navigation.js';
+import { initHeaderControls } from './reader/header-controls.js';
 import { initCurrentRoute } from './reader/current-route.js';
 import { initCodeFullscreen } from './reader/code-fullscreen.js';
 
@@ -34,7 +34,7 @@ function start() {
   initPageScroll();
   initHeaderOffset();
   initSectionTracking();
-  initMobileSearchScroll();
+  initHeaderControls();
   initCurrentRoute();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });

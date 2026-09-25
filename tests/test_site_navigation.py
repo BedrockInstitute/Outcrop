@@ -394,6 +394,63 @@ class PreludeReferenceTests(PublicationCase):
         self.assertNotIn('>f</a>', rendered)
         self.assertNotIn('>p</a>', rendered)
 
+    def test_projection_expressions_keep_code_and_link_only_field_tokens(self):
+        fields = {'fst': ('Base.Prelude.html#10', 'Field'),
+                  'snd': ('Base.Prelude.html#20', 'Field')}
+        vocabulary = {'inline': fields, 'by_name': {
+            name: ('Base.Prelude', href.rsplit('#', 1)[1], aspect, name)
+            for name, (href, aspect) in fields.items()}}
+        for expression in ('g [ true ] .snd', 'g [ false ] .snd',
+                           'λ x → g x .fst', '(g x).fst', '.fst',
+                           'record { value = g x .fst }', '"text.snd"'):
+            with self.subTest(expression=expression):
+                rendered = semantics.inline_ref(expression, {'Base.Prelude'}, {}, {},
+                                                'Chapter', vocabulary)
+                self.assertTrue(rendered.startswith('<code class="Agda inline-ref">'))
+                self.assertEqual(plain_code(rendered), expression)
+                self.assertNotIn('class="inline-ref Field"', rendered)
+                if '.fst' in expression:
+                    self.assertIn('>fst</a>', rendered)
+                elif not expression.startswith('"'):
+                    self.assertIn('>snd</a>', rendered)
+                if 'λ' in expression:
+                    self.assertIn('>λ</a>', rendered)
+                    self.assertIn('>→</a>', rendered)
+        for name in ('fst', 'Base.Prelude.fst'):
+            rendered = semantics.inline_ref(name, {'Base.Prelude'}, {}, {}, 'Chapter', vocabulary)
+            self.assertTrue(rendered.startswith('<span class="Agda">'))
+            self.assertIn('Base.Prelude.html#10', rendered)
+        unknown = semantics.inline_ref('Other.fst', {'Base.Prelude'}, {}, {}, 'Chapter', vocabulary)
+        self.assertEqual(unknown, '<code class="Agda inline-ref">Other.fst</code>')
+        known = semantics.inline_ref('Other.fst', {'Other'}, {},
+                                     {'Other.fst': ('Other.html#30', 'Field')}, 'Chapter', vocabulary)
+        self.assertIn('Other.html#30', known)
+
+    def test_valid_projection_markdown_stays_boxed_through_full_core_rendering(self):
+        from outcrop.core import CodeContext, MarkdownDocument
+        from outcrop.core.prose_lint import inline_agda_violations
+        expressions = ('g [ true ] .snd', 'g [ false ] .snd', 'λ x → g x .fst')
+        text = '\n'.join('<!--' + lang + '-->\n\n' +
+                         '\n'.join('- `' + code + '`{.Agda}' for code in expressions)
+                         for lang in ('en', 'zh', 'ja')) + '\n<!--/-->\n'
+        vocabulary = {'inline': {'fst': ('Base.Prelude.html#10', 'Field'),
+                                 'snd': ('Base.Prelude.html#20', 'Field')},
+                      'by_name': {'fst': ('Base.Prelude', '10', 'Field', 'fst'),
+                                  'snd': ('Base.Prelude', '20', 'Field', 'snd')}}
+        self.assertEqual(inline_agda_violations(text), [])
+        document = MarkdownDocument(text, module='Example',
+                                    code=CodeContext(semantics=semantics, vocabulary=vocabulary))
+        for lang in ('en', 'zh', 'ja'):
+            with self.subTest(lang=lang):
+                rendered = document.render(lang)
+                code = re.findall(r'<code class="Agda inline-ref">(.*?)</code>', rendered.body)
+                self.assertEqual([plain_code(item) for item in code], list(expressions))
+                self.assertNotIn('class="inline-ref Field"', rendered.body)
+                self.assertIn('>fst</a>', rendered.body)
+                for expression in expressions:
+                    self.assertIn(expression, rendered.mirror)
+
+
     def test_prelude_import_anchor_has_hover_type(self):
         types = {"Base.Prelude": {}}
         reexports = {"by_href": {

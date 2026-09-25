@@ -23,7 +23,7 @@ def metadata(chapters=("A", "B")):
 
 class ValidationTests(unittest.TestCase):
     def test_human_review_is_explicit_for_every_chapter(self):
-        data, catalog = routes._load_catalog(EXAMPLE / 'catalog.json')
+        data, catalog = routes.load_catalog(EXAMPLE / 'catalog.json')
         self.assertTrue(all(type(item['human_reviewed']) is bool for item in catalog.values()))
         for invalid in (None, 'true', 1):
             with self.subTest(invalid=invalid), tempfile.TemporaryDirectory() as directory:
@@ -32,7 +32,7 @@ class ValidationTests(unittest.TestCase):
                 path = Path(directory) / 'catalog.json'
                 path.write_text(json.dumps(changed))
                 with self.assertRaisesRegex(ValueError, 'boolean human_reviewed'):
-                    routes._load_catalog(path)
+                    routes.load_catalog(path)
 
     def test_metadata_routes_ids_and_members_have_stable_types(self):
         bad_values = [

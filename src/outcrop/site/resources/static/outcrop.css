@@ -1291,19 +1291,39 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
   }
 }
 
-/* Keep search and all navigation controls usable on phone-width screens. */
-@media (max-width: 28rem) {
-  #topbar { flex-wrap: wrap; gap: .4rem .6rem; }
-  #lang-switch { white-space: nowrap; }
-  .search-form { order: 1; flex: 1 0 100%; min-width: 0;
-    max-height: 3rem; opacity: 1; visibility: visible;
-    transition: max-height .16s ease, opacity .12s ease, visibility 0s; }
-  body.mobile-search-hidden .search-form { max-height: 0; opacity: 0; visibility: hidden;
-    pointer-events: none; transition: max-height .16s ease, opacity .12s ease, visibility 0s .16s; }
-  #search-box { width: 100%; max-width: none; }
+.header-disclosure { display: none; }
+/* Explicit controls: scrolling never changes compact header visibility. */
+@media (max-width: 42rem) {
+  #topbar.header-controls-ready { position: relative; gap: .5rem; }
+  .header-controls-ready .header-disclosure {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 44px; height: 44px; border: 1px solid transparent; border-radius: 8px;
+    background: transparent; color: var(--fg-alt); cursor: pointer;
+  }
+  .header-disclosure svg { width: 22px; height: 22px; fill: none;
+    stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .header-disclosure:hover, .header-disclosure[aria-expanded="true"] {
+    background: var(--button-hover); color: var(--text-fg);
+  }
+  #topbar.header-controls-ready :is(.search-form, #lang-switch) {
+    position: absolute; top: calc(100% + .35rem); right: .65rem; margin: 0;
+    padding: .65rem; background: var(--popup-bg); border: 1px solid var(--input-border);
+    border-radius: 10px; box-shadow: var(--shadow-float); z-index: 1;
+    opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-4px);
+    transition: opacity .12s ease, transform .12s ease, visibility 0s .12s;
+  }
+  #topbar.header-controls-ready .search-form { left: .65rem; }
+  #topbar.header-controls-ready #lang-switch { gap: .5rem; font-size: 1rem; }
+  #topbar.header-controls-ready #lang-switch :is(a, .cur) { padding-inline: .6rem; }
+  #topbar.header-controls-ready :is(.search-form, #lang-switch).header-panel-open {
+    opacity: 1; visibility: visible; pointer-events: auto; transform: none;
+    transition-delay: 0s;
+  }
+  #topbar.header-controls-ready #search-box { width: 100%; max-width: none; min-height: 44px; }
+  #topbar.header-controls-ready #search-results { width: 100%; max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #topbar .search-form { transition: none; }
+  #topbar.header-controls-ready :is(.search-form, #lang-switch) { transition: none; }
 }
 
 /* A reading surface, with navigation kept separate from the mathematical text. */

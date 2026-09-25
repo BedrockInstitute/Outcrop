@@ -22,6 +22,15 @@ Outcrop is checked out as a consumer's submodule.
   source extensions and exceptions in configuration. Do not add Bedrock defaults.
 - Read docs/RENDERER-MARKDOWN.md and docs/SITE-CONFIG.md before changing contracts.
   The Markdown statement/QED grammar is distinct from its visual rendering.
+- Site's default inline-math lint permits figures, standalone displays and
+  figure-reference paragraphs using the localized fixed wording `图中的` /
+  `in the figure` / `図中の`. This mechanical allowance never extends to other
+  paragraphs and is distinct from human approval. Other inline math requires
+  explicit human approval. Keep decisions in configured input data;
+  inventory generation must never grant approvals or imply a successful lint.
+  Explicit temporary chapter allowances end at `human_reviewed: true` in the
+  configured catalog, not on content edits. Do not unset review status to bypass
+  lint; there are no implicit chapter exemptions or source-digest exceptions.
 - Prefer cohesive owners and real interface tests. Do not add old-API facades,
   duplicate implementations or broad catch-all contexts to make migration easier.
 

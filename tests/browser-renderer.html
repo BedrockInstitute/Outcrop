@@ -58,6 +58,28 @@
     check('Agda code retains horizontal scrolling',win.getComputedStyle(code).overflowX==='auto');
     probe.remove();frame.style.width='390px';await pause(100);
     check('no horizontal overflow at 390',doc.documentElement.scrollWidth<=390);
+    const searchToggle=doc.querySelector('#search-toggle'),languageToggle=doc.querySelector('#language-toggle');
+    const searchPanel=doc.querySelector('.search-form'),languagePanel=doc.querySelector('#lang-switch');
+    for(const mode of ['light','dark']) {
+      win.outcropAppearance.setMode(mode);
+      check(mode+' compact controls start closed',searchPanel.inert&&languagePanel.inert);
+      for(const button of [searchToggle,languageToggle]) {
+        const rect=button.getBoundingClientRect();
+        check(mode+' labelled touch-safe '+button.id,rect.width>=44&&rect.height>=44&&!!button.getAttribute('aria-label'));
+      }
+      languageToggle.click();await pause(160);
+      check(mode+' language disclosure is visible',!languagePanel.inert&&win.getComputedStyle(languagePanel).visibility==='visible'&&languageToggle.getAttribute('aria-expanded')==='true');
+      searchToggle.click();await pause(160);
+      check(mode+' search replaces language disclosure',languagePanel.inert&&!searchPanel.inert&&doc.activeElement.id==='search-box'&&win.getComputedStyle(searchPanel).visibility==='visible');
+      doc.dispatchEvent(new win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+      check(mode+' Escape closes and restores focus',searchPanel.inert&&doc.activeElement===searchToggle);
+      searchToggle.click();doc.querySelector('article').click();
+      check(mode+' outside click closes search',searchPanel.inert);
+    }
+    frame.style.width='1100px';await pause(100);
+    check('wide header retains inline controls',!searchPanel.inert&&!languagePanel.inert&&win.getComputedStyle(searchToggle).display==='none');
+    frame.style.width='390px';await pause(100);
+    check('return to compact layout closes disclosures',searchPanel.inert&&languagePanel.inert);
     check('footer uses concise framework credit and repository',doc.querySelector('.footer-credit').textContent==='Powered by Outcrop'&&doc.querySelector('.footer-credit a').href==='https://github.com/BedrockInstitute/Outcrop');
     check('upstream credit is not a reader footer',!doc.querySelector('#site-footer').textContent.includes('1lab'));
     win.outcropAppearance.setMode('light');win.outcropAppearance.setPalette('light','github');
@@ -88,7 +110,10 @@
       frame.style.width=width+'px';
       [doc,win]=await load('/academy/en/Sample.Use.html');
       const box=doc.querySelector('#search-box'),results=doc.querySelector('#search-results');
+      const focusSearch=()=>{if(width===390&&doc.querySelector('.search-form').inert)doc.querySelector('#search-toggle').click();box.focus()};
+      focusSearch();
       box.value='twice';box.focus();
+      box.dispatchEvent(new win.Event('input',{bubbles:true}));
       await until(()=>results.querySelector('a.res'));
       const result=results.querySelector('a.res'),target=new URL(result.href);
       check(width+' search result is a native link',target.pathname.startsWith('/academy/en/')&&!!target.hash);
@@ -101,10 +126,10 @@
       result.click();
       await until(()=>win.location.pathname===target.pathname&&win.location.hash===target.hash);
       check(width+' result activates its real page anchor without a modal',!!doc.getElementById(decodeURIComponent(target.hash.slice(1)))&&!doc.querySelector('.definition-modal'));
-      box.focus();await until(()=>!results.hidden&&results.querySelector('a.res'));
+      focusSearch();await until(()=>!results.hidden&&results.querySelector('a.res'));
       doc.querySelector('#theme-toggle').focus();
       check(width+' moving focus outside dismisses results',results.hidden);
-      box.focus();await until(()=>!results.hidden&&results.querySelector('a.res'));
+      focusSearch();await until(()=>!results.hidden&&results.querySelector('a.res'));
       box.dispatchEvent(new win.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
       check(width+' Escape dismisses results',results.hidden&&box.getAttribute('aria-expanded')==='false');
     }

@@ -409,7 +409,7 @@ console.log(JSON.stringify(samples.map(isUniverseTypeText)));
             javascript,
         )
         self.assertIn(
-            'if (codeBlock && !rangeCapableBlock && !target)',
+            'if (scope && scope.classList.contains("hover-terminal")) return null;',
             javascript,
         )
         self.assertIn('node.replaceWith.apply(node, Array.from(node.childNodes));', javascript)
@@ -559,22 +559,24 @@ console.log(JSON.stringify(
         self.assertIn('function choose(index, withHapticFeedback)', javascript)
         self.assertIn('function vibrateSelection()', javascript)
         self.assertIn('withHapticFeedback && previous !== option) vibrateSelection()', javascript)
-        self.assertIn('if (usesInspector(event.target)) {\n        return;', javascript)
+        pointer_down = javascript.split('document.addEventListener("pointerdown", function (event) {', 1)[1].split('document.addEventListener("touchstart"', 1)[0]
+        self.assertNotIn('setRangeScope(', pointer_down)
+        self.assertNotIn('showName(', pointer_down)
+        self.assertNotIn('show(event.target)', pointer_down)
         self.assertIn('gesture.activated = true;\n        if (gesture.scope) gesture.scope.classList.add("ast-level-gesture");\n        vibrateSelection();', javascript)
         self.assertIn('if (event.type === "touchend" && gesture.kind === "source") {\n          vibrateSelection();', javascript)
         self.assertIn('choose(options.indexOf(next), true)', javascript)
         self.assertIn('zh: "按住色块左右滑动以切换AST节点"', javascript)
         self.assertIn('function setRangeScope(scope)', javascript)
         self.assertIn('swipeHint.hidden = !(compactPointer.matches && rangeScope);', javascript)
-        self.assertIn('if (rangeCapableBlock && setRangeScope(rangeCapableBlock)) pinned = true;',
-                      javascript)
         self.assertIn('if (compactBlock && setRangeScope(compactBlock)) pinned = true;',
                       javascript)
         self.assertIn(
             'else if (!touched && !activeHoverChainContains(event.target))',
             javascript,
         )
-        self.assertIn('if (codeBlock && !rangeCapableBlock && !target) {', javascript)
+        self.assertIn('if (event.touches.length !== 1) { clearLevelGesture(); return; }', javascript)
+        self.assertIn('if (levelGesture && !levelGesture.activated) clearLevelGesture();', javascript)
         self.assertIn('function gestureCandidates(items, base, deltaX)', javascript)
         self.assertIn('function containingExpressionData(expressionData, start, end)', javascript)
         self.assertIn('var items = expressionOptions(expressionData, directNode);', javascript)
@@ -626,11 +628,11 @@ console.log(JSON.stringify(
         self.assertIn('function activeHoverChainContains(target)', javascript)
         self.assertIn('function hoverPopupContains(target)', javascript)
         self.assertIn(
-            'if (hasActiveHover && !activeHoverChainContains(event.target))',
+            'if ((!popup.hidden || namePopups.length) && !activeHoverChainContains(event.target))',
             javascript,
         )
         self.assertIn(
-            'if (!insideHoverPopup && !popup.hidden) hide();',
+            'if (!touched && !activeHoverChainContains(event.target))',
             javascript,
         )
         self.assertNotIn(
@@ -1178,7 +1180,7 @@ console.log(JSON.stringify({moved: alignModalDefinition(frameDocument, targetBlo
             javascript,
         )
         self.assertIn(
-            'target.matches("[data-hover-help], [data-hover-html], [data-hover-template], a[href], .type-node[data-expression-type]")',
+            'if (!usesInspector(event.target)) showName(touched);',
             javascript,
         )
 

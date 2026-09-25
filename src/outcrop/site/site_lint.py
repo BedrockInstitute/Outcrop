@@ -22,6 +22,7 @@ from outcrop.core.fence_lint import fenced_comments, tight_language_boundaries, 
 from outcrop.core.diagram_style import check_sources as diagram_errors
 from outcrop.core.glossary_lint import build_checks, build_presence, check_text, master_presence_violations
 from outcrop.core.i18n_markers import lint_markers, shared_cjk_errors
+from outcrop.site.math_review import load_math_review, math_inventory, inventory_markdown
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,7 @@ def lint_site(config, *, literary=False, project_checks=(), stylesheets=None):
             raise ValueError('variable_legacy: expected version 1')
         legacy = {chapter: set(lines) for chapter, lines in recorded['lines'].items()}
     agda_policy = AgdaPolicy(**config.values.get('agda_policy', {}))
+    math_approvals, math_temporary = load_math_review(config)
     pragma = agda_policy.options_pragma
     for module, text in sources.items():
         path = paths[module]
@@ -87,6 +89,9 @@ def lint_site(config, *, literary=False, project_checks=(), stylesheets=None):
                 report(path, error['rule'], error['message'], error['line'] or 1)
         chapter = str(path.relative_to(root))
         policy = ProsePolicy(chapter=chapter, variable_legacy=legacy,
+            inline_math_review=config.policies.get('inline_math_review', True),
+            math_approvals=math_approvals,
+            math_temporary=math_temporary,
             numbered_theorems=tuple(config.values.get('numbered_theorems', {}).get(module, ())))
         _, fixable, manual = analyze(text, policy=policy)
         for item in fixable + manual:
@@ -126,8 +131,15 @@ def main(argv=None):
     parser.add_argument('--config', type=Path, required=True)
     parser.add_argument('--project-root', type=Path, required=True)
     parser.add_argument('--literary', action='store_true', help='also audit fence-local trilingual exposition')
+    parser.add_argument('--inline-math-inventory', choices=('json', 'markdown'),
+                        help='report inline LaTeX for human review; does not grant approval or run other lint')
     args = parser.parse_args(argv)
     config = SiteConfig.load(args.config, root=args.project_root)
+    if args.inline_math_inventory:
+        rows = math_inventory(config)
+        print(json.dumps(rows, ensure_ascii=False, indent=2) if args.inline_math_inventory == 'json'
+              else inventory_markdown(rows))
+        return 0
     diagnostics = lint_site(config, literary=args.literary)
     for item in diagnostics:
         print(item)

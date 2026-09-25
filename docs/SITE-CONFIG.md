@@ -92,6 +92,8 @@ not a sandbox for executing untrusted authors' documents.
 | `policies.level_name_convention` | Boolean, default false: opt into the book-wide convention that `ℓ` and supported suffixes are level parameters |
 | `agda_policy` | Required options, bare-open hubs, prelude public-name data, empty-family and projection conventions |
 | `variable_legacy` | Optional versioned exact legacy inline-variable allowances |
+| `policies.inline_math_review` | Boolean, strict by default: permits figures, standalone displays and standardized figure-reference paragraphs; other inline LaTeX needs explicit human approval |
+| `inline_math_approvals` | Optional versioned JSON registry of permanent occurrence approvals and explicit temporary allowances until human review, relative to the project root |
 | `numbered_theorems` | Explicit chapter-to-number-list allowances |
 
 Catalog entries retain stable module IDs separately from localized titles. They
@@ -138,6 +140,65 @@ gates, not silently disabled generic rules; the complete original gate mapping i
 in the consuming project's gate documentation; the framework boundary is in
 [ARCHITECTURE.md](ARCHITECTURE.md). Neither rendering nor lint runs
 Agda automatically. A project's proof gate invokes its selected compiler itself.
+
+### Inline-math editorial review
+
+With the default `policies.inline_math_review: true`, LaTeX is restricted to
+figures, standalone `$$...$$` display blocks and standardized figure-reference
+paragraphs. Display source may wrap across
+lines, but delimiters embedded in prose do not grant an exception. Code, comments,
+HTML attributes and link destinations are not math prose. Use complete inline
+Agda spans for Agda notation. Projects with a different editorial contract may
+explicitly disable this policy; ordinary Core rendering has no approval-file I/O.
+
+The figure-reference convention is defined in [RENDERER-MARKDOWN.md](RENDERER-MARKDOWN.md):
+`图中的`, `in the figure`, or `図中の` in the paragraph's prose allows that
+paragraph's inline math, not adjacent blocks. It requires no approval-file record
+and remains available in human-reviewed chapters. Lint does not verify the
+mathematical relationship to the figure. Authors must not use the phrase as an
+escape hatch for unrelated prose. The JSON inventory reports `figure_reference`
+separately from `approved` and `temporarily_allowed`; Markdown labels it
+"Allowed by figure-reference convention".
+
+`outcrop lint --config PATH --project-root ROOT --inline-math-inventory markdown`
+groups inline occurrences into one review item per source paragraph, with all
+formulas, chapter, language, line, exact context and per-formula fingerprints.
+Soft-wrapped lines remain one paragraph; language variants and list items stay
+separate. `json` retains per-occurrence records with paragraph context. This reporting mode
+does not run other lint or approve anything; its successful exit is not a lint pass.
+
+An optional `inline_math_approvals` file has the shape
+`{"version": 1, "approved": []}`. Each approved record requires nonempty
+`chapter` (relative to `sources`, including its extension), `fingerprint`
+(the report's 64-character SHA-256 key), `reviewer` and `reason` strings.
+Only record an explicit human decision. Existing occurrences are not grandfathered.
+Keys bind the language, exact context and occurrence position, not a moving
+document line number. Editing that context requires renewed review; duplicating
+an approved occurrence does not approve its copy. The review IDs such as `M001`
+identify paragraphs in the current report, not durable approval keys. Approving
+a paragraph explicitly covers its listed formulas, not future additions.
+
+The same registry may contain an explicit `temporary` list. Each record requires
+`chapter`, `until: "human_reviewed"`, `reviewer` and `reason`. Site resolves the
+chapter through the configured source corpus and validated catalog. The allowance
+is active only while that catalog chapter has `human_reviewed: false`; missing
+or malformed review metadata never grants an allowance. Source edits, whitespace
+changes and whole-document replacements do not expire it. No content digest or
+Git diff is involved.
+
+Setting `human_reviewed: true` makes the allowance inactive immediately. Remaining
+nonconforming, unapproved inline LaTeX then fails lint, including when only the catalog changes.
+Resolve the formulas or explicitly approve their exact occurrences before marking
+the chapter reviewed. Other rules are never suppressed. Missing temporary records
+and new chapters are strict; no unreviewed chapter receives an implicit exception.
+
+Temporary allowances are not permanent human approval of the formulas. The
+inventory marks them separately without changing paragraph IDs. Remove the
+temporary record when the chapter is migrated. Do not unset human-review status
+to bypass lint, or add temporary records without human authorization. Consumers
+choose the exact chapters; Outcrop has no built-in opening-chapter or book-specific
+exemption. Permanent per-occurrence approval fingerprints remain unchanged by
+this temporary-review policy.
 
 The output is ordinary static files. The shared publisher emits relative
 language links, canonical/JSON-LD metadata, source links, Markdown mirrors,

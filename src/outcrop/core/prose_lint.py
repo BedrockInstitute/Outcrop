@@ -3,6 +3,7 @@ import hashlib
 import re
 from dataclasses import dataclass, field
 from outcrop.core.source_syntax import ROUTE_METADATA_RE
+from outcrop.core.math_lint import unapproved_math
 from outcrop.core.submodule_structure import submodules, module_header_line
 from outcrop.core.statement_structure import (
     STATEMENT_LABELS, PROOF_LABELS, LABEL_RE, NAMES_RE, statement_issues, named_group_issues,
@@ -16,6 +17,9 @@ class ProsePolicy:
     variables: bool = True
     inline_code: bool = True
     variable_legacy: dict = field(default_factory=dict)
+    inline_math_review: bool = False
+    math_approvals: dict = field(default_factory=dict)
+    math_temporary: dict = field(default_factory=dict)
 
 # Verbatim third-party text (licenses, etc.) is never linted, whatever its extension.
 EXCLUDE_BASENAMES = {
@@ -733,6 +737,16 @@ def analyze(text, path=None, *, policy=None):
         manual.extend(submodule_fold_violations(text, check_all=policy.require_submodules))
     if policy.variables:
         manual.extend(new_bare_variable_violations(text, policy.chapter, policy.variable_legacy))
+    if policy.inline_math_review:
+        temporary_allowed = policy.math_temporary.get(policy.chapter) is True
+        expired = policy.chapter in policy.math_temporary and not temporary_allowed
+        manual.extend(Violation(item.index,
+            ('chapter is human-reviewed; temporary inline-LaTeX allowance expired; ' if expired else '')
+            + 'inline LaTeX requires explicit human approval; use Agda inline code, '
+            'standalone display math, a figure or a standardized figure-reference paragraph '
+            '(review ' + item.fingerprint + ')', False)
+            for item in unapproved_math(text, policy.math_approvals.get(policy.chapter, ()),
+                                        temporary_allowed=temporary_allowed))
 
     char_fixed = "".join(edits.get(i, c) for i, c in enumerate(text)) if edits else text
 

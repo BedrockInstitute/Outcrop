@@ -26,14 +26,36 @@ document-order `sec-N` anchor. Explicit HTML IDs are retained. Prose blocks rece
 `p-N` anchors for selection and machine-readable citations. Changing block order
 can change generated anchors; use explicit IDs for long-lived authored links.
 
+Site lint permits LaTeX in figures and standalone `$$...$$` display blocks.
+An explanatory paragraph containing the fixed prose phrase `图中的` (Chinese),
+`in the figure` (English, case-insensitive with whitespace/soft-wrap tolerance),
+or `図中の` (Japanese) also permits inline math in that paragraph only. Language
+groups use their corresponding phrase; shared/monolingual prose may use any of
+the three. List items and language variants are separate paragraphs. Code,
+comments, HTML attributes, link destinations and math cannot supply the phrase.
+This is a mechanical convention for actual figure explanations, not semantic
+verification that a formula belongs to a figure, and not a human approval.
+Other inline math outside figures requires explicit human approval of the exact source
+occurrence, unless the chapter has an explicit temporary allowance and its
+catalog flag is `human_reviewed: false`. Editing the text does not expire that
+allowance; marking the chapter human-reviewed does.
+Use complete `{.Agda}` code spans for Agda expressions. Core can still
+render approved inline math; this is an editorial lint policy, not removal of
+the rendering syntax. See `policies.inline_math_review` and
+`inline_math_approvals` in [SITE-CONFIG.md](SITE-CONFIG.md).
+
 Raw HTML and SVG are **trusted author input**, not sanitized user-generated
 content. Do not render untrusted uploads into the site's origin. Configuration
 strings, generated labels and normal code text are escaped separately. Script
 execution is never a prerequisite for interpreting source Markdown.
 
 Inline Agda uses `` `term`{.Agda} ``. A single linked name can be rendered unboxed;
-composite expressions retain a code surface. ` ```agda ` fences retain the entire
-code stream. Without compiler input they receive lexical syntax help, but no
+composite expressions retain a code surface. Field projections such as `g x .fst`
+and lambdas remain complete
+inline code; only their individual compiler-resolved tokens link to definitions.
+A matching final dotted component never turns a whole expression or an unknown
+qualified name into a standalone declaration link. ` ```agda ` fences retain the
+entire code stream. Without compiler input they receive lexical syntax help, but no
 invented definition links, expression ranges or types. Other fences are ordinary
 escaped code. Math is retained for the shared KaTeX client.
 

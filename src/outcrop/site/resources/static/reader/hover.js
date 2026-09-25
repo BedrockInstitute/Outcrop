@@ -643,18 +643,20 @@ import { codePoint, codeSurface } from './code-surface.js';
     document.addEventListener("click", function (event) {
       if (event.target.closest?.('[data-code-control]')) return;
       if (compactPointer.matches) {
-        var info = event.target.closest && event.target.closest("[data-hover-help], [data-hover-html], [data-hover-template]");
-        if (info) {
-          event.preventDefault(); event.stopPropagation(); showName(info); return;
-        }
-        /* Touch browsers normally activate on pointerdown. Keep click as a
-           fallback for keyboard and synthetic activation. */
+        /* A click confirms a tap, unlike pointerdown which may start a scroll.
+           This also preserves keyboard and assistive activation. */
         var compactBlock = event.target.closest && event.target.closest("pre.Agda");
         var touched = definitionHoverTarget(event.target);
         if (compactBlock && setRangeScope(compactBlock)) pinned = true;
         else if (!touched && !activeHoverChainContains(event.target)) {
           pinned = false;
           hide(); hideName();
+        }
+        var typeGesture = typeGestureState(event.target);
+        if (typeGesture) setRangeScope(typeGesture.scope);
+        var info = event.target.closest && event.target.closest("[data-hover-help], [data-hover-html], [data-hover-template]");
+        if (info) {
+          event.preventDefault(); event.stopPropagation(); showName(info); return;
         }
         if (touched) {
           event.preventDefault();
@@ -682,50 +684,15 @@ import { codePoint, codeSurface } from './code-surface.js';
         }
         return;
       }
-      var codeBlock = event.target.closest && event.target.closest("pre.Agda");
-      var target = definitionHoverTarget(event.target);
-      var rangeCapableBlock = rangeCapableScope(codeBlock);
-      var typeGesture = typeGestureState(event.target);
-      var insideHoverPopup = hoverPopupContains(event.target);
-      var hasActiveHover = !popup.hidden || Boolean(namePopups.length);
-      if (hasActiveHover && !activeHoverChainContains(event.target)) {
-        pinned = false;
-        hide(); hideName();
-      }
-      /* A code block without compiler-backed expression ranges still contains
-         ordinary typed names.  It cannot start a range-swipe gesture, but its
-         names must enter the same hover path as names in richer Agda blocks. */
-      if (codeBlock && !rangeCapableBlock && !target) {
-        pinned = false;
-        hide(); hideName();
-        return;
-      }
-      if (rangeCapableBlock && setRangeScope(rangeCapableBlock)) pinned = true;
-      if (typeGesture) setRangeScope(typeGesture.scope);
-      if (codeBlock && !target) {
-        return;
-      }
-      if (insideHoverPopup
-          && !(target && target.matches(
-            "[data-hover-help], [data-hover-html], [data-hover-template], a[href], a[data-type], .type-node[data-expression-type]"
-          ))) return;
-      if (!target) {
+      // A down event may begin native scrolling. Only dismiss an old branch;
+      // new selection is committed by click/touchend or the completed hold.
+      if ((!popup.hidden || namePopups.length) && !activeHoverChainContains(event.target)) {
         pinned = false; hide(); hideName();
-        return;
-      }
-      if (usesInspector(event.target)) {
-        return;
-      } else if (target.matches("[data-hover-help], [data-hover-html], [data-hover-template], a[href], .type-node[data-expression-type]")) {
-        clearLevelGesture();
-        pinned = false;
-        /* Keep the popup containing this target visible.  The child hover is
-           positioned from that live anchor, exactly as in the desktop path. */
-        if (!insideHoverPopup && !popup.hidden) hide();
-        showName(target);
       }
     });
     document.addEventListener("touchstart", function (event) {
-      if (!compactPointer.matches || event.touches.length !== 1) return;
+      if (!compactPointer.matches) return;
+      if (event.touches.length !== 1) { clearLevelGesture(); return; }
       var block = event.target.closest && event.target.closest("pre.Agda");
       var continuesActiveBlock = block && block === rangeScope && options.length;
       var touchesExpression = usesInspector(event.target);
@@ -779,7 +746,8 @@ import { codePoint, codeSurface } from './code-surface.js';
       if (expression) event.preventDefault();
     });
     document.addEventListener("touchmove", function (event) {
-      if (!compactPointer.matches || !levelGesture || event.touches.length !== 1) return;
+      if (!compactPointer.matches || !levelGesture) return;
+      if (event.touches.length !== 1) { clearLevelGesture(); return; }
       var touch = event.touches[0];
       var point = codePoint(touch, levelGesture.target);
       var deltaX = point.x - levelGesture.startX;
@@ -821,6 +789,10 @@ import { codePoint, codeSurface } from './code-surface.js';
     }
     document.addEventListener("touchend", finishLevelGesture);
     document.addEventListener("touchcancel", finishLevelGesture);
+    // Momentum or nested-container scrolling also cancels an uncommitted hold.
+    document.addEventListener("scroll", function () {
+      if (levelGesture && !levelGesture.activated) clearLevelGesture();
+    }, { capture: true, passive: true });
     document.addEventListener("keydown", function (event) {
       if (event.key === "Escape") { pinned = false; hide(); hideName(); }
     });

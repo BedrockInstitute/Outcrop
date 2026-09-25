@@ -12,7 +12,7 @@ from outcrop.core.html_contract import (
     NON_HOVER_PRIMITIVE_SORTS, NUL, PRE_RE, RENAMED_RE, SPAN_EVENT_RE, TOKEN_RE, TYPE_COLON_RE,
     _BARE_REFERENCE_ASPECTS,
 )
-from outcrop.core.agda_help import HELP, annotate_inline_code, annotate_keywords, inline_syntax_ranges
+from outcrop.core.agda_help import annotate_inline_code, annotate_keywords, inline_tokens
 
 def ref_link(href, aspect, label, extra_class=""):
     """An inline-ref anchor; hover data only when the href has a position."""
@@ -835,6 +835,12 @@ class AgdaSemantics:
             info = matched.get(index) or references.get(token)
             if info is None and token.startswith(self.prelude_module + '.'):
                 info = references.get(token[len(self.prelude_module) + 1:])
+            if info is None and token.startswith('.'):
+                field = references.get(token[1:])
+                if field and 'Field' in field[1].split():
+                    # A postfix projection is syntax plus a real field token,
+                    # never permission to link the surrounding expression.
+                    return '.' + ref_link(field[0], field[1], htmllib.escape(token[1:]))
             if info is None:
                 unique = set(aliases.get(token, ()))
                 if len(unique) == 1:
@@ -848,8 +854,12 @@ class AgdaSemantics:
         """Render Agda prose, linking declarations but not temporary variables."""
         href_aspect = local_refs.get(name)
         label = htmllib.escape(name)
-        if any(inline_syntax_ranges(name)) and name in HELP:
-            return annotate_inline_code(f'<code class="Agda inline-ref">{label}</code>')
+        tokens = list(inline_tokens(name))
+        single_name = (len(tokens) == 1 and tokens[0][:2] == (0, len(name))
+                       and not tokens[0][3] and not name.startswith('.'))
+        if not single_name:
+            return annotate_inline_code(f'<code class="Agda inline-ref">{label}</code>',
+                                        self.inline_reference_resolver(local_refs, current_module, prelude_reexports))
         if href_aspect and not _BARE_REFERENCE_ASPECTS.intersection(href_aspect[1].split()):
             return f'<code class="Agda inline-ref">{label}</code>'
         exported = (prelude_reexports or {}).get('inline', {}).get(name)
@@ -861,7 +871,10 @@ class AgdaSemantics:
             if href_aspect:
                 bridge = (prelude_reexports or {}).get("by_href", {}).get(href_aspect[0])
             else:
-                local_name = name.rpartition(".")[2]
+                # Only the configured vocabulary prefix is a known alias.
+                # An arbitrary qualified name must resolve from compiler data,
+                # not from a coincidentally matching final component.
+                local_name = name.removeprefix(self.prelude_module + '.')
                 bridge = (prelude_reexports or {}).get("by_name", {}).get(local_name)
         if bridge:
             mod, pos, bridge_aspect, _ = bridge
