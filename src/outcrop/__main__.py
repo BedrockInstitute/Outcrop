@@ -5,7 +5,7 @@ import sys
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("build", "lint", "weave", "extract-types", "extract-expressions", "check-links", "check-search", "agda-build", "agda-libraries", "agda-check"))
+    parser.add_argument("command", choices=("build", "lint", "weave", "extract-types", "extract-expressions", "check-links", "check-search", "agda-build", "agda-libraries", "agda-check", "agda-stage"))
     argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv[:1])
     options = argv[1:]
@@ -23,6 +23,8 @@ def main(argv=None):
         from .adapters.agda.libraries import main as run
     elif args.command == "agda-check":
         from .adapters.agda.parallel import main as run
+    elif args.command == "agda-stage":
+        from .adapters.source_stage import main as run
     elif args.command == "check-search":
         from .adapters.search_check import main as run
     elif args.command == "weave":

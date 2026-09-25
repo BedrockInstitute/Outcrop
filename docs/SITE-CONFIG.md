@@ -40,7 +40,7 @@ build_site(config, ['--out', '_build/renderer-fixture/academy'])
 ```
 
 `python -m outcrop build --help` and `lint --help` describe their own arguments.
-The optional `agda-build`, `agda-libraries`, `agda-check`, `extract-types`,
+The optional `agda-build`, `agda-libraries`, `agda-stage`, `agda-check`, `extract-types`,
 `extract-expressions`, `weave`, `check-links` and `check-search` subcommands accept
 explicit compiler/source/output paths. [AGDA.md](AGDA.md) documents the optional
 producer; it needs no consumer repository. There is no legacy Python facade.
@@ -103,6 +103,8 @@ must be covered. Prerequisites come from fenced imports unless explicitly
 supplied. A configured overview has no readiness prerequisites; no chapter name
 receives that exception implicitly. `reading_routes.validate_metadata` and
 `SiteConfig.validate_references` are callable without initializing a project.
+Lint checks both the configured prerequisite graph and actual fenced imports
+against catalog order; a teaching override cannot hide a forward source import.
 
 `--site`, `--langs` and `--base-url` overrides produce a single effective config
 before any renderer, graph or publisher is constructed. `--base-url` changes local

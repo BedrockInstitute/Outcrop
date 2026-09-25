@@ -86,6 +86,11 @@ proof gates. Build products and acceptance logs belong under ignored `_build/`.
 
 From this repository root, after the editable install above:
 
+`make` or `make help` lists the entry points without building anything. `make check`
+runs the following tests, lint and example checks; `make example` only builds and
+validates the example. `EXAMPLE_OUT` selects its output directory and `make serve`
+serves its parent, using `PORT` (default 8000). Browser acceptance remains separate.
+
 ```sh
 .venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v
 .venv/bin/python -m outcrop lint --config examples/renderer/project.json --project-root examples/renderer

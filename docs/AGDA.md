@@ -96,6 +96,21 @@ Agda-supported suffix; rendering alone accepts ordinary `.md` directly. Use
 interfaces and trace. Pure-check and traced interface caches must stay separate:
 a pure interface can skip the elaboration needed to collect hover data.
 
+For a dedicated source mirror used by a pure-check project:
+
+```sh
+python -m outcrop agda-stage --source chapters --destination _build/typecheck/chapters
+```
+
+This copies changed `.lagda.md` sources, removes deleted or renamed sources from
+the mirror and leaves interfaces and unrelated files untouched. Unchanged files
+retain their timestamps. `--extension .agda` selects plain Agda instead; this
+command does not convert Markdown or rename suffixes. Source and destination
+must be disjoint directories. Reserve the destination for this mirror: matching
+files absent from the source are removed. Symlinks inside its write set are
+rejected before mutation. The caller owns the staged library descriptor and
+compiler invocation.
+
 Expression extraction discovers both `.agda` and `.lagda.md` under its explicit
 `--src` directory and rejects duplicate module names across those formats before
 writing output. Plain Agda uses the whole source as its code interval; literate

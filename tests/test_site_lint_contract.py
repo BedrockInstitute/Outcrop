@@ -19,6 +19,17 @@ from outcrop.site.website import build_site
 
 
 class SiteLintContractTests(unittest.TestCase):
+    def test_prerequisite_override_does_not_hide_forward_source_import(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'project'
+            shutil.copytree(EXAMPLE, root)
+            source = root / 'chapters/Sample/Seed.md'
+            source.write_text(source.read_text() + '\n```agda\nopen import Sample.Use\n```\n')
+            config = SiteConfig.load(root / 'project.json', root=root).with_overrides(
+                prerequisites={'Sample.Seed': [], 'Sample.Use': []})
+            messages = [item.message for item in lint_site(config) if item.rule == 'reading-order']
+            self.assertEqual(messages, ['Sample.Seed precedes prerequisite Sample.Use'])
+
     def test_site_gate_checks_framework_stylesheets_by_default(self):
         config = SiteConfig.load(EXAMPLE / 'project.json', root=EXAMPLE)
         with patch('outcrop.site.site_lint.diagram_errors', wraps=diagram_errors) as check:

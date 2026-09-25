@@ -10,7 +10,7 @@ import argparse
 import json
 from outcrop.site.site_config import SiteConfig
 from outcrop.site.site_inputs import source_paths
-from outcrop.core.reading_order import prerequisite_order_errors
+from outcrop.core.reading_order import prerequisite_order_errors, reading_order_errors
 from outcrop.site.reading_routes import build_reading_data
 from outcrop.core.term_registry import load_entries
 from outcrop.core.term_lint import check_terms
@@ -62,7 +62,12 @@ def lint_site(config, *, literary=False, project_checks=(), stylesheets=None):
         report('terms', 'term-introduction', error)
     order = [node['id'] for node in reading['nodes']]
     graph = {node['id']: node['prerequisites'] for node in reading['nodes']}
-    for error in prerequisite_order_errors(order, graph, previews={config.landing_module}):
+    # Configured learning prerequisites must not hide actual source imports.
+    # Read the corpus once and validate both views; report shared findings once.
+    order_errors = prerequisite_order_errors(order, graph, previews={config.landing_module})
+    order_errors += reading_order_errors(sources, {'chapters': reading['nodes']},
+                                        previews={config.landing_module})
+    for error in sorted(set(order_errors)):
         report('catalog', 'reading-order', error)
     legacy = {}
     if config.values.get('variable_legacy'):

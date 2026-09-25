@@ -1,7 +1,15 @@
 PYTHON ?= python3
 PY ?= .venv/bin/python
+PORT ?= 8000
+EXAMPLE_OUT ?= _build/example/academy
+.DEFAULT_GOAL := help
 
-.PHONY: venv test lint example check serve
+.PHONY: help venv test lint example check serve
+help:
+	@printf '%s\n' 'Setup: venv' 'Checks: test lint example check' \
+	  'Preview: serve (PORT=8000 EXAMPLE_OUT=_build/example/academy)' \
+	  'example builds and checks links/search; check does not run browser acceptance.'
+
 venv:
 	$(PYTHON) -m venv .venv
 	$(PY) -m pip install -e .
@@ -13,11 +21,11 @@ lint:
 	$(PY) -m outcrop lint --config examples/renderer/project.json --project-root examples/renderer
 
 example:
-	$(PY) -m outcrop build --config examples/renderer/project.json --project-root examples/renderer --out _build/example/academy
-	$(PY) -m outcrop check-links _build/example/academy
-	$(PY) -m outcrop check-search _build/example/academy
+	$(PY) -m outcrop build --config examples/renderer/project.json --project-root examples/renderer --out $(EXAMPLE_OUT)
+	$(PY) -m outcrop check-links $(EXAMPLE_OUT)
+	$(PY) -m outcrop check-search $(EXAMPLE_OUT)
 
 check: test lint example
 
 serve:
-	$(PY) -m http.server 8000 --directory _build/example
+	$(PY) -m http.server $(PORT) --directory $(dir $(EXAMPLE_OUT))
