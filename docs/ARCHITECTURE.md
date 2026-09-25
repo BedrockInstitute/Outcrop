@@ -134,6 +134,11 @@ The sidebar's localized Current route label includes its colon; the route name
 follows it, while the disclosure arrow remains on the right. Section titles link
 only over their text; remaining branch-row space toggles children. Preserve one
 row highlight, keyboard disclosure, drawer focus and Escape behavior.
+At 80rem and above, symmetric fluid side tracks (at least 10rem) keep the
+reading column centered while allowing the sidebar to shrink on scaled laptop
+screens. The sidebar itself caps at 20rem; below 80rem it becomes a drawer.
+Keep the CSS and navigation media queries synchronized. Manual collapse must
+not move the reading column or change its width.
 
 The top-right appearance menu owns system/light/dark mode and independently
 remembered light/dark code palettes: default, GitHub, Solarized, Catppuccin and

@@ -334,7 +334,8 @@ import { cfg, isDefinitionModalDocument, modalReadingScroller } from "./document
     if (!toggle || !toc) return;
     var backdrop = document.getElementById("nav-backdrop");
     var close = document.getElementById("nav-close");
-    var fullLayout = window.matchMedia("(min-width: 95rem)");
+    // Match the adaptive three-column layout in outcrop.css.
+    var fullLayout = window.matchMedia("(min-width: 80rem)");
     var menuLabel = toggle.getAttribute("aria-label");
     var closeLabel = close ? close.getAttribute("aria-label") : menuLabel;
     function setToggleState(open) {

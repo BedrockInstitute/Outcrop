@@ -56,6 +56,14 @@ class TocParser(HTMLParser):
 
 
 class SiteNavigationTests(PublicationCase):
+    def test_adaptive_sidebar_css_and_navigation_share_breakpoint(self):
+        css = (RESOURCES / 'static/outcrop.css').read_text()
+        navigation = (RESOURCES / 'static/reader/navigation.js').read_text()
+        self.assertIn('matchMedia("(min-width: 80rem)")', navigation)
+        self.assertEqual(css.count('@media (min-width: 80rem)'), 2)
+        self.assertIn('@media (max-width: 79.999rem)', css)
+        self.assertIn('minmax(10rem, 1fr) minmax(0, var(--reading-width)) minmax(10rem, 1fr)', css)
+
     def test_milestones_and_chapters_share_compact_top_bottom_navigation(self):
         modules = ['Origin', 'Base.Prelude', 'Base.Choice']
         for lang in ('en', 'zh', 'ja'):

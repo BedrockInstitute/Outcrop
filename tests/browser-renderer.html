@@ -5,7 +5,7 @@
 <script>
 (async()=>{
   const frame=document.querySelector('#frame'),checks=[],report=document.querySelector('#report');
-  const keys=['theme','code-palettes','reading-progress-v1','current-route','lang']
+  const keys=['theme','code-palettes','reading-progress-v1','current-route','lang','toc-collapsed']
     .flatMap(key=>['lantern-notes','prism-reader'].map(prefix=>prefix+'-'+key));
   const saved=Object.fromEntries(keys.map(key=>[key,localStorage.getItem(key)]));
   const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -34,6 +34,8 @@
         const prefix=width+' '+mode+' QED ';
         check(prefix+'does not reserve height',pre.offsetHeight===ordinary.offsetHeight&&win.getComputedStyle(pre).paddingBottom===win.getComputedStyle(ordinary).paddingBottom);
         check(prefix+'uses exact non-interactive glyph',win.getComputedStyle(mark,'::after').content==='"∎"'&&win.getComputedStyle(mark,'::after').pointerEvents==='none');
+        const glyph=win.getComputedStyle(mark,'::after');
+        check(prefix+'retains the original prose-side font and size',glyph.fontFamily===win.getComputedStyle(doc.body).fontFamily&&Math.abs(parseFloat(glyph.fontSize)-1.05*parseFloat(win.getComputedStyle(doc.documentElement).fontSize))<.05);
         const quiet=Number(win.getComputedStyle(mark,'::after').opacity);
         check(prefix+'uses fixed opacity over empty space',quiet===.25);
         code.textContent='x'.repeat(240);await pause(100);
@@ -73,10 +75,17 @@
     for(const mode of ['light','dark']) {
       win.outcropAppearance.setMode(mode);
       check(mode+' compact controls start closed',searchPanel.inert&&languagePanel.inert);
-      for(const button of [searchToggle,languageToggle]) {
+      const headerButtons=[searchToggle,languageToggle,doc.querySelector('#theme-toggle')];
+      for(const button of headerButtons) {
         const rect=button.getBoundingClientRect();
         check(mode+' labelled touch-safe '+button.id,rect.width>=44&&rect.height>=44&&!!button.getAttribute('aria-label'));
       }
+      const rects=headerButtons.map(button=>button.getBoundingClientRect());
+      check(mode+' compact buttons use a four-pixel gap',rects.slice(1).every((rect,i)=>Math.abs(rect.left-rects[i].right-4)<.1));
+      check(mode+' compact buttons align to the right gutter',Math.abs(doc.documentElement.clientWidth-rects[2].right-4)<.1);
+      headerButtons[2].focus();
+      const focusStyle=win.getComputedStyle(headerButtons[2]);
+      check(mode+' rightmost focus ring remains inside the viewport',rects[2].right+parseFloat(focusStyle.outlineOffset)+parseFloat(focusStyle.outlineWidth)<=doc.documentElement.clientWidth+.1);
       languageToggle.click();await pause(160);
       check(mode+' language disclosure is visible',!languagePanel.inert&&win.getComputedStyle(languagePanel).visibility==='visible'&&languageToggle.getAttribute('aria-expanded')==='true');
       searchToggle.click();await pause(160);
@@ -143,6 +152,30 @@
       box.dispatchEvent(new win.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
       check(width+' Escape dismisses results',results.hidden&&box.getAttribute('aria-expanded')==='false');
     }
+    // CSS viewport pixels, not panel resolution: cover scaled laptop widths
+    // and both sides of the drawer breakpoint, across all reading measures.
+    frame.style.maxWidth='none';
+    for(const lang of ['en','zh','ja']) {
+      [doc,win]=await load('/academy/'+lang+'/Sample.Use.html');
+      for(const width of [1280,1440,1512,1728]) {
+        frame.style.width=width+'px';await pause(100);
+        const toc=doc.querySelector('#toc'),article=doc.querySelector('article');
+        const side=toc.getBoundingClientRect(),body=article.getBoundingClientRect();
+        check(lang+' '+width+' adaptive sidebar remains visible',win.getComputedStyle(toc).position==='sticky'&&win.getComputedStyle(toc).visibility==='visible'&&side.width>=160&&side.width<=320);
+        check(lang+' '+width+' sidebar fits without moving the reading centre',side.right<body.left&&Math.abs((body.left+body.right)/2-width/2)<1&&doc.documentElement.scrollWidth<=width);
+        const left=body.left;
+        doc.querySelector('#toc-collapse').click();await pause(100);
+        check(lang+' '+width+' manual collapse keeps reading position',win.getComputedStyle(toc).display==='none'&&Math.abs(article.getBoundingClientRect().left-left)<1);
+        doc.querySelector('#nav-toggle').click();await pause(100);
+        check(lang+' '+width+' desktop toggle restores sidebar',toc.getBoundingClientRect().width>0&&doc.querySelector('#nav-toggle').getAttribute('aria-expanded')==='true');
+      }
+      frame.style.width='1279px';await pause(100);
+      doc.querySelector('#nav-toggle').click();await pause(250);
+      check(lang+' below breakpoint opens a drawer',doc.body.classList.contains('nav-open')&&win.getComputedStyle(doc.querySelector('#toc')).position==='fixed');
+      frame.style.width='1280px';await pause(250);
+      check(lang+' growing out of drawer clears backdrop',!doc.body.classList.contains('nav-open')&&win.getComputedStyle(doc.querySelector('#nav-backdrop')).display==='none');
+    }
+    frame.style.maxWidth='';frame.style.width='390px';
     const plain=await fetch('/plain.html').then(r=>r.text());
     check('raw core renders unknown code without fake semantic links',plain.includes('unknown value')&&!plain.includes('data-type=')&&!plain.includes('expr-node'));
     document.querySelector('#test-status').textContent='PASS '+checks.length+'/'+checks.length;

@@ -189,10 +189,14 @@ main { max-width: 80rem; width: 100%; margin: 0 auto; padding: 0 1rem; box-sizin
 article { position: relative; grid-area: content; width: 100%; max-width: var(--reading-width); justify-self: center; }
 #sidenote-container { grid-area: gutter; display: none; }
 
-@media (min-width: 95rem) {
+/* 80rem fits the widest reading column (52rem), two 10rem side tracks,
+   two 2.5rem gaps and 2rem outer padding. Let the tracks grow continuously
+   instead of hiding a sidebar that still fits a scaled laptop viewport.
+   Keep this breakpoint synchronized with reader/navigation.js. */
+@media (min-width: 80rem) {
   main { max-width: 100%; }
   #post-toc-container {
-    grid-template-columns: minmax(14rem, 1fr) minmax(0, var(--reading-width)) minmax(14rem, 1fr);
+    grid-template-columns: minmax(10rem, 1fr) minmax(0, var(--reading-width)) minmax(10rem, 1fr);
     grid-template-areas: "sidebar content gutter";
   }
   #sidenote-container { display: block; }
@@ -873,7 +877,9 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
 }
 .agda-definition-end::after {
   content: "∎"; position: absolute; right: 0; bottom: -.5rem;
-  color: var(--code-fg); opacity: .25; font-size: 1.05rem; line-height: 1;
+  /* Preserve the former prose-side glyph, not the larger JuliaMono glyph.
+     Apply only to the decoration: its anchor must retain the code's 1lh. */
+  color: var(--code-fg); opacity: .25; font: 1.05rem/1 var(--sans);
   user-select: none; pointer-events: none;
 }
 
@@ -1253,7 +1259,7 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
 
 /* Below the full three-column width, navigation becomes a drawer. Notes remain
    in the right margin where space allows, then open in a toast on narrower screens. */
-@media (max-width: 94.999rem) {
+@media (max-width: 79.999rem) {
   #search-box { width: 8rem; }
 
   #toc-drawer-head { display: flex; }
@@ -1281,7 +1287,7 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
   body.nav-open #nav-backdrop { opacity: 1; pointer-events: auto; }
 }
 
-@media (min-width: 95rem) {
+@media (min-width: 80rem) {
   #toc-collapse { display: inline-flex; }
   body.nav-collapsed #toc { display: none; }
   body.nav-collapsed #post-toc-container {
@@ -1294,7 +1300,8 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
 .header-disclosure { display: none; }
 /* Explicit controls: scrolling never changes compact header visibility. */
 @media (max-width: 42rem) {
-  #topbar.header-controls-ready { position: relative; gap: .5rem; }
+  #topbar.header-controls-ready { position: relative; gap: .25rem;
+    padding-inline-end: max(.25rem, env(safe-area-inset-right)); }
   .header-controls-ready .header-disclosure {
     display: inline-flex; align-items: center; justify-content: center; flex: none;
     width: 44px; height: 44px; border: 1px solid transparent; border-radius: 8px;
@@ -1304,6 +1311,9 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
     stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   .header-disclosure:hover, .header-disclosure[aria-expanded="true"] {
     background: var(--button-hover); color: var(--text-fg);
+  }
+  .header-controls-ready :is(.header-disclosure, #theme-toggle):focus-visible {
+    outline-offset: 2px; /* Keep the focus ring inside the narrower edge gutter. */
   }
   #topbar.header-controls-ready :is(.search-form, #lang-switch) {
     position: absolute; top: calc(100% + .35rem); right: .65rem; margin: 0;
