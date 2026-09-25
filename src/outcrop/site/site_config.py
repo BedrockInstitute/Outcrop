@@ -84,6 +84,11 @@ class SiteConfig:
         self.descriptions = values.get('descriptions', {})
         if not isinstance(self.descriptions, dict) or any(not isinstance(self.descriptions.get(lang), str) for lang in self.languages):
             raise ValueError('descriptions: expected text for every configured language')
+        self.taglines = values.get('taglines', {})
+        if (not isinstance(self.taglines, dict) or (self.taglines and any(
+                not isinstance(self.taglines.get(lang), str) or not self.taglines[lang].strip()
+                for lang in self.languages))):
+            raise ValueError('taglines: expected nonempty text for every configured language')
         self.topics = values.get('topics', [])
         if not isinstance(self.topics, list) or any(not isinstance(item, str) for item in self.topics):
             raise ValueError('topics: expected strings')

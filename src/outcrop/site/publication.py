@@ -15,6 +15,29 @@ class Publication:
         self.book = book
         self.ui = interface_copy(config, book)
 
+    def document_title(self, title):
+        return title if title == self.config.name else f'{title} · {self.config.name}'
+
+    def social_metadata(self, module, lang, page, is_landing, is_external):
+        title = self.config.name if is_landing else self.document_title(self.book.title(module, lang))
+        values = {'og:type': 'website' if is_landing else 'article',
+                  'og:site_name': self.config.name, 'og:title': title,
+                  'og:description': self.page_description(module, lang, is_landing, is_external),
+                  'og:url': f'{self.config.canonical}/{lang}/{page}'}
+        return '\n'.join(f'  <meta property="{key}" content="{htmllib.escape(value, quote=True)}" />'
+                         for key, value in values.items())
+
+    def website_schema(self):
+        return {'@type': 'WebSite', '@id': self.config.canonical + '/#website',
+                'url': self.config.canonical + '/', 'name': self.config.name,
+                'inLanguage': self.config.languages}
+
+    @staticmethod
+    def structured_data(graph):
+        payload = json.dumps({'@context': 'https://schema.org', '@graph': graph},
+                             ensure_ascii=False, separators=(',', ':')).replace('<', '\\u003c')
+        return f'  <script type="application/ld+json">{payload}</script>'
+
     def page_description(self, module, lang, is_landing, is_external):
         """The page's own <meta name=description>, never the bare site name."""
         if is_external:
@@ -97,11 +120,14 @@ class Publication:
             "translations: [" + ", ".join(
                 f"{self.config.canonical}/{other}/{twin_of(out_name)}"
                 for other in langs if other != lang) + "]",
-            f"agent_guide: {self.config.base_url}/llms.txt",
+            f"agent_guide: {self.config.canonical}/llms.txt",
             f"license: {quote(self.config.license['name'])}",
             "---",
             "",
         ]
+        if module == self.config.landing_module:
+            front[1:1] = [f'homepage_title: {quote(self.config.name)}',
+                          f'tagline: {quote(self.config.taglines.get(lang, ""))}']
         return "\n".join(front) + text.rstrip("\n") + "\n"
 
 
@@ -121,11 +147,11 @@ class Publication:
             "isAccessibleForFree": True,
         }
         page = {
-            "@type": "TechArticle",
+            "@type": "WebPage" if is_landing else "TechArticle",
             "@id": url,
             "url": url,
             "name": self.book.title(module, lang) if not is_landing else self.config.name,
-            "headline": self.book.title(module, lang),
+            "headline": self.config.name if is_landing else self.book.title(module, lang),
             "description": self.page_description(module, lang, is_landing, is_external),
             "inLanguage": lang,
             "isPartOf": {"@id": f"{self.config.canonical}/#book"},
@@ -144,10 +170,7 @@ class Publication:
             # the twin of this page, which for a preview chapter is the guide's twin
             page["encoding"] = {"@type": "MediaObject", "encodingFormat": "text/markdown",
                                 "contentUrl": f"{self.config.canonical}/{lang}/{twin_of(out_name)}"}
-        graph = {"@context": "https://schema.org", "@graph": [page, book]}
-        payload = json.dumps(graph, ensure_ascii=False, separators=(",", ":"))
-        return ('  <script type="application/ld+json">'
-                + payload.replace("<", "\\u003c") + "</script>")
+        return self.structured_data([page, book, self.website_schema()])
 
 
     def page_config(self, module, lang, page_name, md_name, base, site, is_landing, is_external):
@@ -179,11 +202,42 @@ class Publication:
             "preludeModule": self.config.prelude_module,
             "levelNameConvention": self.config.policies.get('level_name_convention', False),
             "agentCopy": self.config.agent.get('translations', {}).get(lang, {}),
+            "agentResources": self.agent_resources(lang, module),
         }
         if not is_external:
             config["agdaSource"] = self.config.source_url(module)
         payload = json.dumps(config, ensure_ascii=False, separators=(",", ":"))
         return payload.replace("<", "\\u003c")
+
+    def agent_resources(self, lang, module=None):
+        """One endpoint inventory for llms.txt and the localized Ask AI handover.
+
+        Paths are relative to the deployment root, not to a language directory.
+        Runtime types are optional and not an assertion of complete type coverage.
+        """
+        entries = [
+            ('llms.txt', ('Start here: chapter addresses, Markdown mirrors and source guidance.',
+                         '请先读本站指南：章节地址、Markdown 镜像与源码说明。',
+                         'まずサイト案内を読む。章のアドレス、Markdown 版、原典の案内を含む。')),
+            (f'{lang}/reading-routes.json', ('Chapter graph with page/anchor addresses, prerequisites and routes.',
+                         '章节图，含页面与锚点地址、先修关系及阅读路线。',
+                         '章のグラフ。ページとアンカー、前提、学習ルートを含む。')),
+            (f'{lang}/terms.json', ('Glossary labels, recaps and introduction links.',
+                         '术语表，含名称、回顾与引入位置链接。', '用語の名称、要約、導入箇所へのリンク。')),
+            ('search-content.json', ('Full search across all published languages: chapters, headings, prose, terms and internal/external code. Each entry has kind, lang and href; resolve href inside /<lang>/, using any published edition for lang="*".',
+                         '跨全部已发布语言的全文搜索：章节、小节、正文、术语及库内外代码。各条目含 kind、lang 和 href；href 相对于对应语言目录，lang="*" 可使用任一已发布语言。',
+                         '全公開言語の全文検索。章、見出し、本文、用語、内部・外部コードを含む。kind、lang、href を持ち、href は言語ディレクトリ相対、lang="*" は任意の公開言語で読める。')),
+            (f'{lang}/search.json', ('Legacy chapter/identifier index, not the complete full-text search.',
+                         '旧版章节与标识符索引，不是完整的全文搜索。',
+                         '旧来の章・識別子索引。全文検索の全データではない。')),
+        ]
+        if module and self.config.types:
+            entries.append((f'{lang}/types/{module}.json', (
+                'Available compiler hover evidence for this module: numeric anchors map to HTML types; $names and $expressions carry names and expression data. Missing entries do not imply a type.',
+                '本模块已有的编译器 hover 数据：数字锚点映射到 HTML 类型，$names 与 $expressions 提供名称和表达式数据；缺失项不代表任何类型。',
+                'このモジュールのコンパイラ由来の hover データ。数値アンカーは HTML の型に対応し、$names と $expressions は名前・式のデータを持つ。欠落から型を推測しない。')))
+        index = ('en', 'zh', 'ja').index(lang)
+        return [{'path': path, 'description': descriptions[index]} for path, descriptions in entries]
 
 
     def agent_guide(self, langs, modnav_list):
@@ -191,26 +245,34 @@ class Publication:
         lang = langs[0]
         lines = [self.config.agent.get("guide", "# {site}\n\n{blurb}\n").format(
             site=self.config.name, blurb=self.config.descriptions.get('en', self.config.descriptions[lang]))]
-        endpoints = [
-            (f"/{lang}/reading-routes.json",
-             "the chapter graph: every chapter's localized title, learning stage, "
-             "prerequisites, reading-order position, route memberships, and the `page` and "
-             "`anchor` it is read at. This file decides those addresses; every link on the "
-             "site is built from it."),
-            (f"/{lang}/terms.json",
-             "the reader-facing glossary: each term's label in this language, a one-sentence "
-             "recap, and the chapter that introduces it."),
-            (f"/{lang}/search.json",
-             "every Agda identifier this project defines, with its module, its anchor on that "
-             "module's page, its syntactic aspect and its type."),
-            (f"/{lang}/types/<Module>.json",
-             "the elaborated type of every token of one chapter, keyed by the anchor that "
-             "token carries in that chapter's URL."),
-            ("/sitemap.xml", "every page, in every language, with hreflang alternates."),
-            ("/robots.txt", "crawl policy. Nothing on this site is disallowed."),
-        ]
-        for path, what in endpoints:
-            lines.append(f"- [{path}]({self.config.canonical}{path}): {what}")
+        lines.extend(['', '## How to read this site', '',
+            'The homepage presents the overview chapter and interactive contents. Its initial HTML contains '
+            'the chapter prose and code; tabs, graphs, search and hover require JavaScript. '
+            'Use the chapter list below or reading-routes.json for actual addresses, not guessed module filenames.', '',
+            'Each chapter has a Markdown mirror linked from its HTML head and footer. Replace the .html '
+            'extension with .md (do not append it). The mirror contains chapter prose and original fenced '
+            'code, including setup hidden behind source popups in HTML; interactive controls are not mirrored. '
+            'Referenced non-literate library pages may have HTML only.', '',
+            'Cite a named definition anchor when possible. #sec-N and #p-N identify headings and prose blocks '
+            'in the current edition; numeric code anchors are compiler source offsets. Positional anchors can '
+            'change after edits. Quote the selected text as well, and verify it at the target. Markdown mirrors '
+            'do not reproduce HTML token/paragraph anchor IDs.', '',
+            'Read original code before inferring assumptions, universe levels or a theorem’s scope. '
+            'Hover text and search snippets are navigation aids, not substitutes for the declaration.', '',
+            '## Machine-readable endpoints', '',
+            'These are static files. CORS headers are supplied for hosts that support the generated _headers file.', ''])
+        for resource in self.agent_resources(lang):
+            path, what = resource['path'], resource['description']
+            lines.append(f"- [{path}]({self.config.canonical}/{path}): {what}")
+        for path, what in [('sitemap.xml', 'Published chapter pages and language alternatives.'),
+                           ('robots.txt', 'Public crawl policy.')]:
+            lines.append(f'- [{path}]({self.config.canonical}/{path}): {what}')
+        if self.config.types:
+            lines.extend(['', f'Optional semantic sidecars: `/{lang}/types/<Module>.json`. '
+                'Numeric anchor keys map to HTML-valued types; `$names` maps anchors to names and '
+                '`$expressions` holds available expression ranges and types. '
+                'coverage depends on compiler evidence. Missing entries do not imply a type. '
+                'Do not treat HTML strings as plain source.'])
         lines.append("")
         lines.append("## Source")
         lines.append("")
@@ -222,8 +284,8 @@ class Publication:
         lines.append("")
         lines.append("## Chapters, in reading order")
         lines.append("")
-        lines.append("Links point at the Markdown mirrors. Replace `/en/` with `/zh/` or `/ja/` "
-                     "for the Chinese or Japanese edition, and `.md` with `.html` for the page a "
+        lines.append(f"Links point at the Markdown mirrors. Published language segments: {', '.join(langs)}. "
+                     "Replace the language segment for another edition, and `.md` with `.html` for the page a "
                      "human reads. A chapter that is not read at the page its own name gives "
                      "says where it is read.")
         lines.append("")
@@ -274,13 +336,19 @@ class Publication:
         # against it, so the dedupe is what keeps it out.
         pages = list(dict.fromkeys(
             ["index.html"] + [self.book.meta[m]["page"] for m in modnav_list]))
-        urls = []
+        def alternates_for(page):
+            targets = [(other, f'{self.config.canonical}/{other}/{page}') for other in langs]
+            targets.append(('x-default', self.config.canonical + '/' if page == 'index.html'
+                            else f'{self.config.canonical}/{langs[0]}/{page}'))
+            return ''.join(f'\n    <xhtml:link rel="alternate" hreflang="{language}" '
+                           f'href="{htmllib.escape(url, quote=True)}" />' for language, url in targets)
+
+        urls = [f'  <url>\n    <loc>{htmllib.escape(self.config.canonical)}/</loc>'
+                f'{alternates_for("index.html")}\n  </url>']
         for lang in langs:
             for page in pages:
-                alternates = "".join(
-                    f'\n    <xhtml:link rel="alternate" hreflang="{other}" '
-                    f'href="{self.config.canonical}/{other}/{page}" />' for other in langs)
-                urls.append(f"  <url>\n    <loc>{self.config.canonical}/{lang}/{page}</loc>{alternates}\n  </url>")
+                alternates = alternates_for(page)
+                urls.append(f"  <url>\n    <loc>{htmllib.escape(self.config.canonical)}/{lang}/{page}</loc>{alternates}\n  </url>")
         Path(os.path.join(out_dir, "sitemap.xml")).write_text('<?xml version="1.0" encoding="UTF-8"?>\n'
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
             '        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
@@ -355,19 +423,21 @@ class Publication:
       <meta name="description" content="{htmllib.escape(self.config.descriptions[default], quote=True)}" />
       <link rel="canonical" href="{self.config.canonical}/" />
       <link rel="help" type="text/markdown" href="{base}/llms.txt" title="Site guide for AI agents" />
-    {hreflang_links("index.html", langs, base)}
+    {hreflang_links("index.html", langs, self.config.canonical)}
+    {self.structured_data([self.website_schema()])}
       <link rel="icon" href="{base}/static/assets/favicon.svg" />
       <script>
         var ls = {json.dumps(langs)};
         var want = (navigator.language || "en").slice(0, 2);
         var to = ls.indexOf(want) >= 0 ? want : "{default}";
-        location.replace("{base}/" + to + "/index.html");
+        location.replace("{base}/" + to + "/index.html" + location.search + location.hash);
       </script>
       <meta http-equiv="refresh" content="0; url={base}/{default}/index.html" />
     </head>
     <body>
       <main>
         <h1>{htmllib.escape(self.config.name)}</h1>
+        <p>{htmllib.escape(self.config.taglines.get(default, ''))}</p>
         <p>{htmllib.escape(self.config.descriptions[default])}</p>
         <ul>
     {links}
@@ -380,4 +450,11 @@ class Publication:
     </html>
     """
         Path(os.path.join(out_dir, "index.html")).write_text(page, encoding='utf-8')
-        Path(os.path.join(out_dir, "404.html")).write_text(page, encoding='utf-8')
+        # A missing passage must stay missing, not silently masquerade as the homepage.
+        missing = (f'<!doctype html><html lang="{default}"><meta charset="utf-8">'
+                   '<meta name="viewport" content="width=device-width, initial-scale=1">'
+                   '<meta name="robots" content="noindex">'
+                   f'<title>404 · {htmllib.escape(self.config.name)}</title>'
+                   f'<main><h1>404</h1><ul>{links}</ul>'
+                   f'<a href="{base}/llms.txt">llms.txt</a></main></html>')
+        Path(os.path.join(out_dir, "404.html")).write_text(missing, encoding='utf-8')

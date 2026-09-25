@@ -174,6 +174,11 @@ completion. Completion does not toggle its containing disclosure.
 Ask AI creates a local, copyable handover from page metadata and selected prose;
 it does not submit the selection to an external assistant. The same metadata feeds
 Markdown mirrors, `llms.txt`, sitemap, source links and JSON-LD.
+`Publication.agent_resources` owns the endpoint inventory shared by llms.txt and
+all localized handovers. Do not copy generic URL instructions into instance
+project prose. Homepage branding/taglines are configured data; the tab controller
+switches the visible title without inventing additional canonical pages. The
+chapter's own title and semantic anchors remain in the overview panel.
 
 Universe notation is a presentation lens: original source, Unicode ranges,
 anchors and copy text survive. Linked primitives and compiler evidence authorize
@@ -219,6 +224,16 @@ leave its generic implementation in one consumer. These adapters belong to Core'
 Agda integration, not a third product layer. Outcrop does not typecheck merely
 because it renders or lints. Bedrock's host-LEM inventory and Origin closure are
 examples of project policy, not generic Markdown rules. See [AGDA.md](AGDA.md).
+
+`outcrop.adapters.python_inputs.dependency_files(package, entries)` is an optional
+non-executing build aid. It walks static imports, relative imports, package
+initializers and imports inside functions. Dynamic imports conservatively include
+all Python sources in the supplied package; unresolved static package imports
+fail rather than silently omitting an input. Callers must additionally fingerprint
+resources, instance configuration and external dependencies. The helper neither
+chooses cache keys nor restores/builds anything; those policies belong to the
+consumer. Lint modules that are not reachable from a renderer entry therefore do
+not invalidate its content identity.
 
 ## Verification
 

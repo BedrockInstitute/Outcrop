@@ -100,7 +100,7 @@ class RendererLibraryTests(unittest.TestCase):
                 for forbidden in ('Bedrock Institute', 'bedrock.institute', 'Base.Prelude', 'L⊨ZFC', 'src/'):
                     self.assertNotIn(forbidden, page)
                 self.assertIn(config.name, (output / 'llms.txt').read_text())
-                self.assertIn(f'agent_guide: {config.base_url}/llms.txt\n',
+                self.assertIn(f'agent_guide: {config.canonical}/llms.txt\n',
                               (output / 'en/Sample.Use.md').read_text())
                 self.assertIn('CC0-1.0', page)
                 self.assertEqual((output / 'static/assets/logo.svg').read_bytes(), (EXAMPLE / 'lantern.svg').read_bytes())

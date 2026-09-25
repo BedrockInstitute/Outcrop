@@ -47,33 +47,16 @@
       fDefinition: "The Agda definition my selection sits in",
       fToken: "Anchor of the nearest Agda token at or before my selection",
       fLinks: "Identifiers and terms linked inside my selection",
-      fSource: "The Agda master this chapter is generated from",
+      fSource: "The source this chapter is generated from",
       fPrereq: "Chapters this one depends on",
 
       fReadingOrder: "Position in the reading order",
       position: function (order, total) { return "chapter " + order + " of " + total; },
-      fetch: function (origin, mdNote) {
-        return [
-          "`" + origin + "/llms.txt`: the guide this site publishes for AI agents. It lists"
-          + " every chapter and every machine-readable endpoint. Read it first.",
-          mdNote,
-          "`" + origin + "/" + lang + "/reading-routes.json`: the chapter graph, with each"
-          + " chapter's title, learning stage, prerequisites and reading routes.",
-          "`" + origin + "/" + lang + "/terms.json`: the glossary, with a one-sentence recap"
-          + " of each term and the chapter that introduces it.",
-          "`" + origin + "/" + lang + "/search.json`: every Agda identifier the book defines,"
-          + " with its module, its anchor and its type.",
-          "`" + origin + "/" + lang + "/types/<Module>.json`: the elaborated type of every"
-          + " token of a chapter, keyed by the anchor that token carries in the page URL.",
-          "`" + (cfg.repository || "") + "`: the repository, if you want the raw sources."
-        ];
-      },
       mdNote: function (url) {
         return "`" + url + "`: this exact page as plain Markdown. Prefer it over the HTML:"
              + " same prose, same Agda, a fraction of the size.";
       },
-      mdRule: "Appending `.md` to any chapter URL on this site gives that chapter as plain"
-            + " Markdown."
+      mdRule: "Use the Markdown alternate link, when provided; replace `.html` with `.md`, never append it."
     },
     zh: {
       colon: "：", quoteOpen: "「", quoteClose: "」",
@@ -101,28 +84,15 @@
       fDefinition: "选区所处的 Agda 定义",
       fToken: "选区处或之前最近的 Agda 记号锚点",
       fLinks: "选区内带链接的标识符与术语",
-      fSource: "生成本章的 Agda 母本",
+      fSource: "生成本章的源码",
       fPrereq: "本章依赖的章节",
 
       fReadingOrder: "在阅读顺序中的位置",
       position: function (order, total) { return "第 " + order + " 章，全书共 " + total + " 章"; },
-      fetch: function (origin, mdNote) {
-        return [
-          "`" + origin + "/llms.txt`：本站为 AI 发布的说明，列出了全部章节与全部机器可读端点。请先读它。",
-          mdNote,
-          "`" + origin + "/" + lang + "/reading-routes.json`：章节依赖图，含每章的标题、学习阶段、"
-          + "先修与阅读路线。",
-          "`" + origin + "/" + lang + "/terms.json`：术语表，含每个术语的一句话回顾与引入它的章节。",
-          "`" + origin + "/" + lang + "/search.json`：本书定义的全部 Agda 标识符，含模块、锚点与类型。",
-          "`" + origin + "/" + lang + "/types/<Module>.json`：一章中每个记号的展开类型，"
-          + "以该记号在页面 URL 中的锚点为键。",
-          "`" + (cfg.repository || "") + "`：源码仓库，如果你需要原始文件。"
-        ];
-      },
       mdNote: function (url) {
         return "`" + url + "`：就是本页的纯 Markdown 版本。请优先读它：散文与 Agda 都一样，体积只有一小部分。";
       },
-      mdRule: "在本站任何章节 URL 后面加上 `.md`，就能得到该章的纯 Markdown 版本。"
+      mdRule: "请使用页面提供的 Markdown 链接；将 `.html` 替换成 `.md`，不要在 URL 末尾追加。"
     },
     ja: {
       colon: "：", quoteOpen: "「", quoteClose: "」",
@@ -151,32 +121,16 @@
       fDefinition: "選択範囲が属する Agda の定義",
       fToken: "選択範囲またはその直前で最も近い Agda トークンのアンカー",
       fLinks: "選択範囲内でリンクされている識別子と用語",
-      fSource: "この章を生成している Agda の原本",
+      fSource: "この章を生成している原本",
       fPrereq: "この章が依存する章",
 
       fReadingOrder: "読書順での位置",
       position: function (order, total) { return "第 " + order + " 章（全 " + total + " 章）"; },
-      fetch: function (origin, mdNote) {
-        return [
-          "`" + origin + "/llms.txt`：本サイトが AI エージェント向けに公開している案内です。"
-          + "全章と全ての機械可読エンドポイントが載っています。まずこれを読んでください。",
-          mdNote,
-          "`" + origin + "/" + lang + "/reading-routes.json`：章の依存グラフ。各章の題、学習段階、"
-          + "前提、読書ルートを含みます。",
-          "`" + origin + "/" + lang + "/terms.json`：用語集。各用語の一文の要約と、"
-          + "それを導入する章を含みます。",
-          "`" + origin + "/" + lang + "/search.json`：本書が定義する全ての Agda 識別子。"
-          + "モジュール、アンカー、型を含みます。",
-          "`" + origin + "/" + lang + "/types/<Module>.json`：ある章の各トークンの展開された型。"
-          + "ページ URL でそのトークンが持つアンカーがキーです。",
-          "`" + (cfg.repository || "") + "`：原典が必要な場合のリポジトリです。"
-        ];
-      },
       mdNote: function (url) {
         return "`" + url + "`：まさにこのページの純 Markdown 版です。HTML よりこちらを優先してください。"
              + "文章も Agda も同じで、大きさはごく一部です。";
       },
-      mdRule: "本サイトのどの章の URL にも `.md` を付ければ、その章の純 Markdown 版が得られます。"
+      mdRule: "ページに Markdown リンクがあれば利用してください。`.html` を `.md` に置き換え、末尾に追加しないでください。"
     }
   };
   var generic = {
@@ -408,7 +362,9 @@
     lines.push("", "## " + S.hProject, "");
     S.project.forEach(function (para) { lines.push(para, ""); });
     lines.push("## " + S.hFetch, "");
-    S.fetch(origin, md ? S.mdNote(md) : S.mdRule).forEach(function (item) {
+    const resources = (cfg.agentResources || []).map(item =>
+      `\`${origin}/${item.path}\`${S.colon}${item.description}`);
+    [md ? S.mdNote(md) : S.mdRule, ...resources, cfg.repository || ""].forEach(function (item) {
       if (item) lines.push("- " + item);
     });
     lines.push("", "## " + S.hWant, "");

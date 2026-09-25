@@ -118,7 +118,7 @@
     const mirror=await fetch('/academy/en/Sample.Use.md').then(r=>r.text());
     check('ordinary Markdown mirror has no intermediate markers',mirror.includes('```agda\ntwice')&&!mirror.includes('\u0000'));
     check('source path is configured md',mirror.includes('https://code.example/lantern/text/chapters/Sample/Use.md')&&!mirror.includes('src/'));
-    check('mirror guide preserves deployment prefix',mirror.includes('agent_guide: /academy/llms.txt\n'));
+    check('mirror guide is absolute and preserves deployment prefix',mirror.includes('agent_guide: https://lantern.example/academy/llms.txt\n'));
     const guide=await fetch('/academy/llms.txt').then(r=>r.text());
     check('agent layer is independently branded',guide.includes('Lantern Notes')&&!guide.includes('bedrock.institute')&&!guide.includes('Base.Prelude'));
     const types=await fetch('/academy/en/types/Sample.Use.json').then(r=>r.json());

@@ -31,6 +31,8 @@
     if (!list) return;
     const tabs = [...list.querySelectorAll("[data-panel]")];
     const panels = tabs.map(tab => document.getElementById(tab.dataset.panel));
+    const intro = document.querySelector('.book-intro');
+    const heading = document.getElementById('reading-guide-title');
     let active = null;
     const scrolls = new Map();
     list.setAttribute("role", "tablist");
@@ -46,6 +48,13 @@
       if (index < 0) return;
       if (active) scrolls.set(active, window.scrollY);
       active = id;
+      const home = index === 0;
+      if (intro && heading) {
+        heading.textContent = home ? intro.dataset.homeTitle : intro.dataset.guideTitle;
+        document.title = home ? intro.dataset.homeTitle : `${intro.dataset.guideTitle} · ${intro.dataset.homeTitle}`;
+        document.querySelector('[data-home-intro]').hidden = !home;
+        document.querySelector('[data-guide-intro]').hidden = home;
+      }
       document.querySelectorAll(".reading-guide a").forEach(link => {
         if (new URL(link.href).hash === `#${id}`) link.setAttribute("aria-current", "location");
         else link.removeAttribute("aria-current");
@@ -70,7 +79,7 @@
       try { id = decodeURIComponent(location.hash.slice(1)); } catch (_) { id = ""; }
       const target = document.getElementById(id);
       const panel = panels.find(p => p === target || (target && p.contains(target)));
-      activate(panel ? panel.id : "milestones", false, false);
+      activate(panel ? panel.id : panels[0].id, false, false);
       if (target && target !== panel) requestAnimationFrame(() => target.scrollIntoView());
     }
     tabs.forEach((tab, i) => {

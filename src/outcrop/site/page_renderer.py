@@ -139,7 +139,10 @@ class PageRenderer:
         # Preserve the chapter's hover trigger, source anchors and review badge.
         milestone_heading = (re.sub(r'<(/?)h1\b', r'<\1h2', heading)
                              if heading else f'<h2>{labels[3]}</h2>')
-        guide_heading = f'<h1 id="reading-guide-title">{htmllib.escape(self.ui[lang]["guide"])}</h1>'
+        guide_heading = f'<h1 id="reading-guide-title">{htmllib.escape(self.config.name)}</h1>'
+        tagline = self.config.taglines.get(lang, '')
+        home_lead = ((f'<p class="book-tagline">{htmllib.escape(tagline)}</p>' if tagline else '')
+                     + f'<p class="book-intro-lead">{htmllib.escape(self.config.descriptions[lang])}</p>')
         milestone_body = re.sub(heading_pattern, "", body, count=1, flags=re.DOTALL)
         # Keep the embedded chapter's sections beneath its h2 without changing ids.
         milestone_body = re.sub(r'<(/?)h([2-5])\b',
@@ -179,11 +182,13 @@ class PageRenderer:
                 f'<span class="term-index" aria-hidden="true">{index}</span>'
                 f'<dt><a href="{href}">{label}</a></dt><dd>{recap}</dd></div>')
         glossary = ''.join(glossary_rows)
-        return (f'<header class="book-intro">{guide_heading}</header>'
-                f'<p class="book-intro-lead">{intro_text}</p>'
+        return (f'<header class="book-intro" data-home-title="{htmllib.escape(self.config.name, quote=True)}" '
+                f'data-guide-title="{htmllib.escape(self.ui[lang]["guide"], quote=True)}">{guide_heading}</header>'
+                f'<div data-home-intro>{home_lead}</div>'
+                f'<p class="book-intro-lead" data-guide-intro hidden>{intro_text}</p>'
                 f'<nav class="book-tabs" aria-label="{labels[0]}">{tabs}</nav>'
                 f'<div class="book-panels"><section id="{GUIDE_PANEL}" '
-                f'class="book-panel guide-landmark">{milestone_heading}'
+                f'class="book-panel guide-landmark"><span id="origin"></span>{milestone_heading}'
                 f'{milestone_body}</section>'
                 f'{mount}'
                 f'<section id="dependency-map" class="book-panel">'
@@ -289,14 +294,15 @@ class PageRenderer:
             if langs_present and lang not in langs_present:
                 banner = f'<div class="banner">{self.ui[lang]["untranslated"]}</div>'
 
-            title = self.ui[lang]["guide"] if is_landing else self.book.title(module, lang)
+            title = self.config.name if is_landing else self.book.title(module, lang)
             has_mirror = mirror is not None
 
             def shell(page_name, page_title, page_body_html, page_toc, body_class, module_slot):
                 """One rendered page, with everything a machine reads about it filled in."""
                 md_name = twin_of(page_name) if has_mirror else ""
                 return fill_template(
-                    template, LANG=lang, TITLE=htmllib.escape(page_title), SITE=htmllib.escape(site),
+                    template, LANG=lang, TITLE=htmllib.escape(self.publication.document_title(page_title)), SITE=htmllib.escape(site),
+                    SOCIAL=self.publication.social_metadata(module, lang, page_name, is_landing, is_external),
                     DESC=htmllib.escape(self.publication.page_description(module, lang, is_landing, is_external),
                                         quote=True),
                     BASEURL=base, MODULE=module_slot,
@@ -309,7 +315,7 @@ class PageRenderer:
                                        is_landing, is_external),
                     BODYCLASS=body_class,
                     EXTBANNER=self.ext_banner(lang, module) if is_external else "",
-                    HREFLANG=hreflang_links(page_name, langs, base),
+                    HREFLANG=hreflang_links(page_name, langs, self.config.canonical),
                     LANGNAV=lang_nav(page_name, lang, langs),
                     MODNAV=self.modules_nav(current if page_name == out_name else module,
                                        modnav_list, lang, reading),

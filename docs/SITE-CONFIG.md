@@ -80,6 +80,7 @@ not a sandbox for executing untrusted authors' documents.
 | `visible_import_chapters` | Explicit formal-setup exceptions for visible theorem imports |
 | `prerequisites` | Optional per-chapter overrides; omitted chapters keep their inferred imports |
 | `descriptions` | Text for each enabled language |
+| `taglines` | Optional plain-text homepage slogan for every enabled language; empty/omitted disables the slogan. No Markdown, Agda linking or inherited branding |
 | `topics` | Site-level metadata keywords |
 | `programming_language` | Optional metadata object with `name` and HTTP(S) `url`; absent means no language claim |
 | `external_libraries` | Optional list of `{prefix, name, url}`; the longest module-prefix match supplies the external-library label; unknown libraries receive a neutral label, never an assumed Cubical identity |
@@ -216,3 +217,37 @@ language links, canonical/JSON-LD metadata, source links, Markdown mirrors,
 `llms.txt`, sitemap, robots, `_headers` and redirects. Hosting credentials and
 deployment commands belong to the instance's build/deployment workflow. This
 framework does not deploy or change a consuming project's host, nor require a new server.
+
+### Homepage, discovery and agent handover
+
+The default homepage and its overview tab use `name` as the main heading and
+document title, with the configured tagline and description below. The other
+three tabs use the localized interactive-contents heading. Tabs share one canonical
+page, not fragment-specific search pages. The historical `#milestones` overview
+address is retained; `#origin` also identifies that panel. The embedded chapter
+keeps its own heading, review badge, source popup and anchors.
+
+HTML publishes absolute canonical/hreflang URLs (including `x-default`), Open
+Graph title/description and Book/WebPage/WebSite structured metadata. The root
+language selector publishes the site name and preserves query/fragment on browser
+redirect. Missing pages receive a noindex 404 document, not a homepage redirect.
+Sitemaps list chapter pages, not every external reference module or old redirect.
+
+`agent.guide` supplies project context only; Outcrop generates the shared reading
+and endpoint instructions. `Publication.agent_resources` is the common inventory
+for llms.txt and localized Ask AI handovers. `search-content.json` is the complete
+cross-language index; per-language `search.json` remains the legacy internal
+identifier index. Resolve each search `href` relative to its language directory;
+`lang="*"` entries work in any published edition. Compiler type sidecars are
+optional, HTML-valued and incomplete when evidence is absent.
+
+Markdown mirrors retain the original chapter, including code hidden in HTML
+source popups, but not the interactive shell or HTML positional anchors. Front
+matter links the absolute agent guide; the homepage mirror also carries
+`homepage_title` and `tagline`, without renaming its source module. Positional
+anchors can shift after edits; AI handovers quote the selected text alongside the
+address. Prefer named definition anchors for long-lived code citations.
+
+The generated `_headers` enables Markdown media types and CORS on compatible
+hosts; other static hosts may ignore it. Neither llms.txt nor structured metadata
+guarantees search indexing, rankings or use by an AI service.

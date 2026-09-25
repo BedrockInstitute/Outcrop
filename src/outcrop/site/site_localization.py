@@ -60,10 +60,14 @@ def lang_nav(out_name, lang, langs):
     return " · ".join(bits)
 
 
-def hreflang_links(out_name, langs, base):
+def hreflang_links(out_name, langs, canonical):
+    import html
+    targets = [(lang, f'{canonical}/{lang}/{out_name}') for lang in langs]
+    targets.append(('x-default', f'{canonical}/' if out_name == 'index.html'
+                    else f'{canonical}/{langs[0]}/{out_name}'))
     return "\n".join(
-        f'  <link rel="alternate" hreflang="{L}" href="{base}/{L}/{out_name}" />'
-        for L in langs)
+        f'  <link rel="alternate" hreflang="{lang}" href="{html.escape(url, quote=True)}" />'
+        for lang, url in targets)
 
 
 def interface_copy(config, book):
