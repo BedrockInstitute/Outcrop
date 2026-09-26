@@ -164,12 +164,15 @@ syntax help and definition navigation. Syntax words, symbolic tokens and neutral
 punctuation retain their separate palettes; terminal built-ins are neutral only
 inside the stopped hover, never globally in ordinary source code.
 
-Body text keeps native language-aware wrapping (`pretty` where supported).
+Body text keeps native language-aware wrapping (`pretty` where supported in
+wide columns; ordinary wrapping and line breaking in compact columns).
 The reader's line-fit pass retains the terminal-punctuation rescue and measures
 the browser's actual line boxes before trying bounded tracking: English uses
 native word wrapping except for an orphaned final mark, while Chinese and
 Japanese may make a small adjustment only when the ragged edge measurably
-improves. It leaves the final line free and rejects candidates that add a line
+improves in a wide column. Compact columns skip the general fit pass, preserving
+only the targeted punctuation rescue. The fit pass leaves the final line free
+and rejects candidates that add a line
 or strand punctuation. No source nodes are split, so links and semantic ranges
 remain stable.
 

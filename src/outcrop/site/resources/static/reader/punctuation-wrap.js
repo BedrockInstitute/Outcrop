@@ -88,7 +88,11 @@ function applyTracking(paragraph, step) {
 function chooseTracking(paragraph, profile) {
   applyTracking(paragraph, 0);
   const orphan = strandedPunctuation(paragraph);
-  if (!orphan && (!profile.fit.length || paragraph.textContent.length > 1100)) return;
+  // A compact column uses native wrapping. Its short lines cannot absorb a
+  // paragraph-wide fit pass without making mixed prose/code links look ragged.
+  // Keep only the targeted terminal-punctuation rescue in that mode.
+  if (!orphan && (getComputedStyle(paragraph).textWrap !== 'pretty' ||
+      !profile.fit.length || paragraph.textContent.length > 1100)) return;
   const initial = lineFit(paragraph);
   if (!initial) return;
   if (orphan) {
