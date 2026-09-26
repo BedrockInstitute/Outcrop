@@ -76,6 +76,7 @@ immediately below the last row; this is rendered as a centered caption outside t
 horizontal scroll region and required by Site lint. The initial three chapters did
 not use prose tables. The first catalogued use is [Choice](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Choice.lagda.md), for existence statements, lifted data
 and the two decision cases. Tables do not replace mathematical type-space diagrams.
+Table and figure captions omit the terminal sentence period in every language.
 
 ### Centered code display
 

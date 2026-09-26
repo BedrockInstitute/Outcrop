@@ -173,6 +173,8 @@ def check_text(source):
                 block = re.search(r'<!--'+lang+r'-->\s*(.*?)\s*(?=<!--(?:en|zh|ja|/)-->)', cap[1], re.S)
                 if not block or not re.sub(r'<[^>]*>|\s', '', block[1]):
                     fail(f'caption needs explicit {lang} text')
+                elif re.sub(r'<[^>]*>', '', block[1]).strip().endswith(('.', '。', '．', '｡')):
+                    fail(f'{lang} caption must not end with a period')
         if previous_end is not None:
             between = re.sub(r'<!--.*?-->|<[^>]*>', '', source[previous_end:match.start()], flags=re.S)
             between = re.sub(r'\$\$.*?\$\$|\$[^$\n]+\$|`[^`]+`', '', between, flags=re.S)

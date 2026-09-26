@@ -3,6 +3,7 @@
 import re
 
 CAPTION_RE = re.compile(r"^:[ \t]+(\S.*)$")
+FINAL_PERIODS = ('.', '。', '．', '｡')
 
 
 def caption_text(line):
@@ -27,8 +28,8 @@ def table_end(lines, index):
     return end
 
 
-def missing_table_captions(text):
-    """Yield source offsets of uncaptained tables, ignoring fenced examples."""
+def _tables(text):
+    """Yield table/caption positions outside fenced examples."""
     lines = text.splitlines(keepends=True)
     content = [line.rstrip("\r\n") for line in lines]
     offsets = []
@@ -56,6 +57,21 @@ def missing_table_captions(text):
         if end is None:
             index += 1
             continue
-        if end == len(content) or caption_text(content[end]) is None:
-            yield offsets[index]
+        caption = caption_text(content[end]) if end < len(content) else None
+        yield (offsets[index], offsets[end] if end < len(content) else None,
+               caption, content[end] if end < len(content) else '')
         index = end + 1
+
+
+def missing_table_captions(text):
+    """Yield source offsets of uncaptained tables, ignoring fenced examples."""
+    for table_at, _, caption, _ in _tables(text):
+        if caption is None:
+            yield table_at
+
+
+def table_caption_periods(text):
+    """Yield offsets of terminal periods in live pipe-table captions."""
+    for _, caption_at, caption, line in _tables(text):
+        if caption and caption.endswith(FINAL_PERIODS):
+            yield caption_at + len(line.rstrip()) - 1

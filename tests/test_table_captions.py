@@ -5,16 +5,16 @@ import unittest
 from outcrop.core.i18n_markers import weave_for_site
 from outcrop.core.markdown_core import anchor_prose_blocks, md_to_html
 from outcrop.core.prose_lint import analyze
-from outcrop.core.table_style import missing_table_captions
+from outcrop.core.table_style import missing_table_captions, table_caption_periods
 
 
 class TableCaptionTests(unittest.TestCase):
     TABLE = "| Name | Meaning |\n| --- | --- |\n| `x` | one |\n"
 
     def test_caption_is_below_scroll_region_and_renders_inline_markdown(self):
-        body, _ = md_to_html(self.TABLE + ": Describes `x` and <y>.\n\nAfter.")
+        body, _ = md_to_html(self.TABLE + ": Describes `x` and <y>\n\nAfter.")
         self.assertIn('<figure class="prose-table"><div class="prose-table-scroll"><table>', body)
-        self.assertIn('</table></div><figcaption>Describes <code>x</code> and &lt;y&gt;.</figcaption></figure>', body)
+        self.assertIn('</table></div><figcaption>Describes <code>x</code> and &lt;y&gt;</figcaption></figure>', body)
         self.assertLess(body.index('</table>'), body.index('<figcaption>'))
         self.assertIn('<p>After.</p>', body)
         anchored = anchor_prose_blocks(body)
@@ -31,6 +31,16 @@ class TableCaptionTests(unittest.TestCase):
     def test_fenced_example_is_not_a_live_table(self):
         example = "```markdown\n" + self.TABLE + "```\n"
         self.assertEqual(list(missing_table_captions(example)), [])
+        self.assertEqual(list(table_caption_periods(example)), [])
+
+    def test_caption_terminal_period_is_rejected_in_all_three_scripts(self):
+        for caption in ('A summary.', '一句说明。', '一つの説明｡', 'A summary．'):
+            with self.subTest(caption=caption):
+                source = self.TABLE + ': ' + caption + '\n'
+                self.assertEqual(len(list(table_caption_periods(source))), 1)
+                _, _, manual = analyze(source)
+                self.assertTrue(any('caption must not end' in item.message for item in manual))
+        self.assertEqual(list(table_caption_periods(self.TABLE + ': A summary\n')), [])
 
     def test_caption_remains_with_english_fallback_table(self):
         master = "<!--en-->\n" + self.TABLE + ": The English caption.\n<!--/-->\n"

@@ -9,7 +9,7 @@ from outcrop.core.statement_structure import (
     STATEMENT_LABELS, PROOF_LABELS, LABEL_RE, NAMES_RE,
     statement_issues, named_group_issues,
 )
-from outcrop.core.table_style import missing_table_captions
+from outcrop.core.table_style import missing_table_captions, table_caption_periods
 from outcrop.core.code_preview import preview_directive_issues
 
 @dataclass(frozen=True)
@@ -752,6 +752,8 @@ def analyze(text, path=None, *, policy=None):
     if policy.table_captions:
         manual.extend(Violation(index, "Markdown table needs a nonempty ': caption' line immediately after its last row", False)
                       for index in missing_table_captions(text))
+        manual.extend(Violation(index, "table caption must not end with a period", False)
+                      for index in table_caption_periods(text))
     # Rule 12: Japanese prose consistently uses plain style.
     manual.extend(japanese_polite_violations(text, prot))
     # Rule 13: a standalone declaration may be a bare link; expressions are boxed.

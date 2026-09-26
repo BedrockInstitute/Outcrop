@@ -13,21 +13,24 @@ import { cfg } from "./document.js";
       var connector = document.createElement("span");
       connector.className = "prose-annotation-connector";
       connector.setAttribute("aria-hidden", "true");
-      article.appendChild(connector);
-      article.appendChild(note);
+      var anchor = document.createElement("span");
+      anchor.className = "prose-annotation";
+      target.before(anchor);
+      anchor.append(target, connector, note);
       template.remove();
-      return { target: target, note: note, connector: connector };
+      return { target: target, anchor: anchor, note: note, connector: connector };
     }).filter(Boolean);
   }
 
   function positionMarginNotes(article, pairs) {
     var articleRect = article.getBoundingClientRect();
     pairs.forEach(function (pair) {
-      var targetRect = pair.target.getBoundingClientRect();
-      var y = targetRect.top - articleRect.top + targetRect.height / 2;
-      pair.note.style.top = y + "px";
-      pair.connector.style.top = y + "px";
-      pair.note.style.setProperty("--note-width",
+      // Vertical alignment is structural: the positioned inline anchor moves
+      // with its line through every fold, preview and route disclosure.
+      var anchorRect = pair.anchor.getBoundingClientRect();
+      pair.anchor.style.setProperty("--note-rail-offset",
+        (articleRect.right - anchorRect.right) + "px");
+      pair.anchor.style.setProperty("--note-width",
         Math.max(0, window.innerWidth - articleRect.right - 48) + "px");
     });
   }
@@ -40,19 +43,28 @@ import { cfg } from "./document.js";
     var proseNotePairs = collectProseNotes(article);
     var notes = document.querySelectorAll(".single-line-code[data-note]");
     if (!notes.length && !proseNotePairs.length) return;
+    var positionScheduled = false;
     function positionProseNotes() {
+      positionScheduled = false;
       positionMarginNotes(article, proseNotePairs);
       notes.forEach(function (block) {
         block.style.setProperty("--note-width",
           Math.max(0, window.innerWidth - block.getBoundingClientRect().right - 48) + "px");
       });
     }
+    function schedulePosition() {
+      if (positionScheduled) return;
+      positionScheduled = true;
+      requestAnimationFrame(positionProseNotes);
+    }
     positionProseNotes();
-    requestAnimationFrame(positionProseNotes);
-    window.addEventListener("resize", positionProseNotes);
+    schedulePosition();
+    window.addEventListener("resize", schedulePosition);
+    window.addEventListener("load", schedulePosition);
+    document.fonts?.ready.then(schedulePosition);
     if (window.ResizeObserver) {
-      var proseNoteObserver = new ResizeObserver(positionProseNotes);
-      proseNotePairs.forEach(function (pair) { proseNoteObserver.observe(pair.target); });
+      var proseNoteObserver = new ResizeObserver(schedulePosition);
+      proseNoteObserver.observe(article);
     }
     var toast = document.createElement("div");
     toast.id = "code-note-toast";

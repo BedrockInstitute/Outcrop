@@ -34,13 +34,15 @@ the same language as the table (one caption per language branch):
 | Kind | Meaning |
 | --- | --- |
 | A | First case |
-: What the cases distinguish.
+: What the cases distinguish
 ```
 
 Core can still render an uncaptained table in ordinary Markdown; Site lint rejects
 it. The caption supports normal inline Markdown, appears centered *below* the
 horizontally scrollable table, and stays readable without scrolling sideways.
 Figure captions are likewise centered below their figures.
+Captions are label-like descriptions, not prose paragraphs: table and trilingual
+figure captions must not end with a sentence period (`.`, `。`, `．` or `｡`).
 
 Site lint permits LaTeX in figures and standalone `$$...$$` display blocks.
 An explanatory paragraph containing the fixed prose phrase `图中的` (Chinese),

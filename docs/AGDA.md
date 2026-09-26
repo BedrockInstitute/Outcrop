@@ -125,6 +125,16 @@ files absent from the source are removed. Symlinks inside its write set are
 rejected before mutation. The caller owns the staged library descriptor and
 compiler invocation.
 
+For a separate pure-check mirror, add `--code-only`. It writes canonical
+`.lagda.md` files containing the ordered Agda fences and no surrounding prose.
+The compiler hashes its complete input, so merely preserving timestamps of
+full-copy sources is insufficient to reuse interfaces after a prose edit.
+`python -m outcrop agda-stage --source chapters --fingerprint` prints the digest
+of the canonical relative paths and bytes for a CI cache key. Cache the
+code-only mirror together with pure interfaces, and use a separate cache for
+the original-source HTML/semantic traversal. Pure-check diagnostics refer to
+mirror line numbers; consult the original code fence for the authored position.
+
 Expression extraction discovers both `.agda` and `.lagda.md` under its explicit
 `--src` directory and rejects duplicate module names across those formats before
 writing output. Plain Agda uses the whole source as its code interval; literate

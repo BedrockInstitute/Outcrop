@@ -15,11 +15,11 @@ VALID = '''<figure class="book-diagram" id="fig-example" aria-describedby="fig-e
 </div>
 <figcaption id="fig-example-caption">
 <!--en-->
-A path between two elements.
+A path between two elements
 <!--zh-->
-两个元素之间的路径。
+两个元素之间的路径
 <!--ja-->
-二つの要素の間のパス。
+二つの要素の間のパス
 <!--/-->
 </figcaption>
 </figure>'''
@@ -39,6 +39,14 @@ class DiagramStyleTests(unittest.TestCase):
 
     def test_shared_figure_passes(self):
         self.assertEqual(check_text(VALID), [])
+
+    def test_each_language_caption_rejects_terminal_period(self):
+        for plain, ending in (('A path between two elements', 'A path between two elements.'),
+                              ('两个元素之间的路径', '两个元素之间的路径。'),
+                              ('二つの要素の間のパス', '二つの要素の間のパス｡')):
+            with self.subTest(ending=ending):
+                self.assertTrue(any('caption must not end with a period' in message
+                                    for message in check_text(VALID.replace(plain, ending))))
 
     def test_frame_contains_content_but_not_caption(self):
         framed = VALID.replace('class="diagram-panel"', 'class="diagram-framed"')
