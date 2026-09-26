@@ -55,7 +55,8 @@ def lint_site(config, *, literary=False, project_checks=(), stylesheets=None):
     # The figure grammar includes the framework's semantic colour contract, not
     # only authored markup. All consumers must run both halves of that gate.
     if stylesheets is None:
-        stylesheets = sorted((Path(__file__).parent / 'resources/static').glob('*.css'))
+        stylesheets = [*sorted((Path(__file__).parent / 'resources/static').glob('*.css')),
+                       *(config.path(path) for path in config.stylesheets)]
     for error in diagram_errors(paths.values(), stylesheets=stylesheets):
         report('diagrams', 'diagram', error)
     for error in check_terms(sources, entries, reading):

@@ -5,6 +5,7 @@ import os
 import re
 from outcrop.core.markdown_core import fill_template
 from outcrop.site.site_localization import interface_copy, lang_nav, hreflang_links
+from outcrop.site.external_links import external_links_new_window
 from outcrop.site.reading_routes import GUIDE_PANEL, twin_of
 from outcrop.core.term_registry import localized_forms, localized_abbreviation
 
@@ -98,7 +99,7 @@ class PageRenderer:
 
 
     def chapter_navigation(self, body, module, modules, lang):
-        """Identical, compact top/bottom navigation for chapters and Origin."""
+        """Identical, compact top/bottom navigation for every catalogued page."""
         if module not in modules:
             return body
         index = modules.index(module)
@@ -300,7 +301,7 @@ class PageRenderer:
             def shell(page_name, page_title, page_body_html, page_toc, body_class, module_slot):
                 """One rendered page, with everything a machine reads about it filled in."""
                 md_name = twin_of(page_name) if has_mirror else ""
-                return fill_template(
+                return external_links_new_window(fill_template(
                     template, LANG=lang, TITLE=htmllib.escape(self.publication.document_title(page_title)), SITE=htmllib.escape(site),
                     SOCIAL=self.publication.social_metadata(module, lang, page_name, is_landing, is_external),
                     DESC=htmllib.escape(self.publication.page_description(module, lang, is_landing, is_external),
@@ -322,8 +323,9 @@ class PageRenderer:
                     TOC=page_toc, BANNER=banner, BODY=page_body_html,
                     FOOTER=self.publication.footer_html(lang, base, md_name),
                     S_SEARCH=self.ui[lang]["search"], S_THEME=self.ui[lang]["theme"],
+                    S_LANGUAGE=self.ui[lang]["language"],
                     S_MENU=self.ui[lang]["menu"], S_CLOSE=self.ui[lang]["close"],
-                    S_CONTENT=self.ui[lang]["contents"])
+                    S_CONTENT=self.ui[lang]["contents"]), self.config.canonical)
 
             page = shell(out_name, title, body,
                          "" if is_landing else self.toc_html(toc, lang),

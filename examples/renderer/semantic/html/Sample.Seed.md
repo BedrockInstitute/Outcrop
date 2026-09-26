@@ -62,3 +62,11 @@ The next function returns the supplied marker unchanged.
 <pre class="Agda"><a id="keep"></a><a id="1181" href="Sample.Seed.html#1181" class="Function">keep</a> <a id="1186" class="Symbol">:</a> <a id="1188" href="Sample.Seed.html#830" class="Datatype">Marker</a> <a id="1195" class="Symbol">→</a> <a id="1197" href="Sample.Seed.html#830" class="Datatype">Marker</a>
 <a id="1204" href="Sample.Seed.html#1181" class="Function">keep</a> <a id="1209" href="Sample.Seed.html#1209" class="Bound">value</a> <a id="1215" class="Symbol">=</a> <a id="1217" href="Sample.Seed.html#1209" class="Bound">value</a>
 </pre>
+
+<!--en-->
+The [next chapter](Sample.Use.html#sec-1) applies this function twice.
+<!--zh-->
+[下一章](Sample.Use.html#sec-1)会把这个函数连续应用两次。
+<!--ja-->
+[次の章](Sample.Use.html#sec-1)ではこの関数を二回適用する。
+<!--/-->

@@ -18,10 +18,12 @@ import { initNav, initPageScroll, initHeaderOffset, initSectionTracking } from '
 import { initHeaderControls } from './reader/header-controls.js';
 import { initCurrentRoute } from './reader/current-route.js';
 import { initCodeFullscreen } from './reader/code-fullscreen.js';
+import { initPunctuationWrap } from './reader/punctuation-wrap.js';
 
 function start() {
   try { writePreference('lang', cfg.lang); } catch (_) {}
   renderMath();
+  initPunctuationWrap();
   initSearch();
   initCodeFullscreen();
   initHover();
@@ -36,6 +38,9 @@ function start() {
   initSectionTracking();
   initHeaderControls();
   initCurrentRoute();
+  // A modal parent must not align or reveal the mirrored page until its own
+  // reading controls (notably the sticky section directory) are initialized.
+  document.documentElement.dataset.outcropReaderReady = 'true';
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
 else start();

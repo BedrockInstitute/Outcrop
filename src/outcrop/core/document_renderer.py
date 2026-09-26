@@ -23,6 +23,7 @@ from outcrop.core.agda_semantics import (
 from outcrop.core.boilerplate import mirror_boilerplate
 from outcrop.core.chapter_structure import OPTIONS
 from outcrop.core.definition_endings import render_code_frames
+from outcrop.core.code_preview import render_code_previews
 from outcrop.core.term_registry import TERM_MARK_RE
 
 
@@ -116,10 +117,41 @@ class MarkdownDocument:
         woven = re.sub(r'\$(.+?)\$', lambda m: stash('IMATH',
             '<span class="math inline">$' + htmllib.escape(m[1]) + '$</span>'), woven)
         woven = INLINE_AGDA_LINK_RE.sub(lambda m: stash('REF', inline_ref_link(
-            m[1], m[2], m[3], self.code.names, self.code.aspects)), woven)
-        woven = INLINE_AGDA_RE.sub(lambda m: stash('REF', self.code.semantics.inline_ref(
-            m[1], self.code.internal, self.code.names, self.local_refs,
-            self.module, self.code.vocabulary)), woven)
+            m[1], m[2], m[3], self.code.names, self.code.aspects,
+            self.code.vocabulary)), woven)
+        def inline_agda(match):
+            if match[3]:
+                # An explicit author-supplied type disambiguates overloaded
+                # prose constructors. Do not infer their source identity from
+                # another declaration with the same unqualified spelling.
+                type_html = self.code.semantics.inline_ref(
+                    match[3], self.code.internal, self.code.names, self.local_refs,
+                    self.module, self.code.vocabulary)
+                original_resolver = self.code.semantics.inline_reference_resolver(
+                    self.local_refs, self.module, self.code.vocabulary,
+                    self.code.names, match[1])
+                constructor_resolver = self.code.semantics.typed_constructor_resolver(
+                    match[3], self.code.names, self.code.vocabulary)
+                family = match[3].strip().split(maxsplit=1)[0]
+                def typed_resolver(token, tokens, index):
+                    if family in ('ℕ', 'Nat', 'Fin') and token in ('zero', 'suc'):
+                        return constructor_resolver(token, tokens, index)
+                    return original_resolver(token, tokens, index)
+                rendered = annotate_inline_code(
+                    '<code class="Agda inline-ref" data-agda-inline-type="' +
+                    htmllib.escape(match[3], quote=True) + '" data-hover-html="' +
+                    htmllib.escape(type_html, quote=True) + '" role="button" tabindex="0" '
+                    'aria-haspopup="dialog" aria-label="' +
+                    htmllib.escape(match[1] + ' : ' + match[3], quote=True) + '">' +
+                    htmllib.escape(match[1]) + '</code>', typed_resolver)
+            else:
+                rendered = self.code.semantics.inline_ref(
+                    match[1], self.code.internal, self.code.names, self.local_refs,
+                    self.module, self.code.vocabulary)
+            if match[2]:
+                rendered = '<span data-outcrop-notation="source">' + rendered + '</span>'
+            return stash('REF', rendered)
+        woven = INLINE_AGDA_RE.sub(inline_agda, woven)
         body, toc = md_to_html(render_summary_inline(woven))
         body = re.sub(r'<p>\s*(' + NUL + r'(?:CODE|DMATH)\d+' + NUL + r')\s*</p>', r'\1', body)
         body = anchor_prose_blocks(body)
@@ -141,4 +173,5 @@ class MarkdownDocument:
                                      options=self.options)
         body = auto_link_terms(body, lang, self.module, self.terms)
         body = render_code_frames(body, self.code.definition_ends.get(self.module, ()), lang)
+        body = render_code_previews(body)
         return RenderedDocument(body, toc, mirror, tuple(self.blocks))

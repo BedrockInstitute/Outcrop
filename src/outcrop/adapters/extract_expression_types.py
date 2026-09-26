@@ -17,6 +17,9 @@ from pathlib import Path
 import re
 import sys
 
+from outcrop.core.agda_type_quality import imprecise_type
+from outcrop.core.agda_semantics import closed_natural_constructor
+
 
 AGDA_FENCE_RE = re.compile(r"(?ms)^```agda[^\n]*\n(.*?)^```[ \t]*$")
 BOUND_LINK_RE = re.compile(
@@ -30,11 +33,33 @@ NAME_LINK_RE = re.compile(
 UNLINKED_BOUND_RE = re.compile(
     r'<a\s+id="(\d+)"\s+class="[^"]*\bBound\b[^"]*">([^<]*)</a>'
 )
-IMPRECISE_RE = re.compile(r"_[\w.']+_\d+|(?<![\w'])_\d+\b|\?\d+")
-KIND_PRIORITY = {"name": 1, "binding": 2, "application": 3}
+KIND_PRIORITY = {"name": 1, "binding": 2, "application": 3, "pattern": 4}
 DECLARATION_KINDS = {'signature', 'definition-end'}
 DUMMY_TYPE_RE = re.compile(r'__DUMMY_(?:TYPE|SORT|TERM|LEVEL|DOM)__|dummy(?:Type|Sort|Term|Level):')
 SOURCE_SUFFIXES = (".lagda.md", ".agda")
+
+
+def nonliteral_naturals(data: dict[str, list[dict]], source_root: Path) -> list[str]:
+    """Lint only source terms whose type comes from the current Agda trace."""
+    findings = []
+    for module, nodes in data.items():
+        path = source_root.joinpath(*module.split('.')).with_suffix('.lagda.md')
+        if not path.exists():
+            path = source_root.joinpath(*module.split('.')).with_suffix('.agda')
+        source = path.read_text(encoding='utf-8')
+        for node in nodes:
+            if (node.get('kind') not in ('application', 'definition')
+                    or node.get('context') == 'pattern' or node.get('type') != 'ℕ'):
+                continue
+            number = closed_natural_constructor(node.get('source', ''))
+            if number is None:
+                continue
+            position = node['start'] - 1
+            if source[position:node['end'] - 1] != node['source']:
+                raise RuntimeError(f'stale natural-number range in {path}: {node["start"]}')
+            line = source.count('\n', 0, position) + 1
+            findings.append(f'{path}:{line}: [natural-literal] write {number} instead of {node["source"]!r}')
+    return findings
 
 
 def module_name(path: Path, source_root: Path) -> str:
@@ -119,10 +144,6 @@ def inside_code(start: int, end: int, intervals: list[tuple[int, int]]) -> bool:
 
 def normalize_type(value: str) -> str:
     return " ".join(value.split())
-
-
-def imprecise_type(value: str) -> bool:
-    return bool(IMPRECISE_RE.search(value))
 
 
 def prefer_record(old: dict | None, new: dict) -> dict:
@@ -244,7 +265,7 @@ def normalize(source_root: Path, html_dir: Path, trace_path: Path,
             if record["kind"] == "binding" and start in labels:
                 end = start + len(labels[start])
                 record = {**record, "end": end}
-            elif record["kind"] == "application":
+            elif record["kind"] in {"application", "pattern"}:
                 end = include_closing_parentheses(source, start, end)
                 record = {**record, "end": end}
             if not (1 <= start < end <= len(source) + 1):
@@ -263,14 +284,17 @@ def normalize(source_root: Path, html_dir: Path, trace_path: Path,
             target = ((module, start) if record["kind"] == "binding"
                       else targets.get(start))
             if imprecise_type(type_):
-                if record["kind"] in {"application", "binding"}:
+                if record["kind"] in {"application", "pattern", "binding"}:
                     unresolved.append(f"{module}:{start}-{end} {fragment}: {type_}")
                 continue
-            if record["kind"] == "application":
-                nodes.append({
+            if record["kind"] in {"application", "pattern"}:
+                node = {
                     "start": start, "end": end, "kind": "application",
                     "source": fragment, "type": type_,
-                })
+                }
+                if record["kind"] == "pattern":
+                    node["context"] = "pattern"
+                nodes.append(node)
                 continue
             if target is None:
                 continue
@@ -362,6 +386,7 @@ def main(argv=None) -> int:
     parser.add_argument("--trace", required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--module", action="append", default=[])
+    parser.add_argument("--require-natural-literals", action="store_true")
     args = parser.parse_args(argv)
 
     source_root = Path(args.src).resolve()
@@ -372,6 +397,10 @@ def main(argv=None) -> int:
         source_root, Path(args.html_dir).resolve(), trace,
         set(args.module) or None,
     )
+    if args.require_natural_literals:
+        findings = nonliteral_naturals(data, source_root)
+        if findings:
+            raise RuntimeError('natural-number literal lint failed:\n  ' + '\n  '.join(findings))
     write_json_atomic(Path(args.out), data)
     if not args.module:
         compact_trace(trace, compact)

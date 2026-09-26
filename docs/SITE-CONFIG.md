@@ -74,6 +74,7 @@ not a sandbox for executing untrusted authors' documents.
 | `glossary` | Optional glossary TOML; absent means no project terminology |
 | `highlighted`, `types`, `expression_types` | Optional compiler package paths |
 | `favicon`, `logo` | Required project SVG favicon; optional logo defaults to that explicit asset |
+| `stylesheets` | Optional project-relative CSS paths for instance-specific figures or branding; published as versioned assets after framework styles and included in diagram-style lint |
 | `landing_module` | Overview chapter embedded in the interactive contents |
 | `prelude_module` | Optional teaching-vocabulary reexport point; empty disables forwarding |
 | `hubs` | Graph hub modules, explicitly validated against the corpus |
@@ -91,6 +92,7 @@ not a sandbox for executing untrusted authors' documents.
 | `agent.translations` | Optional localized `docTitle`, `intro`, `hProject`, `fLibrary`, `project`, `want` copy |
 | `policies.formal_setup`, `policies.trilingual` | Explicit booleans, both strict by default |
 | `policies.level_name_convention` | Boolean, default false: opt into the book-wide convention that `ℓ` and supported suffixes are level parameters |
+| `policies.natural_literal_default` | Boolean, default false: attach natural-number type help to bare numeric literals in Agda surfaces when that is the project's authoring convention |
 | `agda_policy` | Required options, bare-open hubs, prelude public-name data, empty-family and projection conventions |
 | `variable_legacy` | Optional versioned exact legacy inline-variable allowances |
 | `policies.inline_math_review` | Boolean, strict by default: permits figures, standalone displays and standardized figure-reference paragraphs; other inline LaTeX needs explicit human approval |
@@ -141,6 +143,10 @@ The transport includes `preludeModule` from `prelude_module` and
 still depends on compiler/binder evidence; the policy does not infer expressions
 or rename primitives. Visible branding, source URLs, module exceptions and Ask AI
 project text are supplied by configuration.
+`naturalLiteralDefault` is likewise an explicit transport flag. The generic renderer does not assume that an unqualified number
+has type `ℕ`; the source notation lens requires compiler expression types for
+`Fin` constructor values and open `ℕ` successors. The original Agda subtree is
+kept for copying, links and semantic hover.
 
 ## Lint and publication
 

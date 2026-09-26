@@ -10,11 +10,14 @@
 %%HREFLANG%%
 %%ALTMD%%
   <link rel="help" type="text/markdown" href="%%BASEURL%%/llms.txt" title="Site guide for AI agents" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
   <link rel="stylesheet" href="%%BASEURL%%/static/outcrop.css?v=%%CSSVER%%" />
   <link rel="stylesheet" href="%%BASEURL%%/static/reading-routes.css?v=%%ROUTECSSVER%%" />
   <link rel="stylesheet" href="%%BASEURL%%/static/ask-ai.css?v=%%ASKCSSVER%%" />
   <link rel="stylesheet" href="%%BASEURL%%/static/appearance.css?v=%%APPEARANCECSSVER%%" />
+%%PROJECTCSS%%
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+        crossorigin="anonymous" media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" /></noscript>
   <link rel="icon" href="%%BASEURL%%/static/assets/favicon.svg" />
 %%JSONLD%%
   <script>
@@ -24,6 +27,8 @@
           onload="document.dispatchEvent(new Event('outcrop:math-ready'))"></script>
   <script src="%%BASEURL%%/static/%%RUNTIME%%/appearance.js"></script>
   <script defer src="%%BASEURL%%/static/%%RUNTIME%%/universe-levels.js"></script>
+  <script defer src="%%BASEURL%%/static/%%RUNTIME%%/mathematical-notation.js"></script>
+  <script defer src="%%BASEURL%%/static/%%RUNTIME%%/code-preview.js"></script>
   <script type="module" src="%%BASEURL%%/static/%%RUNTIME%%/outcrop.js"></script>
   <script defer src="%%BASEURL%%/static/%%RUNTIME%%/ask-ai.js"></script>
 </head>
@@ -37,10 +42,18 @@
     <a id="brand" href="%%BASEURL%%/%%LANG%%/index.html"><img class="brand-logo"
        src="%%BASEURL%%/static/assets/logo.svg" alt="" />%%SITE%%</a>
     <div class="topbar-spacer"></div>
-    <div class="search-form" role="search">
+    <button id="search-toggle" class="header-disclosure" type="button" title="%%S_SEARCH%%"
+            aria-label="%%S_SEARCH%%" aria-controls="header-search" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
+    </button>
+    <div id="header-search" class="search-form" role="search">
       <input id="search-box" type="text" placeholder="%%S_SEARCH%%" autocomplete="off" aria-label="%%S_SEARCH%%" />
       <div id="search-results" role="listbox" hidden></div>
     </div>
+    <button id="language-toggle" class="header-disclosure" type="button" title="%%S_LANGUAGE%%"
+            aria-label="%%S_LANGUAGE%%" aria-controls="lang-switch" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 5h12M9 3v2M5 5c1 5 4 8 9 10M13 5c-1 5-4 8-10 11M14 21l4-10 4 10M16 17h4"/></svg>
+    </button>
     <nav id="lang-switch" aria-label="language">%%LANGNAV%%</nav>
     <button id="theme-toggle" type="button" title="%%S_THEME%%" aria-label="%%S_THEME%%">◐</button>
   </header>

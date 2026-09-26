@@ -11,18 +11,22 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
     var view = null;
     var isModalDocument = isDefinitionModalDocument;
     var copy = ({
-      en: { title: "Definition", loading: "Loading definition…",
-        missing: "The target definition could not be loaded from this page.", close: "Close",
+      en: { title: "Definition", loading: "Loading definition…", loadingPage: "Loading page…",
+        missing: "The target definition could not be loaded from this page.",
+        missingPage: "The linked passage could not be loaded from this page.", close: "Close",
         back: "Back", forward: "Forward", jump: "Go to this location" },
-      zh: { title: "定义", loading: "正在载入定义…",
-        missing: "无法从该页面载入目标定义。", close: "关闭",
+      zh: { title: "定义", loading: "正在载入定义…", loadingPage: "正在载入正文…",
+        missing: "无法从该页面载入目标定义。",
+        missingPage: "无法从该页面载入链接所指的正文。", close: "关闭",
         back: "后退", forward: "前进", jump: "跳转进入" },
-      ja: { title: "定義", loading: "定義を読み込んでいます…",
-        missing: "このページから対象の定義を読み込めませんでした。", close: "閉じる",
+      ja: { title: "定義", loading: "定義を読み込んでいます…", loadingPage: "本文を読み込んでいます…",
+        missing: "このページから対象の定義を読み込めませんでした。",
+        missingPage: "リンク先の本文を読み込めませんでした。", close: "閉じる",
         back: "戻る", forward: "進む", jump: "この位置へ移動" }
     })[cfg.lang] || {
-      title: "Definition", loading: "Loading definition…",
-      missing: "The target definition could not be loaded from this page.", close: "Close",
+      title: "Definition", loading: "Loading definition…", loadingPage: "Loading page…",
+      missing: "The target definition could not be loaded from this page.",
+      missingPage: "The linked passage could not be loaded from this page.", close: "Close",
       back: "Back", forward: "Forward", jump: "Go to this location"
     };
 
@@ -40,6 +44,27 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
       var filename = decodeURIComponent(url.pathname.split("/").pop() || "");
       return { url: url, module: spec ? spec.split("#")[0] : filename.replace(/\.html$/, "") };
     }
+    function proseTargetFor(link) {
+      if (!link || (!link.closest("article") && !link.hasAttribute("data-content-modal"))
+          || link.closest("nav, #reading-explorer")) return null;
+      if (link.closest(".Agda, code") || link.hasAttribute("download")
+          || (link.target && link.target !== "_self")) return null;
+      var url;
+      try { url = new URL(link.getAttribute("href"), document.baseURI); }
+      catch (_) { return null; }
+      var samePageAnchor = !!url.hash
+        && url.pathname === new URL(document.baseURI).pathname;
+      if (url.origin !== location.origin
+          || (!/\.(?:html?)$/i.test(url.pathname) && !samePageAnchor)) return null;
+      // These anchors select the directory's application views, not book content.
+      if (/^#(?:reading-explorer|dependency-map|term-glossary)$/.test(url.hash)) return null;
+      url.searchParams.delete("outcrop-modal");
+      url.searchParams.delete("outcrop-modal-scroll");
+      return { url: url, module: decodeURIComponent(url.pathname.split("/").pop() || "").replace(/\.html?$/, ""), kind: "prose" };
+    }
+    document.querySelectorAll("article a[href]").forEach(function (link) {
+      if (proseTargetFor(link)) link.setAttribute("aria-haspopup", "dialog");
+    });
     function close() {
       if (!view) return;
       var focus = view.opener;
@@ -142,7 +167,7 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
       indicator.className = "definition-modal-loading-indicator";
       indicator.setAttribute("aria-hidden", "true");
       var loadingText = document.createElement("span");
-      loadingText.textContent = copy.loading;
+      loadingText.textContent = entry.target.kind === "prose" ? copy.loadingPage : copy.loading;
       loading.append(indicator, loadingText);
       var frame = document.createElement("iframe");
       frame.className = "definition-modal-frame";
@@ -159,7 +184,7 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
         failed = true;
         view.body.setAttribute("aria-busy", "false");
         loading.classList.add("is-error");
-        loadingText.textContent = copy.missing;
+        loadingText.textContent = entry.target.kind === "prose" ? copy.missingPage : copy.missing;
         indicator.remove();
         view.body.replaceChildren(loading);
       }
@@ -177,7 +202,8 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
       /* A frame URL with a fragment starts a second, native anchor scroll which
          can race the code-block alignment, especially in mobile WebKit. */
       frameUrl.hash = "";
-      frame.addEventListener("load", function () {
+      var readyAttempts = 0;
+      frame.addEventListener("load", function onFrameLoad() {
         if (!isCurrentFrame()) return;
         var frameDocument, loadedUrl;
         try {
@@ -186,6 +212,19 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
         } catch (_) { showMissing(); return; }
         if (definitionPageKey(loadedUrl) !== definitionPageKey(entry.target.url)) {
           showMissing();
+          return;
+        }
+        // The parent owns this reading plane. Apply its scroll-container class
+        // here as well as in the child runtime: on a cold/slow load the iframe
+        // may fire `load` before its module initialization has decorated the
+        // root, leaving #main-content non-scrollable during first alignment.
+        frameDocument.documentElement.classList.add("definition-modal-document");
+        if (frameDocument.documentElement.dataset.outcropReaderReady !== "true") {
+          // The iframe's load event does not guarantee its module graph has
+          // initialized the sticky directory. Align only after that handshake;
+          // otherwise a cold mirror can appear at the wrong chapter position.
+          if (++readyAttempts > 400) { showMissing(); return; }
+          setTimeout(onFrameLoad, 50);
           return;
         }
         var id;
@@ -208,17 +247,43 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
         var moduleName = chapterConfig.chapter || entry.target.module;
         var definitionName = entry.label.indexOf(moduleName + ".") === 0
           ? entry.label.slice(moduleName.length + 1) : entry.label;
-        var titleName = document.createElement("code");
-        titleName.className = "Agda";
-        var titleToken = document.createElement("span");
-        titleToken.className = target.getAttribute("class") || "";
-        titleToken.textContent = definitionName;
-        titleName.appendChild(titleToken);
-        view.title.replaceChildren(document.createTextNode(chapterText + " "), titleName);
-        frame.title = chapterText + " " + definitionName;
-        var targetBlock = target.closest("pre.Agda, h1") || target;
+        if (entry.target.kind === "prose") {
+          var sectionLabel = target.closest("h1, h2, h3, h4")?.textContent.trim()
+            || entry.label;
+          var heading = sectionLabel && sectionLabel !== chapterText
+            ? chapterText + " · " + sectionLabel : chapterText;
+          view.title.textContent = heading;
+          frame.title = heading;
+        } else {
+          var titleName = document.createElement("code");
+          titleName.className = "Agda";
+          var titleToken = document.createElement("span");
+          titleToken.className = target.getAttribute("class") || "";
+          titleToken.textContent = definitionName;
+          titleName.appendChild(titleToken);
+          view.title.replaceChildren(document.createTextNode(chapterText + " "), titleName);
+          frame.title = chapterText + " " + definitionName;
+        }
+        // Prelude re-exports are introduced by their explanatory import. In
+        // the inspection modal show that import's enclosing section first,
+        // including nested sections. Keep the definition URL/identity itself
+        // unchanged for history, enter-page and same-definition navigation.
+        var importSection = preludeImportSection(entry, target);
+        var targetBlock = importSection || (entry.target.kind === "prose"
+          ? target.closest("pre.Agda, figure, h1, h2, h3, h4, p, li, table") || target
+          : chapterConfig.external && target.closest("pre.Agda")
+            // External Agda HTML has one pre for the whole module. Aligning its
+            // top sends every definition to the start of the file instead of
+            // its declaration line; internal chapters use one pre per block.
+            ? target : target.closest("pre.Agda, h1") || target);
         var scroller = sizeModalReadingScroller(frameDocument, view.body);
         if (!scroller) {
+          showMissing();
+          return;
+        }
+        if (frame.contentWindow.getComputedStyle(scroller).overflowY !== "auto") {
+          // A missing stylesheet must not expose a seemingly valid modal at
+          // the top of the chapter with an inert anchor.
           showMissing();
           return;
         }
@@ -307,6 +372,19 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
       push(target, qualifiedLabel(target, name), link);
     }
 
+    function preludeImportSection(entry, target) {
+      if (entry.target.module !== cfg.preludeModule) return null;
+      var code = target.closest('pre.Agda');
+      if (!code || !/(?:^|\n)\s*(?:open\s+)?import\s+\S/u.test(code.textContent)) return null;
+      var article = code.closest('article');
+      if (!article) return null;
+      var section = null;
+      article.querySelectorAll('h2[id], h3[id], h4[id], h5[id], h6[id]').forEach(function (heading) {
+        if (heading.compareDocumentPosition(code) & Node.DOCUMENT_POSITION_FOLLOWING) section = heading;
+      });
+      return section;
+    }
+
     document.addEventListener("click", function (event) {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       var clickedLink = event.target.closest && event.target.closest("a[href]");
@@ -319,9 +397,27 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
       var definitionLink = clickedLink.matches(
         '.Agda a[href], .type-definition-link[href], [data-hover-navigate="modal"]'
       ) ? clickedLink : null;
+      if (!definitionLink && event.defaultPrevented) return;
       var target = targetFor(definitionLink);
-      if (!target) {
+      var proseTarget = !definitionLink && !event.defaultPrevented
+        ? proseTargetFor(clickedLink) : null;
+      if (proseTarget) {
+        event.preventDefault();
+        event.stopPropagation();
+        var proseLabel = clickedLink.textContent.trim() || proseTarget.module;
         if (isModalDocument && window.parent !== window) {
+          window.parent.postMessage({ type: "outcrop-prose-open",
+            href: proseTarget.url.href, module: proseTarget.module,
+            label: proseLabel }, location.origin);
+        } else {
+          push(proseTarget, proseLabel, clickedLink);
+        }
+        return;
+      }
+      if (!target) {
+        if (isModalDocument && window.parent !== window && !event.defaultPrevented
+            && !clickedLink.hasAttribute('download')
+            && (!clickedLink.target || clickedLink.target === '_self')) {
           var pageTarget;
           try { pageTarget = new URL(clickedLink.href, document.baseURI); }
           catch (_) { return; }
@@ -380,7 +476,8 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
         location.href = pageUrl.href;
         return;
       }
-      if (event.data.type !== "outcrop-definition-open") return;
+      if (event.data.type !== "outcrop-definition-open"
+          && event.data.type !== "outcrop-prose-open") return;
       var targetUrl;
       try { targetUrl = new URL(event.data.href, document.baseURI); }
       catch (_) { return; }
@@ -389,10 +486,13 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
       var current = session.current;
       if (current && definitionPageKey(current.target.url) === definitionPageKey(targetUrl)
           && current.target.url.hash === targetUrl.hash) {
-        location.href = targetUrl.href;
+        if (event.data.type === "outcrop-definition-open") location.href = targetUrl.href;
+        else renderHistoryEntry();
         return;
       }
-      push({ url: targetUrl, module: event.data.module }, event.data.label, view.opener);
+      push({ url: targetUrl, module: event.data.module,
+        kind: event.data.type === "outcrop-prose-open" ? "prose" : "definition" },
+        event.data.label, view.opener);
     });
     document.addEventListener("keydown", function (event) {
       if (event.key !== "Escape" || event.defaultPrevented) return;

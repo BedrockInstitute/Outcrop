@@ -70,6 +70,8 @@ import { cfg } from "./document.js";
         recap.textContent = term.recap;
         var link = document.createElement("a");
         link.href = term.href;
+        link.setAttribute("data-content-modal", "");
+        link.setAttribute("aria-haspopup", "dialog");
         link.textContent = introLabel + introSeparator + term.chapter;
         var close = document.createElement("button");
         close.className = "term-popup-close";

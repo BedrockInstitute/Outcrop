@@ -24,12 +24,17 @@ class AssetBundle:
                 digest.update(name.encode() + b'\0' + data + b'\0')
         self.runtime = 'runtime/' + digest.hexdigest()[:16]
 
-    def template(self, template):
+    def template(self, template, *, stylesheets=()):
         slots = {'CSS': 'outcrop.css', 'ROUTECSS': 'reading-routes.css',
                  'ASKCSS': 'ask-ai.css', 'APPEARANCECSS': 'appearance.css'}
         for slot, name in slots.items():
             version = hashlib.sha256(self.files.get(name, b'')).hexdigest()[:16]
             template = template.replace('%%' + slot + 'VER%%', version)
+        links = []
+        for name in stylesheets:
+            version = hashlib.sha256(self.files[name]).hexdigest()[:16]
+            links.append(f'  <link rel="stylesheet" href="%%BASEURL%%/static/{name}?v={version}" />')
+        template = template.replace('%%PROJECTCSS%%', '\n'.join(links))
         return template.replace('%%RUNTIME%%', self.runtime)
 
     def publish(self, destination):

@@ -66,6 +66,14 @@ class SiteConfig:
             if not isinstance(value, str):
                 raise ValueError(f'{field}: expected a relative path string')
             setattr(self, field, relative_path(value, field) if value else '')
+        self.stylesheets = values.get('stylesheets', [])
+        if (not isinstance(self.stylesheets, list) or
+                any(not isinstance(value, str) or not value.endswith('.css')
+                    for value in self.stylesheets)):
+            raise ValueError('stylesheets: expected a list of project CSS paths')
+        self.stylesheets = [relative_path(value, 'stylesheets') for value in self.stylesheets]
+        if len(set(self.stylesheets)) != len(self.stylesheets):
+            raise ValueError('stylesheets: duplicate path')
         if not isinstance(values.get('base_url', ''), str):
             raise ValueError('base_url: expected a string')
         self.base_url = values.get('base_url', '').rstrip('/')
@@ -159,7 +167,8 @@ class SiteConfig:
         if not isinstance(self.policies, dict):
             raise ValueError('policies: expected an object')
         for field, value in self.policies.items():
-            if field not in {'formal_setup', 'trilingual', 'level_name_convention', 'inline_math_review'}:
+            if field not in {'formal_setup', 'trilingual', 'level_name_convention', 'inline_math_review',
+                             'natural_literal_default'}:
                 raise ValueError(f'policies.{field}: unsupported policy')
             if type(value) is not bool:
                 raise ValueError(f'policies.{field}: expected a boolean')

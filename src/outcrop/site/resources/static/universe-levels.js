@@ -15,7 +15,7 @@
   }
   var operations = {"ℓ-zero": "zero", "lzero": "zero", "ℓ-suc": "suc", "lsuc": "suc", "ℓ-max": "max", "⊔": "join"};
   var containers = "pre.Agda, code.Agda, .Agda.inline-code, .single-line-code > code, .type-value.Agda";
-  var excluded = ".universe-notation, [data-universe-raw], .appearance-preview, .Comment, .String, .Pragma, script, style, template";
+  var excluded = ".source-notation, [data-universe-raw], [data-source-raw], [data-outcrop-notation='source'], .appearance-preview, .Comment, .String, .Pragma, script, style, template";
 
   // Parse only this tiny, closed grammar, never infer a level from arbitrary ⊔/0/⁺.
   function parse(tokens, start, known, argument, levelAtom, atomOnly) {
@@ -76,7 +76,7 @@
   }
   function markConventionalLevels(scope) {
     if (!config.levelNameConvention) return;
-    var skip = '.universe-notation, .universe-source, .universe-parameter, script, style, template, textarea, input, select, [contenteditable], svg, math';
+    var skip = '.source-notation, .universe-source, .universe-parameter, script, style, template, textarea, input, select, [contenteditable], svg, math';
     if (scope.closest(skip)) return;
     var walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT), nodes = [], node;
     while ((node = walker.nextNode())) {
@@ -97,7 +97,7 @@
     var nodes = Array.from(scope.querySelectorAll(selector));
     if (scope.matches(selector)) nodes.unshift(scope);
     nodes.forEach(function (node) {
-      if (!node.closest('.universe-notation, .universe-source, .appearance-preview')
+      if (!node.closest('.source-notation, .universe-source, .appearance-preview')
           && !node.parentElement.closest('.universe-parameter')
           && !Object.prototype.hasOwnProperty.call(operations, node.textContent.trim()))
         node.classList.add('universe-parameter');
@@ -167,8 +167,8 @@
       range.surroundContents(span);
     });
   }
-  function sourceMarkup(fragment) {
-    var holder = document.createElement("span"); holder.setAttribute("data-universe-raw", "");
+  function sourceMarkup(fragment, kind) {
+    var holder = document.createElement("span"); holder.setAttribute(kind === 'universe' ? "data-universe-raw" : "data-source-raw", "");
     holder.appendChild(fragment.cloneNode(true));
     var moduleName = (window.outcrop || {}).chapter || (window.outcrop || {}).module || "";
     holder.querySelectorAll("[id]").forEach(function (node) { node.removeAttribute("id"); });
@@ -187,18 +187,22 @@
     holder.querySelectorAll(".universe-parameter").forEach(function (node) { node.classList.remove("universe-parameter"); });
     return holder.outerHTML;
   }
-  function badge(source, label) {
-    var element = document.createElement("span"); element.className = "universe-notation";
-    element.dataset.levelMath = label;
-    element.dataset.hoverHtml = sourceMarkup(source);
+  function makeBadge(source, kind, label, options) {
+    options = options || {};
+    var element = document.createElement("span"); element.className = kind + "-notation source-notation";
+    element.dataset.sourceKind = kind;
+    element.dataset.mathLabel = label;
+    if (kind === 'universe') element.dataset.levelMath = label;
+    element.dataset.hoverHtml = (options.typeHtml ? '<span class="source-notation-type Agda">' + options.typeHtml + '</span>' : '') + sourceMarkup(source, kind);
     element.setAttribute("role", "button"); element.setAttribute("tabindex", "0");
     element.setAttribute("aria-haspopup", "dialog"); element.setAttribute("aria-expanded", "false");
-    var copy = {zh: "宇宙层级：{level}。展开原始 Agda 代码", ja: "宇宙レベル：{level}。元の Agda コードを表示", en: "Universe level: {level}. Show original Agda code"};
-    element.setAttribute("aria-label", (copy[document.documentElement.lang] || copy.en).replace("{level}", label));
+    var copy = {zh: "{label}。展开原始 Agda 代码", ja: "{label}。元の Agda コードを表示", en: "{label}. Show original Agda code"};
+    element.setAttribute("aria-label", (copy[document.documentElement.lang] || copy.en).replace("{label}", label));
     var original = document.createElement("span"); original.className = "universe-source";
     original.setAttribute("aria-hidden", "true"); original.setAttribute("inert", "");
     original.appendChild(source); element.appendChild(original); return element;
   }
+  function badge(source, label) { return makeBadge(source, 'universe', label); }
   function decorate(scope) {
     if (scope.closest(excluded)) return;
     markParameters(scope);
@@ -283,6 +287,7 @@
     });
   }
   window.outcropUniverseLevels = {scan: scan};
+  window.outcropSourceNotation = {makeBadge: makeBadge};
   document.addEventListener("DOMContentLoaded", function () {
     collectPageLevels();
     scan(document.body);

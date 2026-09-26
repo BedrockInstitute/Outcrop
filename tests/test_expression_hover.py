@@ -19,12 +19,15 @@ import sys
 
 from outcrop.core.agda_semantics import (
     add_prelude_qualified_names, annotate_expression_nodes, annotate_unlinked_bound_types,
+    closed_natural_constructor,
     decorate_type_nodes, index_definitions, is_universe_former_signature,
     local_signature_types, names_by_position, qualified_name_pattern, resolve_type_hover_links,
+    simplify_vacuous_signature_binder,
 )
 from outcrop.core.agda_semantics import AgdaSemantics
 from outcrop.site.site_config import SiteConfig
 from outcrop.site.site_inputs import SourceCorpus
+from outcrop.site.compiler_index import build_code_context
 semantics = AgdaSemantics(prelude_module='Base.Prelude')
 
 
@@ -120,7 +123,7 @@ var definitionAction = function (href, name) { return {href: href, name: name}; 
 var document = {
   createElement: function () {
     return {children: [], dataset: {}, isConnected: true,
-      classList: {add: function () {}},
+      classList: {add: function () {}, toggle: function () {}},
       setAttribute: function () {},
       removeAttribute: function () {},
       replaceChildren: function () { this.children = []; },
@@ -653,6 +656,67 @@ console.log(JSON.stringify(
         self.assertLess(rendered.index('data-expr-id="1"'), rendered.index('data-expr-id="2"'))
         self.assertIn('<a id="14">x</a></span></span>', rendered)
 
+    def test_nat_successor_notation_uses_certified_type_and_exact_depth(self):
+        for count in range(1, 5):
+            expression = 'n'
+            for _ in range(count):
+                expression = 'suc ' + (f'({expression})' if expression != 'n' else expression)
+            block = f'<pre class="Agda"><a id="10">{expression}</a></pre>'
+            node = {'id': count, 'start': 10, 'end': 10 + len(expression),
+                    'kind': 'application', 'source': expression, 'type': 'ℕ'}
+            rendered = annotate_expression_nodes(block, [node])
+            self.assertIn('data-source-notation="nat-suc"', rendered)
+            self.assertIn(f'data-notation-count="{count}"', rendered)
+            self.assertIn('data-notation-value="n"', rendered)
+            self.assertNotIn('data-source-notation="nat-suc"',
+                             annotate_expression_nodes(block, [{**node, 'type': 'Fin 5'}]))
+
+    def test_fin_constructor_notation_does_not_rewrite_nat_or_patterns(self):
+        self.assertEqual(closed_natural_constructor('suc (suc zero)'), 2)
+        self.assertEqual(closed_natural_constructor('suc ((suc zero))'), 2)
+        self.assertIsNone(closed_natural_constructor('suc n'))
+        self.assertIsNone(closed_natural_constructor('(zero) (zero)'))
+        source = 'suc (suc zero)'
+        block = f'<pre class="Agda"><a id="10">{source}</a></pre>'
+        node = {'id': 1, 'start': 10, 'end': 10 + len(source),
+                'kind': 'application', 'source': source, 'type': 'Fin 3'}
+        rendered = annotate_expression_nodes(block, [node])
+        self.assertIn('data-source-notation="fin"', rendered)
+        self.assertIn('data-notation-value="2"', rendered)
+        self.assertNotIn('data-source-notation="nat-suc"', rendered)
+
+    def test_short_hover_type_keeps_its_space_on_one_line(self):
+        css = (RESOURCES / 'static/outcrop.css').read_text()
+        javascript = source('hover')
+        self.assertIn("namePopup.classList.toggle('compact-type'", javascript)
+        self.assertRegex(css, r'\.name-hover-popup\.compact-type\s+\.type-value\s*\{[^}]*white-space:\s*pre;')
+
+    def test_semantic_literal_lint_does_not_confuse_fin_with_natural_numbers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'Demo.lagda.md'
+            path.write_text('```agda\nn = suc zero\nf = suc zero\nz = zero\nzero : ℕ\ng zero = 1\n```\n')
+            natural = path.read_text().index('suc zero') + 1
+            fin = path.read_text().index('suc zero', natural) + 1
+            standalone = path.read_text().index('z = zero') + len('z = ') + 1
+            declaration = path.read_text().index('zero : ℕ') + 1
+            pattern = path.read_text().index('g zero') + len('g ') + 1
+            nodes = {'Demo': [
+                {'start': natural, 'end': natural + 8, 'source': 'suc zero',
+                 'type': 'ℕ', 'kind': 'application'},
+                {'start': fin, 'end': fin + 8, 'source': 'suc zero',
+                 'type': 'Fin 3', 'kind': 'application'},
+                {'start': standalone, 'end': standalone + 4, 'source': 'zero',
+                 'type': 'ℕ', 'kind': 'definition'},
+                {'start': declaration, 'end': declaration + 4, 'source': 'zero',
+                 'type': 'ℕ', 'kind': 'declaration'},
+                {'start': pattern, 'end': pattern + 4, 'source': 'zero',
+                 'type': 'ℕ', 'kind': 'application', 'context': 'pattern'},
+            ]}
+            self.assertEqual(len(extractor.nonliteral_naturals(nodes, root)), 2)
+            self.assertIn('write 1', extractor.nonliteral_naturals(nodes, root)[0])
+            self.assertIn('write 0', extractor.nonliteral_naturals(nodes, root)[1])
+
     def test_multiline_range_reuses_one_node_without_painting_indentation(self):
         block = ('<pre class="Agda"><a id="10">f</a> <a id="12">x</a>\n'
                  '    <a id="20">y</a></pre>')
@@ -730,6 +794,48 @@ console.log(JSON.stringify(
         types = local_signature_types(block, "Demo")
         self.assertEqual(set(types), {"40", "42"})
         self.assertEqual(types["40"]["type"], types["42"]["type"])
+
+    def test_imprecise_interaction_type_uses_highlighted_constructor_signature(self):
+        block = ('<pre class="Agda">\n'
+                 '  <a id="Box.wrap"></a><a id="40" href="Demo.html#40" '
+                 'class="InductiveConstructor">wrap</a> '
+                 '<a id="44" class="Symbol">:</a> '
+                 '<a id="46" class="Symbol">(</a>'
+                 '<a id="47" href="Demo.html#47" class="Bound">a</a> '
+                 '<a id="49" class="Symbol">:</a> '
+                 '<a id="51" href="Demo.html#10" class="Datatype">A</a>'
+                 '<a id="52" class="Symbol">)</a> '
+                 '<a id="54" class="Symbol">→</a> '
+                 '<a id="56" href="Demo.html#10" class="Datatype">A</a> '
+                 '<a id="58" href="Demo.html#20" class="Datatype">/</a> '
+                 '<a id="60" href="Demo.html#30" class="Bound">R</a>\n</pre>')
+        signature = local_signature_types(block, "Demo")["40"]["type"]
+        self.assertIn('InductiveConstructor', local_signature_types(block, "Demo")["40"]["aspect"])
+        simplified = simplify_vacuous_signature_binder(signature)
+        self.assertNotIn('>a</a>', simplified)
+        self.assertIn('>A</a> <a class="Symbol">→</a> <a', simplified)
+        self.assertTrue(simplified.endswith('>R</a>'))
+        self.assertEqual(semantics.build_types(
+            ["Demo"], {"Demo": {"Box.wrap": "40"}},
+            {"Demo": {"Box.wrap": "_A_4 → _A_4 / _R_5"}}, {}, {"Demo": {"40": "InductiveConstructor"}}
+        ), {"Demo": {}})
+        corpus = type('Corpus', (), {'read': lambda _self, _module: (block, False)})()
+        code = build_code_context(corpus, {'Demo'}, ['Demo'], semantics,
+                                  {'Demo': {'Box.wrap': '_A_4 → _A_4 / _R_5'}}, {})
+        self.assertEqual(re.sub(r'<[^>]+>', '', code.types['Demo']['40']), 'A → A / R')
+        expanded = build_code_context(corpus, {'Demo'}, ['Demo'], semantics,
+                                      {'Demo': {'Box.wrap': '{A : Type} {R : A → A → Type} → A → A / R'}}, {})
+        self.assertEqual(re.sub(r'<[^>]+>', '', expanded.types['Demo']['40']), 'A → A / R')
+        overloaded = build_code_context(corpus, {'Demo'}, ['Demo'], semantics,
+                                        {'Demo': {'Box.wrap': 'Wrong → Wrong'}}, {})
+        self.assertEqual(re.sub(r'<[^>]+>', '', overloaded.types['Demo']['40']), 'A → A / R')
+        dependent = signature.replace(
+            '<a href="Demo.html#10" class="Datatype">A</a> '
+            '<a href="Demo.html#20"',
+            '<a href="Demo.html#47" class="Bound">a</a> '
+            '<a href="Demo.html#20"',
+        )
+        self.assertEqual(simplify_vacuous_signature_binder(dependent), dependent)
 
     def test_selected_preview_finds_referenced_type_sidecars(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -985,6 +1091,9 @@ console.log(JSON.stringify(
         self.assertIn('frame.className = "definition-modal-frame";', javascript)
         self.assertIn('frameUrl.searchParams.set("outcrop-modal", "1");', javascript)
         self.assertIn('classList.add("definition-modal-document")', javascript)
+        self.assertIn('dataset.outcropReaderReady !== "true"', javascript)
+        self.assertIn("document.documentElement.dataset.outcropReaderReady = 'true';",
+                      (RESOURCES / "static" / "outcrop.js").read_text())
         self.assertIn('#site-header, #nav-backdrop, .skip-link, #toc, #sidenote-container,',
                       stylesheet)
         self.assertIn('#site-footer\n) { display: none !important; }', stylesheet)
@@ -995,8 +1104,11 @@ console.log(JSON.stringify(
             'padding-bottom: calc(3rem + var(--definition-modal-anchor-room, 0px));',
             stylesheet,
         )
-        self.assertIn('var targetBlock = target.closest("pre.Agda, h1") || target;',
+        self.assertIn('target.closest("pre.Agda, h1") || target',
                       javascript)
+        self.assertIn('target.closest("pre.Agda, figure, h1, h2, h3, h4, p, li, table")',
+                      javascript)
+        self.assertIn('type: "outcrop-prose-open"', javascript)
         self.assertIn(
             'function alignModalDefinition(frameDocument, targetBlock)',
             javascript)
@@ -1019,6 +1131,8 @@ console.log(JSON.stringify(
         )
         self.assertIn('type: "outcrop-definition-open"', javascript)
         self.assertIn('type: "outcrop-page-navigate"', javascript)
+        self.assertIn("!clickedLink.hasAttribute('download')", javascript)
+        self.assertIn("(!clickedLink.target || clickedLink.target === '_self')", javascript)
         self.assertIn('location.href = pageUrl.href;', javascript)
         self.assertIn('location.href = targetUrl.href;', javascript)
         self.assertIn('definitionPageKey(loadedUrl) !== definitionPageKey(entry.target.url)', javascript)
@@ -1026,6 +1140,94 @@ console.log(JSON.stringify(
         self.assertIn('.definition-modal-frame {', stylesheet)
         self.assertNotIn('raw.charAt(0) === "#"', modal_javascript)
         self.assertIn('url.searchParams.delete("outcrop-modal");', modal_javascript)
+
+    @unittest.skipUnless(shutil.which("node"), "Node.js is needed for the JavaScript behavior test")
+    def test_only_chapter_prose_and_term_intro_content_links_enter_the_modal(self):
+        javascript = source('definition-modal')
+        helper = re.search(r'^    function proseTargetFor\(link\) \{.*?^    \}',
+                           javascript, re.MULTILINE | re.DOTALL)
+        self.assertIsNotNone(helper)
+        scenario = r'''
+const document = {baseURI: "https://example.test/zh/Base.Choice.html"};
+const location = {origin: "https://example.test"};
+function link(href, {article = true, excluded = false, code = false,
+                     download = false, termIntro = false, target = ""} = {}) {
+  return {
+    target,
+    closest(selector) {
+      if (selector === "article") return article ? {} : null;
+      if (selector === "nav, #reading-explorer") return excluded ? {} : null;
+      if (selector === ".Agda, code") return code ? {} : null;
+      return null;
+    },
+    hasAttribute(name) { return (name === "download" && download)
+      || (name === "data-content-modal" && termIntro); },
+    getAttribute(name) { return name === "href" ? href : null; },
+  };
+}
+const outcomes = {
+  chapter: proseTargetFor(link("Base.Prelude.html#fig-truncation-rec"))?.url.hash,
+  samePage: proseTargetFor(link("#sec-2"))?.url.hash,
+  origin: proseTargetFor(link("index.html#milestones"))?.module,
+  external: proseTargetFor(link("https://other.test/page.html")),
+  directory: proseTargetFor(link("index.html#dependency-map")),
+  navigation: proseTargetFor(link("Base.Prelude.html", {excluded: true})),
+  code: proseTargetFor(link("Base.Prelude.html#123", {code: true})),
+  sidebar: proseTargetFor(link("Base.Prelude.html", {article: false})),
+  termIntro: proseTargetFor(link("Base.Prelude.html#term-marker",
+    {article: false, termIntro: true}))?.url.hash,
+  download: proseTargetFor(link("Base.Prelude.html", {download: true})),
+  newTab: proseTargetFor(link("Base.Prelude.html", {target: "_blank"})),
+};
+document.baseURI = "https://example.test/zh/Base.Choice";
+outcomes.canonicalSamePage = proseTargetFor(link("#sec-2"))?.url.hash;
+process.stdout.write(JSON.stringify(outcomes));
+'''
+        completed = subprocess.run(
+            ["node", "-e", helper.group(0) + "\n" + scenario],
+            text=True, capture_output=True, check=True,
+        )
+        self.assertEqual(json.loads(completed.stdout), {
+            "chapter": "#fig-truncation-rec", "samePage": "#sec-2",
+            "canonicalSamePage": "#sec-2",
+            "origin": "index", "external": None, "directory": None,
+            "navigation": None, "code": None, "sidebar": None,
+            "termIntro": "#term-marker",
+            "download": None, "newTab": None,
+        })
+
+    @unittest.skipUnless(shutil.which("node"), "Node.js is needed for the JavaScript behavior test")
+    def test_prelude_import_modal_aligns_nested_section_without_changing_target(self):
+        javascript = source('definition-modal')
+        helper = re.search(r'^    function preludeImportSection\(entry, target\) \{.*?^    \}',
+                           javascript, re.MULTILINE | re.DOTALL)
+        self.assertIsNotNone(helper)
+        scenario = r'''
+const cfg = {preludeModule: "Base.Prelude"};
+const Node = {DOCUMENT_POSITION_FOLLOWING: 4};
+const h2 = {id: "sec-basic-types", compareDocumentPosition: () => 4};
+const h3 = {id: "sec-natural-numbers", compareDocumentPosition: () => 4};
+const later = {id: "sec-vectors", compareDocumentPosition: () => 2};
+const article = {querySelectorAll: () => [h2, h3, later]};
+const code = {textContent: "open import Cubical.Data.Nat public\n  using ( zero; suc )",
+              closest: selector => selector === "article" ? article : null};
+const target = {closest: selector => selector === "pre.Agda" ? code : null};
+const imported = {target: {module: "Base.Prelude", url: {hash: "#123"}}};
+const section = preludeImportSection(imported, target);
+code.textContent = "zero : ℕ";
+const local = preludeImportSection(imported, target);
+process.stdout.write(JSON.stringify({section: section?.id, local,
+  originalHash: imported.target.url.hash,
+  other: preludeImportSection({target: {module: "Other"}}, target)}));
+'''
+        completed = subprocess.run(
+            [shutil.which("node"), "-e", helper.group(0) + "\n" + scenario],
+            text=True, capture_output=True, check=True,
+        )
+        self.assertEqual(json.loads(completed.stdout), {
+            "section": "sec-natural-numbers", "local": None,
+            "originalHash": "#123", "other": None,
+        })
 
     @unittest.skipUnless(shutil.which("node"), "Node.js is needed for the JavaScript behavior test")
     def test_modal_reading_scroller_uses_explicit_viewport_height(self):
@@ -1313,6 +1515,30 @@ console.log(JSON.stringify({moved: alignModalDefinition(frameDocument, targetBlo
         application = next(node for node in data["Demo"] if node["kind"] == "application")
         self.assertEqual(application["source"], "g x")
         self.assertEqual(len(compact), 2)
+
+    def test_constructor_pattern_trace_is_not_a_natural_literal(self):
+        for kinds in [('pattern', 'application'), ('application', 'pattern')]:
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                src, html_dir = root / 'src', root / 'html'
+                src.mkdir(); html_dir.mkdir()
+                source = '```agda\nf zero = 1\n```\n'
+                path = src / 'Demo.lagda.md'
+                path.write_text(source)
+                (html_dir / 'Demo.md').write_text('')
+                start = source.index('zero') + 1
+                trace = root / 'trace.jsonl'
+                trace.write_text(''.join(json.dumps({
+                    'version': 1, 'run': 'one', 'kind': kind,
+                    'path': str(path.resolve()), 'sourceHash': extractor.source_hash(path),
+                    'start': start, 'end': start + 4, 'type': 'ℕ',
+                }) + '\n' for kind in kinds))
+                data, _ = extractor.normalize(src.resolve(), html_dir.resolve(), trace)
+                self.assertEqual(data['Demo'], [{
+                    'start': start, 'end': start + 4, 'kind': 'application',
+                    'source': 'zero', 'type': 'ℕ', 'context': 'pattern', 'id': 1,
+                }])
+                self.assertEqual(extractor.nonliteral_naturals(data, src), [])
 
     def test_empty_module_needs_no_type_records(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -14,7 +14,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 
 from outcrop.site.assets import AssetBundle
-from outcrop.core.document_renderer import MarkdownDocument
+from outcrop.core.document_renderer import CodeContext, MarkdownDocument
 from outcrop.site.site_config import SiteConfig
 from outcrop.site.site_lint import lint_site
 from outcrop.site.website import build_site
@@ -23,6 +23,49 @@ EXAMPLE = ROOT / 'examples/renderer'
 
 
 class RendererLibraryTests(unittest.TestCase):
+    def test_inline_source_notation_opt_out_is_rendered_not_literal_html(self):
+        source = 'Original `suc n`{.Agda .raw-notation}; later `suc n`{.Agda}.'
+        result = MarkdownDocument(source).render('en')
+        self.assertEqual(result.body.count('data-outcrop-notation="source"'), 1)
+        self.assertNotIn('&lt;span data-outcrop-notation', result.body)
+        self.assertIn('Original `suc n`; later `suc n`.', result.mirror)
+
+    def test_explicit_inline_agda_type_disambiguates_without_guessing_links(self):
+        source = ('`suc zero`{.Agda type="Fin 3"} and '
+                  '`suc zero`{.Agda .raw-notation type="Fin 3"}')
+        result = MarkdownDocument(source).render('en')
+        self.assertEqual(result.body.count('data-agda-inline-type="Fin 3"'), 2)
+        self.assertIn('data-hover-html="&lt;code class=&quot;Agda inline-ref&quot;&gt;Fin 3&lt;/code&gt;"', result.body)
+        self.assertNotIn('data-agda-origin="Agda.Builtin.Nat', result.body)
+        self.assertEqual(result.body.count('data-outcrop-notation="source"'), 1)
+        self.assertIn('`suc zero` and `suc zero`', result.mirror)
+
+    def test_typed_overloaded_constructors_use_compiler_identity_and_unmarked_fallback(self):
+        code = CodeContext(
+            names={'Agda.Builtin.Nat': {'Nat.zero': '12', 'Nat.suc': '15'},
+                   'Cubical.Data.FinData.Base': {'Fin.zero': '20', 'Fin.suc': '25'}},
+            vocabulary={'by_href': {
+                'Agda.Builtin.Nat.html#12': ('Base.Prelude', '40', 'InductiveConstructor', 'zero'),
+                'Cubical.Data.FinData.Base.html#20': ('Base.Prelude', '50', 'InductiveConstructor', 'zero'),
+                'Cubical.Data.FinData.Base.html#25': ('Base.Prelude', '55', 'InductiveConstructor', 'suc'),
+            }, 'inline': {'zero': ('Base.Prelude.html#40', 'InductiveConstructor')}})
+        source = ('`zero`{.Agda type="Fin 3"} '
+                  '`suc zero`{.Agda type="Fin 3"} '
+                  '`zero`{.Agda type="ℕ"} `zero`{.Agda}')
+        body = MarkdownDocument(source, code=code).render('en').body
+        self.assertEqual(body.count('data-agda-origin="Cubical.Data.FinData.Base.html#20"'), 2)
+        self.assertIn('data-agda-origin="Cubical.Data.FinData.Base.html#25"', body)
+        self.assertIn('data-agda-origin="Agda.Builtin.Nat.html#12"', body)
+        self.assertIn('href="Base.Prelude.html#40"', body)  # unmarked legacy fallback
+
+    def test_agda_preview_preserves_one_full_code_surface(self):
+        source = '<!-- outcrop:agda-preview-lines=1 -->\n\n```agda\nx = 1\ny = 2\n```'
+        result = MarkdownDocument(source).render('en')
+        self.assertIn('data-preview-lines="1"', result.body)
+        self.assertEqual(result.body.count('<pre class="Agda">'), 1)
+        self.assertIn('x = 1\ny = 2', re.sub('<[^>]+>', '', result.body))
+        self.assertIn('```agda\nx = 1\ny = 2\n```', result.mirror)
+
     def test_plain_markdown_needs_no_project_or_semantics(self):
         result = MarkdownDocument((EXAMPLE / 'plain.md').read_text()).render('en')
         self.assertIn('A renderer without a project', result.body)
@@ -54,6 +97,8 @@ class RendererLibraryTests(unittest.TestCase):
         for update in ({'sources': '../secret'}, {'sources': 'https:chapter'},
                        {'base_url': '/bad path'}, {'base_url': '/bad\npath'},
                        {'favicon': []}, {'favicon': ''}, {'languages': [{}]}, {'base_url': '//outside'},
+                       {'stylesheets': 'custom.css'}, {'stylesheets': ['../outside.css']},
+                       {'stylesheets': ['custom.js']}, {'stylesheets': ['custom.css', 'custom.css']},
                        {'canonical': 'javascript:alert(1)'}, {'agent': {'translations': {'en': {'fetch': 'code'}}}},
                        {'legacy_pages': {'../old.html': 'index.html'}}, {'agda_policy': {'options': 'not-list'}},
                        {'policies': {'level_name_convention': 'true'}}):
@@ -104,6 +149,25 @@ class RendererLibraryTests(unittest.TestCase):
                               (output / 'en/Sample.Use.md').read_text())
                 self.assertIn('CC0-1.0', page)
                 self.assertEqual((output / 'static/assets/logo.svg').read_bytes(), (EXAMPLE / 'lantern.svg').read_bytes())
+
+    def test_instance_stylesheet_is_versioned_and_not_inherited(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            project = root / 'project'
+            shutil.copytree(EXAMPLE, project)
+            custom = project / 'figures.css'
+            custom.write_text('.example-figure { gap: 1rem; }')
+            configured = SiteConfig.load(project / 'project.json', root=project).with_overrides(
+                stylesheets=['figures.css'])
+            output = root / 'styled'
+            self.assertEqual(build_site(configured, ['--out', str(output), '--langs', 'en']), 0)
+            page = (output / 'en/Sample.Use.html').read_text()
+            self.assertIn('/static/project/style-0.css?v=', page)
+            self.assertEqual((output / 'static/project/style-0.css').read_text(), custom.read_text())
+            plain = root / 'plain'
+            self.assertEqual(build_site(configured.with_overrides(stylesheets=[]),
+                                        ['--out', str(plain), '--langs', 'en']), 0)
+            self.assertNotIn('/static/project/style-0.css', (plain / 'en/Sample.Use.html').read_text())
 
     def test_incremental_page_updates_global_search_without_rewriting_other_pages(self):
         with tempfile.TemporaryDirectory() as folder:

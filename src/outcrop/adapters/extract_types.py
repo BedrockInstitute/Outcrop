@@ -26,6 +26,8 @@ import re
 import subprocess
 import sys
 
+from outcrop.core.agda_type_quality import imprecise_type
+
 
 DEF_RE = re.compile(
     r'<a id="(?P<name>[^"]+)"></a><a id="(?P<pos>\d+)"[^>]*'
@@ -181,7 +183,8 @@ def query(loader_abs, modules, agda):
     result = {}
     for i, m in enumerate(modules):
         contents = responses[i] if i < len(responses) else None
-        result[m] = contents or {}
+        result[m] = {name: type_ for name, type_ in (contents or {}).items()
+                     if not imprecise_type(type_)}
     return result, sum(1 for v in result.values() if v)
 
 
@@ -212,7 +215,7 @@ def query_missing(loader_abs, missing, agda):
         raise RuntimeError('Agda declaration type query returned incomplete responses')
     result = {}
     for (module, name), type_ in zip(expressions, inferred):
-        if type_:
+        if type_ and not imprecise_type(type_):
             result.setdefault(module, {})[name] = type_
     return result
 

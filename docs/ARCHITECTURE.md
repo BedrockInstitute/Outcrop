@@ -34,7 +34,7 @@ copy or patch a website shell to adopt another name or teaching subject.
 | `PageRenderer` | Document composition, headings, navigation and page-level markup |
 | `Publication` | Markdown front matter, browser configuration, agent guide, structured metadata, search/term files and redirects |
 | `reading_routes` / `dependency_graph` | Configured reading order, prerequisite overrides, route membership and shared graph layouts |
-| `AssetBundle` | Captured asset bytes, immutable runtime generation and publication from that same snapshot |
+| `AssetBundle` | Captured asset bytes, immutable runtime generation and publication from that same snapshot; versioned, configured instance CSS follows framework CSS |
 | Core lint engines / `site_lint` | Pure language, code, statement, fold, term, outline and figure rules; configured whole-book orchestration |
 
 `build_site` creates new instance state for every invocation. Building two projects
@@ -91,13 +91,23 @@ Hold-and-slide selection can return from a
 parent expression to its leaf and clears the previous selection. Precise universe
 and primitive stop rules prevent meaningless recursion without a depth cap.
 
-The definition modal lazily fetches the complete original page, including a
-same-page definition, using `outcrop-modal=1`. It removes outer header/footer but
+The inspection modal lazily fetches the complete original page, including a
+same-page definition or prose target, using `outcrop-modal=1`. It removes outer
+header/footer but
 retains sticky contents, code interactions, diagrams and scroll controls. Its one
-history records target definitions and their whole code-block tops, not later
-manual scroll positions. The enter-page action uses that target. Ordinary prose
-links navigate normally, and revisiting the current definition from inside the
-modal enters its page. Loading is theme-aware, inert until ready, cancellable and
+history records target anchors and their code-block or prose-container tops, not
+later manual scroll positions. The enter-page action uses that target. Same-origin
+re-exports in a configured Prelude still retain the exact import-name target,
+but their inspection view aligns the enclosing section (including subsections)
+above its explanatory import; enter-page and history identity remain exact.
+Same-origin
+chapter-prose content links and term-popup introduction links open in this modal,
+including inside its mirrored body. Directory controls, chapter navigation,
+search results, external links and
+modified clicks remain native navigation. External HTTP(S) anchors open a new
+tab with `noopener noreferrer`; local and canonical-origin URLs retain their
+existing navigation or modal behavior. Revisiting the current definition from
+inside the modal enters its page. Loading is theme-aware, inert until ready, cancellable and
 cannot revive a closed modal.
 
 On compact portrait devices, activating code exposes landscape reading. This is
@@ -154,6 +164,15 @@ syntax help and definition navigation. Syntax words, symbolic tokens and neutral
 punctuation retain their separate palettes; terminal built-ins are neutral only
 inside the stopped hover, never globally in ordinary source code.
 
+Body text keeps native language-aware wrapping (`pretty` where supported).
+The reader's line-fit pass retains the terminal-punctuation rescue and measures
+the browser's actual line boxes before trying bounded tracking: English uses
+native word wrapping except for an orphaned final mark, while Chinese and
+Japanese may make a small adjustment only when the ragged edge measurably
+improves. It leaves the final line free and rejects candidates that add a line
+or strand punctuation. No source nodes are split, so links and semantic ranges
+remain stable.
+
 Search covers all configured editions, terms, headings, prose and every rendered
 project/external Agda block. Its worker owns index loading/ranking. Preserve IME,
 keyboard selection, explicit empty/error states and retry. Compact headers expose
@@ -199,7 +218,8 @@ inferred from project names. `lint_site(config, project_checks=...)` can receive
 additional diagnostic-producing callables; JSON configuration cannot execute
 commands.
 
-The shared gate checks both figure source structure and the framework stylesheets:
+The shared gate checks figure source structure, framework stylesheets and any
+configured instance stylesheets:
 non-link diagram relations cannot inherit navigation-link colours. Shared CJK
 prose diagnostics use the same marker/fence grammar in Core and consumer adapters.
 `AgdaPolicy.options_pragma` supplies the exact setup contract to chapter lint and

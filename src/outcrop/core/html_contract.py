@@ -39,7 +39,7 @@ TYPE_COLON_RE = re.compile(r'<a id="\d+" class="Symbol">:</a>[ \t]*')
 LINK_RE = re.compile(r'<a (id="\d+" )?href="([^"#]+)\.html(#\d+)?"([^>]*)>')
 
 
-INLINE_AGDA_RE = re.compile(r'`([^`]+)`\{\.Agda\}')
+INLINE_AGDA_RE = re.compile(r'`([^`]+)`\{\.Agda( \.raw-notation)?(?: type="([^"\n]+)")?\}')
 
 
 INLINE_AGDA_LINK_RE = re.compile(r'\[([^\]]+)\]\(([\w.]+)\.html#([^\s)]+)\)\{\.Agda\}')

@@ -67,3 +67,11 @@ The next function returns the supplied marker unchanged.
 keep : Marker → Marker
 keep value = value
 ```
+
+<!--en-->
+The [next chapter](Sample.Use.html#sec-1) applies this function twice.
+<!--zh-->
+[下一章](Sample.Use.html#sec-1)会把这个函数连续应用两次。
+<!--ja-->
+[次の章](Sample.Use.html#sec-1)ではこの関数を二回適用する。
+<!--/-->

@@ -7,9 +7,11 @@ from outcrop.core.html_contract import PRE_RE, TYPE_NODE_TAG_RE, _BARE_REFERENCE
 from outcrop.core.agda_semantics import (
     add_instantiated_type_aliases, add_prelude_qualified_names, compiler_reference_scope,
     decorate_type_nodes, index_definitions, local_signature_types, names_by_position,
-    qualified_name_pattern, resolve_type_hover_links, semantic_type_index, syntax_notations,
+    qualified_name_pattern, resolve_type_hover_links, semantic_type_index,
+    simplify_vacuous_signature_binder, syntax_notations,
 )
 from outcrop.core.document_renderer import CodeContext
+from outcrop.core.agda_type_quality import imprecise_type
 
 def build_code_context(corpus, internal, rendered, semantics, types_raw, expression_types_raw):
     rendered_set = set(rendered)
@@ -64,8 +66,6 @@ def build_code_context(corpus, internal, rendered, semantics, types_raw, express
     add_prelude_qualified_names(internal_q, prelude_reexports)
     types_by_module = semantics.build_types(rendered, name2pos, types_raw, internal_q,
                                   pos_aspect, prelude_reexports)
-    semantics.add_prelude_reexport_types(types_by_module, types_raw, prelude_reexports,
-                               internal_q, pos_aspect)
     name_pattern = qualified_name_pattern(internal_q)
     canonical_names = {module: names_by_position(module, name2pos)
                        for module in rendered}
@@ -75,13 +75,24 @@ def build_code_context(corpus, internal, rendered, semantics, types_raw, express
     for module, declarations in local_types.items():
         for position, declaration in declarations.items():
             full_type = types_raw.get(module, {}).get(declaration["name"])
-            if full_type:
+            # Agda's query expands hidden parameters of a nested datatype into
+            # constructor types.  At a constructor declaration the highlighted,
+            # checked source signature is the scoped type readers actually see.
+            source_constructor = 'InductiveConstructor' in declaration['aspect'].split()
+            if full_type and not imprecise_type(full_type) and not source_constructor:
                 type_html = semantics.render_type(full_type, internal_q, name_pattern,
                                         pos_aspect, module, prelude_reexports)
             else:
-                type_html = declaration["type"]
+                type_html = simplify_vacuous_signature_binder(declaration["type"])
                 highlighted_local_types.append((module, position, type_html))
-            types_by_module.setdefault(module, {}).setdefault(position, type_html)
+            module_types = types_by_module.setdefault(module, {})
+            if source_constructor:
+                # The checked declaration retains Agda's resolved links for
+                # overloaded constructor names; an unqualified interaction
+                # query can attach a different constructor's type.
+                module_types[position] = type_html
+            else:
+                module_types.setdefault(position, type_html)
     # Every local target is now present, so links between two declarations whose
     # types came only from highlighted HTML can both receive hover payloads.
     for module, position, type_html in highlighted_local_types:
@@ -89,6 +100,11 @@ def build_code_context(corpus, internal, rendered, semantics, types_raw, express
             type_html, rendered_set, types_by_module, canonical_names, module,
             prelude_reexports
         ))
+    # Forward types only after source signatures are installed. A Prelude
+    # import's compiler href is the stable identity even when two imports
+    # share the printed spelling zero or suc.
+    semantics.add_prelude_reexport_types(types_by_module, types_raw, prelude_reexports,
+                               internal_q, pos_aspect)
     expression_types = semantics.build_expression_types(
         expression_types_raw, internal_q, pos_aspect, prelude_reexports
     )

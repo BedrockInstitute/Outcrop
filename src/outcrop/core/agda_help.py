@@ -97,7 +97,8 @@ def help_html(key, lang):
     aspect = 'syntax-symbol' if key in SYMBOLS else 'Symbol' if key in PUNCTUATION else 'Keyword'
     return (f'<div class="syntax-help"><strong class="{aspect}">{html.escape(key)}</strong>'
             f'<p>{html.escape(text[lang])}</p><a class="syntax-doc-link" '
-            f'href="{html.escape(url, quote=True)}">{more} ↗</a></div>')
+            f'href="{html.escape(url, quote=True)}" target="_blank" '
+            f'rel="noopener noreferrer">{more} ↗</a></div>')
 
 
 RESERVED = frozenset(r'{ } ; _ = | -> → : ? \ λ ∀ .. ... abstract coinductive constructor data do eta-equality field forall hiding import in inductive infix infixl infixr instance interleaved let macro module mutual no-eta-equality opaque open overlap pattern postulate primitive private public quote quoteTerm record renaming rewrite syntax tactic unfolding unquote unquoteDecl unquoteDef using variable where with'.split())

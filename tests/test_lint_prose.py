@@ -2,9 +2,34 @@
 
 import unittest
 from outcrop.core import prose_lint as prose_rules
+from outcrop.core.code_preview import preview_directive_issues
 
 
 class InlineAgdaTests(unittest.TestCase):
+    def test_preview_directive_checks_only_authored_marker(self):
+        self.assertEqual(preview_directive_issues(
+            '<!-- outcrop:agda-preview-lines=2 -->\n\n```agda\nx = 1\n```'), [])
+        self.assertTrue(preview_directive_issues(
+            '<!-- outcrop:agda-preview-lines=0 -->\n```agda\nx = 1\n```'))
+        self.assertTrue(preview_directive_issues(
+            '<!-- outcrop:agda-preview-lines=1 -->\nordinary prose'))
+        self.assertEqual(preview_directive_issues(
+            'The `outcrop:agda-preview-lines=N` directive folds code.'), [])
+        self.assertEqual(preview_directive_issues(
+            '```markdown\n<!-- outcrop:agda-preview-lines=1 -->\n```'), [])
+
+    def test_source_notation_opt_out_preserves_single_line_code_contract(self):
+        source = ('<div class="single-line-code" data-outcrop-notation="source">'
+                  '<code>`(x : A) → B x`{.Agda}</code></div>')
+        self.assertEqual(prose_rules.single_line_code_violations(source), [])
+        self.assertTrue(prose_rules.single_line_code_violations(
+            source.replace('"source"', '"unknown"')))
+        self.assertEqual(prose_rules.inline_agda_violations(
+            '`suc (suc n)`{.Agda .raw-notation}'), [])
+        self.assertEqual(prose_rules.inline_agda_violations(
+            '`suc zero`{.Agda type="Fin 3"} and '
+            '`suc zero`{.Agda .raw-notation type="Fin 3"}'), [])
+
     def test_standalone_link_and_complete_expression(self):
         text = ('[refl](Cubical.Foundations.Prelude.html#123){.Agda} '
                 'and `f x ≡ g x`{.Agda}\n')
@@ -29,6 +54,10 @@ class InlineAgdaTests(unittest.TestCase):
         hits = prose_rules.bare_variable_violations(text)
         self.assertEqual({text[hit.index] for hit in hits}, {'f', 'x', 'g', 'A'})
 
+    def test_type_witness_is_not_scanned_as_bare_prose(self):
+        text = 'The constructor `zero`{.Agda .raw-notation type="Fin (suc n)"} is available.'
+        self.assertEqual(prose_rules.bare_variable_violations(text), [])
+
     def test_later_chapter_new_prose_is_checked_too(self):
         text = '对 x 中的元素。\n'
         hits = prose_rules.analyze(text, policy=prose_rules.ProsePolicy(chapter='Later.md'))[2]
@@ -50,6 +79,8 @@ class TheoremLabelTests(unittest.TestCase):
             "**事実** (`property`{.Agda}) 本文。",
             "**Theorem** (`result`{.Agda}) Text.",
             "**定理** (`result`{.Agda}) 正文。",
+            "**Theorem (Diaconescu)** (`result`{.Agda}) Text.",
+            "**定理 (Diaconescu)** (`result`{.Agda}) 正文。",
             "**Corollary** (`consequence`{.Agda}) Text.",
             "**推论** (`consequence`{.Agda}) 正文。",
             "**系** (`consequence`{.Agda}) 本文。",
@@ -64,9 +95,19 @@ class TheoremLabelTests(unittest.TestCase):
             "**Lemma.** Text.",
             "**定理。**正文。",
             "**Theorem** Text.",
+            "**Theorem** (Diaconescu) (`result`{.Agda}) Text.",
+            "**Theorem(Diaconescu)** (`result`{.Agda}) Text.",
+            "**Theorem (Diaconescu)** (result) Text.",
+            "**Lemma (Diaconescu)** (`result`{.Agda}) Text.",
             "**证明。**正文。",
         ])
-        self.assertEqual(len(self.violations(invalid)), 4)
+        self.assertEqual(len(self.violations(invalid)), 8)
+
+    def test_common_theorem_name_keeps_agda_code_requirement(self):
+        heading = '**定理 (Diaconescu)** (`result`{.Agda}) 正文。\n'
+        self.assertTrue(prose_rules.statement_violations(heading))
+        self.assertEqual(prose_rules.statement_violations(
+            heading + '```agda\nresult = proof\n```\n'), [])
 
     def test_numbered_statement_cannot_bypass_the_rule(self):
         self.assertTrue(self.violations("**Theorem 1.** Text."))

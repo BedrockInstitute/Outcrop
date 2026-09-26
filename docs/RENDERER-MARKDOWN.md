@@ -26,6 +26,22 @@ document-order `sec-N` anchor. Explicit HTML IDs are retained. Prose blocks rece
 `p-N` anchors for selection and machine-readable citations. Changing block order
 can change generated anchors; use explicit IDs for long-lived authored links.
 
+Every pipe table in a Site document needs a nonempty, one-line description directly
+after its final row, with no intervening blank line. Use `: ` followed by prose in
+the same language as the table (one caption per language branch):
+
+```markdown
+| Kind | Meaning |
+| --- | --- |
+| A | First case |
+: What the cases distinguish.
+```
+
+Core can still render an uncaptained table in ordinary Markdown; Site lint rejects
+it. The caption supports normal inline Markdown, appears centered *below* the
+horizontally scrollable table, and stays readable without scrolling sideways.
+Figure captions are likewise centered below their figures.
+
 Site lint permits LaTeX in figures and standalone `$$...$$` display blocks.
 An explanatory paragraph containing the fixed prose phrase `图中的` (Chinese),
 `in the figure` (English, case-insensitive with whitespace/soft-wrap tolerance),
@@ -59,6 +75,80 @@ entire code stream. Without compiler input they receive lexical syntax help, but
 invented definition links, expression ranges or types. Other fences are ordinary
 escaped code. Math is retained for the shared KaTeX client.
 
+When imported declarations share a spelling (for example the `zero`
+constructors of `ℕ` and `Fin`), mark the intended type on the complete inline
+expression: `` `zero`{.Agda type="Fin 3"} `` or `` `zero`{.Agda type="ℕ"} ``.
+The typed marker selects `Nat.zero`/`Nat.suc` or `Fin.zero`/`Fin.suc` only when
+the optional compiler index contains a unique declaration. Configured
+introductory vocabulary forwarding still applies. Without a type marker,
+ordinary `{.Agda}` reference inference continues for compatibility. An
+explicit declaration link remains possible when the type alone cannot settle
+the identity. A visual `raw-notation` opt-out does not change linking.
+
+For a *whole inline expression* whose overloaded constructors need an explicit
+type, use `` `suc zero`{.Agda type="Fin 3"} ``. The type is an author assertion:
+Core shows it on hover, links only uniquely compiler-indexed constructor names,
+and does not invent a compiler-checked AST for the whole expression. The source
+expression remains intact in the Markdown mirror.
+When the type has the form `Fin n` and the expression is a closed `zero`/`suc`
+chain, Site displays its numeric value while the hover retains both the original
+expression and the marked type. Likewise, an open successor such as
+`` `suc (suc n)`{.Agda type="ℕ"} `` gets the compact superscript only with
+this explicit type assertion; an unmarked inline constructor link is not proof
+of the whole expression's type. Pair either with
+`` `suc zero`{.Agda .raw-notation type="Fin 3"} `` when introducing the original
+constructor spelling. Do not use this attribute for a type not justified by the
+surrounding mathematics; a compiler-resolved code block remains authoritative.
+
+Mathematical source notation is an optional Site presentation, not a change to
+copied Agda. A compiler-certified `Fin` constructor value or an explicitly
+type-marked inline `Fin` constructor may display as a numeral while retaining
+its source and type in the shared hover;
+an open natural successor may display with a superscript successor count. Inline
+successors require an explicit type marker; fenced Agda expressions require
+compiler-certified `ℕ` or `Fin` semantics. A same-spelled `Fin.suc` or an
+unresolved token alone never licenses a natural-successor display. A
+project may opt into natural-number help on literal digits through its Site
+configuration. The ordinary Core HTML and
+Markdown mirror remain valid without these browser enhancements.
+
+To preview only the first *n* lines of a long Agda fence while preserving the
+complete source and semantic DOM, put a directive immediately before the fence:
+
+````markdown
+<!-- outcrop:agda-preview-lines=1 -->
+
+```agda
+infix 2 example
+example = ...
+```
+````
+
+The Site reader adds an expand/collapse control when the block has more than
+*n* lines. Without JavaScript the full code stays visible. Lint rejects invalid
+counts and directives not followed by an Agda fence. This is presentation only:
+the Markdown mirror and copied source retain every line.
+
+To show an original Agda spelling at its first introduction, add
+`{.Agda .raw-notation}` to an inline code span, or put
+`data-outcrop-notation="source"` on a display-code surface or an HTML ancestor. It
+suppresses **all** mathematical source-notation transforms in that subtree
+(universe expressions and natural and `Fin` numerals), but not
+syntax highlighting, links, syntax help, or compiler hover. For example:
+
+```markdown
+<div class="single-line-code" data-outcrop-notation="source"><code>`ℓ-suc ℓ`{.Agda}</code></div>
+
+The original form is `suc (suc n)`{.Agda .raw-notation type="ℕ"}; inline
+`suc (suc n)`{.Agda type="ℕ"} uses the same display transform as checked code
+only because its type is explicitly marked.
+```
+
+Only wrap the source example, not the entire chapter, and put a normal
+compiler-backed example beside it so readers can compare the displays. The attribute is a
+presentation opt-out; source Markdown must never contain manually typeset
+successor results such as `n⁺³` in place of the Agda expression.
+
 ## Language groups and fallback
 
 Markers occupy their own lines, outside code fences:
@@ -86,6 +176,10 @@ Markdown corpus. That does not disable marker integrity checks.
 
 Statement labels use the established localized bold labels (Definition, Lemma,
 Theorem, Construction, Corollary and their Chinese/Japanese counterparts). A
+theorem may include an established common name in that bold label, followed by
+the Agda declaration name outside it, for example
+`**Theorem (Diaconescu)** (`SetChoice→LEM`{.Agda})`. The common name is not
+itself an Agda target. A
 statement contains Agda code, and a proof contains code after its label. There is
 no Markdown QED delimiter and no special statement-ending frame. Prose labels
 retain their typography and tight proof/code spacing independently of decoration.
@@ -119,7 +213,7 @@ and code without modifying the underlying Agda text. Tables scroll independently
 Single-line code, type popups, source popups and definition mirrors use the same
 syntax-help and semantic code contract.
 
-Figures are authored HTML/SVG with a stable `figure` ID, accessible labeling and
+Diagrams are authored HTML/SVG with a stable `figure` ID, accessible labeling and
 localized captions. A frame is a direct `div.diagram-framed` containing only the
 diagram, followed by a direct, unframed sibling `figcaption`. Mathematical relation
 arrows use semantic diagram colors, not link tokens. Put explanatory prose, not
@@ -198,8 +292,12 @@ Do not manufacture an application type for a module import.
 
 ## Links, assets and diagnostics
 
-Ordinary prose links navigate normally, including inside a definition mirror.
-Only code-definition actions enter the single-history modal. Internal module
+In Outcrop Site, same-origin links in chapter prose to published HTML content
+open the single-history inspection modal, including links inside its mirrored
+body; terminology popups' introduction links use the same path. Directory view
+selectors, chapter/navigation controls, search results,
+external links and modified clicks retain native navigation. Core's raw HTML
+has no modal behavior. Internal module
 addresses come from `BookCatalog`; external compiler modules retain flat module
 filenames. Language, canonical URL and deployment prefix belong to `SiteConfig`.
 Raw core documents without a rendered-module set retain ordinary links unchanged.

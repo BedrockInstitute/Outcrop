@@ -96,6 +96,20 @@ Agda-supported suffix; rendering alone accepts ordinary `.md` directly. Use
 interfaces and trace. Pure-check and traced interface caches must stay separate:
 a pure interface can skip the elaboration needed to collect hover data.
 
+The batch module-content query omits some nested constructors. A qualified
+inference can recover them, but Agda sometimes prints module parameters as
+internal names such as `_A_4`. These are not reader-facing types: extraction
+discards them. Site indexing also rejects them in older semantic packages and
+uses the compiler-highlighted declaration signature when one exists. A simple
+unused named argument in that signature is displayed as an ordinary arrow;
+dependent arguments and complex binders retain their original form. If neither
+source provides a precise type, the name has no type hover rather than a
+misleading placeholder.
+For constructors with a highlighted source signature, that scoped declaration
+takes precedence even over a precise interaction answer: the latter can expand
+hidden parameters of the enclosing datatype that the declaration intentionally
+leaves implicit. This is a constructor-wide rule, not a notation-specific fix.
+
 For a dedicated source mirror used by a pure-check project:
 
 ```sh
@@ -121,6 +135,10 @@ trace to the latest matching-source records for these local modules, including
 plain Agda; it intentionally excludes sources outside `--src`. A selected
 `--module` extraction does not compact the trace. Ordinary `.md` still requires
 staging under an Agda-supported suffix before compilation and extraction.
+Constructor patterns have a distinct `pattern` trace kind; normalization retains
+their source-node behavior while recording pattern context. Keep that context
+separate from expression `application` records: the natural-literal lint must
+never suggest replacing a constructor pattern with a number literal.
 
 ## Libraries
 

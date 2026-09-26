@@ -89,7 +89,7 @@ class BoilerplateTests(unittest.TestCase):
 
     def test_boilerplate_shell_is_scoped_to_source_templates(self):
         javascript = source('hover', 'code-targets', 'type-store', 'hover-branch', 'definition-modal')
-        self.assertIn('if ((template && template.hasAttribute("data-boilerplate-module")) || name.classList.contains("universe-notation"))\n'
+        self.assertIn('if ((template && template.hasAttribute("data-boilerplate-module")) || name.classList.contains("source-notation"))\n'
                       '            namePopup.classList.add("boilerplate-hover-popup");', javascript)
         css = (RESOURCES / 'static/outcrop.css').read_text()
         shell = re.search(r'\.boilerplate-hover-popup\s*\{([^}]+)\}', css)[1]

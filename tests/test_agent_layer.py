@@ -234,6 +234,9 @@ class AgentGuideTests(PublicationCase):
         self.assertIn("/en/reading-routes.json", guide)
         self.assertIn("/en/search.json", guide)
         self.assertIn("/en/terms.json", guide)
+        self.assertIn('[Chinese (zh)](https://lantern.example/zh/index.html)', guide)
+        self.assertIn('[Japanese (ja)](https://lantern.example/ja/index.html)', guide)
+        self.assertTrue(all(line.isascii() for line in guide.splitlines()[-2:]))
 
     def test_a_description_that_only_restates_the_title_is_dropped(self):
         """Repeating the chapter title as its description costs an agent tokens and

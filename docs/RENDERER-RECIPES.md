@@ -49,12 +49,13 @@ reader opens a chapter outside that selection.
 | `code.reference` | Inline `` `name`{.Agda} `` links to a checked Agda name | [Prelude](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Prelude.lagda.md), `Type ℓ` under "Universe levels" | `outcrop.core.agda_semantics` resolves references; formal code remains in Agda fences |
 | `code.reference-alias` | `[label](Module.html#declaration){.Agda}` displays a short label while linking and hovering over the named declaration | [Origin](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Origin.lagda.md), `V` linked to `𝒮ᵥ` | `outcrop.core.agda_semantics` resolves the symbolic target to its Agda position and rejects unknown declarations |
 | `code.display` | One centered `<div>` containing one `<code>` for reader-facing notation; see the template below | [Prelude](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Prelude.lagda.md), `Type ℓ : Type (ℓ-suc ℓ)` | `static/outcrop.css`, `static/reader/navigation.js`, one-line rule in `outcrop.core.prose_lint` |
+| `code.preview` | `<!-- outcrop:agda-preview-lines=N -->` before an Agda fence shows its first N lines with an expand control, preserving one complete code DOM and source mirror | [Prelude](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Prelude.lagda.md), the Σ binder definitions | `outcrop.core.code_preview`, `static/code-preview.js`, directive lint |
 | `code.display-note` | `code.display` with localized `data-note="..."` explaining the notation | [Prelude](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Prelude.lagda.md), the same universe-level expression | Desktop margin note; narrow-screen tap/focus note; keep the annotation in its language block |
 | `prose.margin-note` | `span.prose-annotation-target` followed by `aside.prose-annotation-note` | [Prelude](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Prelude.lagda.md), why types cannot generally be moved downward after `Lift` | `static/outcrop.css` and `static/reader/navigation.js`; use for a brief attached qualification |
 | `code.boilerplate` | `.boilerplate-hover` linked to a generated template; `.boilerplate-hover-popup` shell | Chapter title and learning-route direct prerequisites | Dashed underline plus code mark; actual compiler-highlighted setup; code-block background/border, subtle blue left edge and floating shadow distinguish revealed source from type hints; shared recursive code hover and mobile modal action |
 | `code.syntax-help` | `.syntax-hover` on compiler-classified keywords | OPTIONS, module declarations, imports and body code | Amber active background distinct from definition highlighting; trilingual explanation and versioned official documentation link |
 | `code.submodule-fold` | Default-open `details.submodule-fold` whose complete Agda module declaration occupies the clickable `summary`; see template below | [Impredicativity](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Impredicativity.lagda.md), `CodedTruth` | Animated folding, rendered code without module-scope indentation, and at most one nested child fold; whole-tree coverage, declaration, scope and depth checked by `outcrop.core.prose_lint` |
-| `prose.statement` | `**Definition** (`name`{.Agda}) Text`; also Construction, Fact, Lemma, Theorem, Corollary with localized labels | [Impredicativity](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Impredicativity.lagda.md), `hasSize` | `.prose-statement`; statements enclose Agda code, including in folds; no authored QED |
+| `prose.statement` | `**Definition** (`name`{.Agda}) Text`; named theorems use `**Theorem (common name)** (`name`{.Agda}) Text`; also Construction, Fact, Lemma, Corollary with localized labels | [Impredicativity](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Impredicativity.lagda.md), `hasSize` | `.prose-statement`; statements enclose Agda code, including in folds; no authored QED |
 | `prose.proof` | `**Proof** Text`, alternating explanation and code | [Impredicativity](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Impredicativity.lagda.md), `ΩResizing→Resizing` | `.prose-proof`; contains code after its label and preserves compact proof/code spacing independently of QED |
 | `code.definition-end` | Compiler signature/equation boundaries; no Markdown marker | [Choice](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Choice.lagda.md), `SetChoice` and submodule definitions | `.agda-definition-end`; semi-transparent ∎ at the definition's final line, excluding where-local helpers, shared by pages and modal mirrors |
 
@@ -70,7 +71,9 @@ and lint obligations. Agda token streams and anchor identities remain unchanged.
 `prose.comparison-table` uses an ordinary Markdown table when the reader needs to
 compare parallel statements, corresponding data, or cases. Existing `main table`,
 `th` and `td` rules provide the border, spacing and header surface. Keep cells short;
-long arguments belong in the surrounding prose. The initial three chapters did
+long arguments belong in the surrounding prose. Add a localized `: description`
+immediately below the last row; this is rendered as a centered caption outside the
+horizontal scroll region and required by Site lint. The initial three chapters did
 not use prose tables. The first catalogued use is [Choice](https://github.com/BedrockInstitute/Bedrock/blob/main/src/Base/Choice.lagda.md), for existence statements, lifted data
 and the two decision cases. Tables do not replace mathematical type-space diagrams.
 
@@ -119,9 +122,9 @@ directions and retains native keyboard semantics.
 
 ## Figures
 
-All figure recipes compose `book-diagram`, a stable `fig-*` ID, `aria-describedby`,
+All diagram recipes compose `book-diagram`, a stable `fig-*` ID, `aria-describedby`,
 and a direct trilingual `figcaption`. Place the explanation and hypotheses before
-the figure and use the caption for its takeaway. Figures have no outer decorative
+the figure and use the centered caption for its takeaway. Diagrams have no outer decorative
 frame by default and no internal scrolling. Never follow a figure immediately with
 an Agda code block: put the code after its explanation, or reorganize the surrounding
 prose. The diagram gate checks each language, including folded submodules and

@@ -49,7 +49,7 @@
 +import qualified Outcrop.Agda.TypeTrace as Outcrop
 @@ -194,0 +196,4 @@
 +    recordPatternApplication p a action = case p of
-+      A.ConP{} -> Outcrop.traceCheckedType "application" p (unDom a) action
++      A.ConP{} -> Outcrop.traceCheckedType "pattern" p (unDom a) action
 +      _        -> action
 +
 @@ -202 +207 @@

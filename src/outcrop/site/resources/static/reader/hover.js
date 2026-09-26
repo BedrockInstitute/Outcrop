@@ -214,7 +214,7 @@ import { codePoint, codeSurface } from './code-surface.js';
         namePopup.removeAttribute('aria-busy');
         if (infoHTML || helpKey) {
           namePopup.classList.add("info-hover-popup");
-          if ((template && template.hasAttribute("data-boilerplate-module")) || name.classList.contains("universe-notation"))
+          if ((template && template.hasAttribute("data-boilerplate-module")) || name.classList.contains("source-notation"))
             namePopup.classList.add("boilerplate-hover-popup");
           name.classList.add("info-active");
           name.setAttribute("aria-expanded", "true");
@@ -225,13 +225,23 @@ import { codePoint, codeSurface } from './code-surface.js';
         nameValue.className = "type-value Agda";
         if (html) nameValue.innerHTML = html;
         else nameValue.textContent = name.textContent.trim();
+        // An absolutely positioned popup can shrink below the natural width
+        // of a short type such as `Lift X`. Keep only genuinely short, single-
+        // line types together; longer signatures retain their normal wrapping.
+        namePopup.classList.toggle('compact-type', !infoHTML && nameValue.textContent.length <= 32
+          && !nameValue.textContent.includes('\n'));
         markTerminalHoverStops(nameValue, identity);
         if (isUniverseTypeText(nameValue.textContent))
           namePopup.classList.add("hover-terminal");
-        if (name.classList.contains("universe-notation")) {
+        if (name.classList.contains("source-notation")) {
           var sourceLabel = document.createElement("div");
           sourceLabel.className = "source-hover-label";
-          sourceLabel.textContent = {en: "Universe level · Original Agda", zh: "宇宙层级 · 原始 Agda", ja: "宇宙レベル · 元の Agda"}[cfg.lang] || "Universe level · Original Agda";
+          var sourceLabels = {
+            universe: {en: "Universe level · Original Agda", zh: "宇宙层级 · 原始 Agda", ja: "宇宙レベル · 元の Agda"},
+            fin: {en: "Finite index · Original Agda", zh: "有限指标 · 原始 Agda", ja: "有限添字 · 元の Agda"},
+            'nat-suc': {en: "Natural successor · Original Agda", zh: "自然数后继 · 原始 Agda", ja: "自然数の後続 · 元の Agda"}
+          };
+          sourceLabel.textContent = (sourceLabels[name.dataset.sourceKind] || sourceLabels.universe)[cfg.lang] || "Original Agda";
           namePopup.appendChild(sourceLabel);
         }
         namePopup.appendChild(nameValue);

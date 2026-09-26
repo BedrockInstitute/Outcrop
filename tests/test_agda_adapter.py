@@ -59,6 +59,12 @@ class OutcropAgdaAdapterTests(unittest.TestCase):
             self.patch,
         )
 
+    def test_constructor_patterns_have_distinct_trace_context(self):
+        self.assertIn(
+            'A.ConP{} -> Outcrop.traceCheckedType "pattern" p (unDom a) action',
+            self.patch,
+        )
+
     def test_overlay_rejects_dummy_types_structurally_before_queueing(self):
         source = (TOOL / 'src/Outcrop/Agda/TypeTrace.hs').read_text()
         self.assertIn('foldTerm isDummy type_', source)

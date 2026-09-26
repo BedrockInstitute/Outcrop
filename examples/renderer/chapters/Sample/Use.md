@@ -48,9 +48,9 @@ twice value = keep (keep value)
 
 
 <!--en-->
-The ordinary [earlier chapter](Sample.Seed.html) link remains a normal page link.
+The [earlier chapter](Sample.Seed.html) opens in the reading modal.
 <!--zh-->
-普通的[前章](Sample.Seed.html)链接仍然直接跳转页面。
+点击[前章](Sample.Seed.html)链接会打开阅读弹窗。
 <!--ja-->
-通常の[前章](Sample.Seed.html)リンクはページへ移動する。
+[前章](Sample.Seed.html)へのリンクを押すと閲覧用のダイアログが開く。
 <!--/-->

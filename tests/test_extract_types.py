@@ -68,6 +68,20 @@ class ExtractTypesTests(unittest.TestCase):
         self.assertIn('"Cubical.Data.Unit.Base.tt*"', commands)
         self.assertIn("Cmd_compute_toplevel DefaultCompute", commands)
 
+    def test_internal_parameter_names_are_not_published_as_types(self):
+        ready = '{"kind":"DisplayInfo","info":{"kind":"NormalForm","expr":"Set"}}\n'
+        contents = ('{"kind":"DisplayInfo","info":{"kind":"ModuleContents",'
+                    '"contents":[{"name":"good","term":"A → B"},'
+                    '{"name":"bad","term":"_A_4 → _A_4 / _R_5"}]}}')
+        with mock.patch.object(extract_types, 'run_agda', return_value=ready + contents):
+            self.assertEqual(extract_types.query('/tmp/types-loader.agda', ['Demo'], 'agda'),
+                             ({'Demo': {'good': 'A → B'}}, 1))
+        inferred = (ready + '{"kind":"DisplayInfo","info":{"kind":"InferredType",'
+                    '"expr":"_A_4 → _A_4 / _R_5"}}\n' + ready)
+        with mock.patch.object(extract_types, 'run_agda', return_value=inferred):
+            self.assertEqual(extract_types.query_missing('/tmp/types-loader.agda',
+                             [('Demo', 'Box.wrap')], 'agda'), {})
+
     def test_load_failure_is_not_treated_as_an_empty_module(self):
         response = '{"kind":"DisplayInfo","info":{"kind":"Error","message":"library unavailable"}}'
         with mock.patch.object(extract_types, 'run_agda', return_value=response):

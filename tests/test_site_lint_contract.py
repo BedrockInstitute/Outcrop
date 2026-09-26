@@ -49,6 +49,18 @@ class SiteLintContractTests(unittest.TestCase):
             css.write_text('.diagram-relation { color: var(--diagram-relation-color); }')
             self.assertEqual(lint_site(config, stylesheets=[css]), [])
 
+    def test_configured_instance_stylesheet_reaches_diagram_gate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'project'
+            shutil.copytree(EXAMPLE, root)
+            css = root / 'figures.css'
+            css.write_text('.diagram-relation { color: var(--link-color); }')
+            config = SiteConfig.load(root / 'project.json', root=root).with_overrides(
+                stylesheets=['figures.css'])
+            self.assertTrue(any(item.rule == 'diagram' for item in lint_site(config)))
+            css.write_text('.diagram-relation { color: var(--diagram-relation-color); }')
+            self.assertEqual(lint_site(config), [])
+
     def test_shared_cjk_uses_marker_grammar_and_retains_source_lines(self):
         text = ('<!-- outcrop-routes {"title":"元数据"} -->\n'
                 'Shared.\n中文。\n  ~~~text\n中文代码。\n  ~~~\n'

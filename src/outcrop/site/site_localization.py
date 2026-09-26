@@ -1,7 +1,7 @@
 """Reader interface wording, independent of project branding and mathematics."""
 from outcrop.site.site_config import LANG_LABELS
 UI = {
-    "en": {"search": "Search…", "theme": "Toggle theme", "contents": "On this page",
+    "en": {"search": "Search…", "language": "Choose language", "theme": "Toggle theme", "contents": "On this page",
            "menu": "Menu", "close": "Close",
            "untranslated": "This page is not yet translated; showing English.",
            "modules": "Modules", "source": "Source", "overview": "Overview",
@@ -16,7 +16,7 @@ UI = {
            "agentstitle": "How an AI agent should read this site",
            "external": "You are viewing an external library.",
            "back": "Back to {site}"},
-    "zh": {"search": "搜索…", "theme": "切换主题", "contents": "本页内容",
+    "zh": {"search": "搜索…", "language": "切换语言", "theme": "切换主题", "contents": "本页内容",
            "menu": "菜单", "close": "关闭",
            "untranslated": "本页尚未翻译，此处显示英文。",
            "modules": "模块", "source": "源码", "overview": "概览",
@@ -31,7 +31,7 @@ UI = {
            "agentstitle": "AI 应当如何阅读本站",
            "external": "您正在浏览外部库。",
            "back": "返回 {site}"},
-    "ja": {"search": "検索…", "theme": "テーマ切替", "contents": "このページの内容",
+    "ja": {"search": "検索…", "language": "言語を切り替える", "theme": "テーマ切替", "contents": "このページの内容",
            "menu": "メニュー", "close": "閉じる",
            "untranslated": "このページは未翻訳です。英語を表示しています。",
            "modules": "モジュール", "source": "ソース", "overview": "概要",

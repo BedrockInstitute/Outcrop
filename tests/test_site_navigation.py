@@ -23,6 +23,8 @@ semantics = AgdaSemantics(prelude_module='Base.Prelude')
 from outcrop.site.site_config import SiteConfig, BookCatalog
 from outcrop.site.page_renderer import PageRenderer
 from outcrop.site.publication import Publication
+from outcrop.site.external_links import external_links_new_window
+from outcrop.core.agda_help import help_html
 
 
 class PublicationCase(unittest.TestCase):
@@ -56,6 +58,34 @@ class TocParser(HTMLParser):
 
 
 class SiteNavigationTests(PublicationCase):
+    def test_only_off_site_links_open_new_window(self):
+        source = ('<a href="/zh/Origin.html#intro">local</a>'
+                  '<a href="https://example.test/zh/Origin.html">canonical</a>'
+                  '<a href="https://example.test:443/zh/Origin.html">same port</a>'
+                  '<a href="//docs.example.test/help?x=1&amp;y=2">docs</a>'
+                  '<a href="https://other.test" rel="help" target="_self">outside</a>'
+                  '<a href="mailto:hello@other.test">mail</a>')
+        result = external_links_new_window(source, 'https://example.test')
+        self.assertIn('<a href="/zh/Origin.html#intro">local</a>', result)
+        self.assertIn('<a href="https://example.test/zh/Origin.html">canonical</a>', result)
+        self.assertIn('<a href="https://example.test:443/zh/Origin.html">same port</a>', result)
+        self.assertIn('href="//docs.example.test/help?x=1&amp;y=2" target="_blank" rel="noopener noreferrer"', result)
+        self.assertIn('href="https://other.test" rel="help noopener noreferrer" target="_blank"', result)
+        self.assertIn('<a href="mailto:hello@other.test">mail</a>', result)
+        self.assertIn('target="_blank" rel="noopener noreferrer"', help_html('module', 'zh'))
+
+    def test_mobile_header_layout_does_not_wait_for_reader_module(self):
+        template = (RESOURCES / 'template.html').read_text()
+        css = (RESOURCES / 'static/outcrop.css').read_text()
+        controls = (RESOURCES / 'static/reader/header-controls.js').read_text()
+        self.assertIn('id="search-toggle" class="header-disclosure"', template)
+        self.assertIn('id="language-toggle" class="header-disclosure"', template)
+        self.assertIn('id="header-search" class="search-form"', template)
+        self.assertIn('#topbar :is(.search-form, #lang-switch)', css)
+        self.assertNotIn('#topbar.header-controls-ready :is(.search-form, #lang-switch)', css)
+        self.assertIn("document.getElementById(index ? 'language-toggle' : 'search-toggle')", controls)
+        self.assertIn('media="print" onload="this.media=\'all\'"', template)
+
     def test_adaptive_sidebar_css_and_navigation_share_breakpoint(self):
         css = (RESOURCES / 'static/outcrop.css').read_text()
         navigation = (RESOURCES / 'static/reader/navigation.js').read_text()
@@ -455,6 +485,66 @@ class PreludeReferenceTests(PublicationCase):
             reexports, {}, {})
         self.assertEqual(re.sub(r"<[^>]+>", "", types["Base.Prelude"]["102913"]),
                          "Type → Type")
+
+    def test_prelude_overloaded_constructor_types_follow_compiler_targets(self):
+        types = {
+            "Base.Prelude": {},
+            "Agda.Builtin.Nat": {"221": "ℕ", "234": "ℕ → ℕ"},
+            "Cubical.Data.FinData.Base": {"376": "Fin (suc n)",
+                                          "407": "Fin n → Fin (suc n)"},
+        }
+        reexports = {"by_href": {
+            "Agda.Builtin.Nat.html#221": ("Base.Prelude", "10", "InductiveConstructor", "zero"),
+            "Agda.Builtin.Nat.html#234": ("Base.Prelude", "20", "InductiveConstructor", "suc"),
+            "Cubical.Data.FinData.Base.html#376": ("Base.Prelude", "30", "InductiveConstructor", "zero"),
+            "Cubical.Data.FinData.Base.html#407": ("Base.Prelude", "40", "InductiveConstructor", "suc"),
+        }}
+        semantics.add_prelude_reexport_types(types, {"Base.Prelude": {
+            "zero": "WRONG", "suc": "WRONG"}}, reexports, {}, {})
+        self.assertEqual(types["Base.Prelude"], {
+            "10": "ℕ", "20": "ℕ → ℕ", "30": "Fin (suc n)",
+            "40": "Fin n → Fin (suc n)",
+        })
+        missing_target = {"Base.Prelude": {}, "Agda.Builtin.Nat": {"221": "ℕ"}}
+        semantics.add_prelude_reexport_types(missing_target, {"Base.Prelude": {
+            "zero": "WRONG", "suc": "WRONG"}}, reexports, {}, {})
+        self.assertEqual(missing_target["Base.Prelude"], {"10": "ℕ"})
+
+    def test_inline_successor_keeps_original_constructor_identity(self):
+        reexports = {
+            'inline': {'suc': ('Base.Prelude.html#20', 'InductiveConstructor')},
+            'by_href': {
+                'Agda.Builtin.Nat.html#234':
+                    ('Base.Prelude', '20', 'InductiveConstructor', 'suc'),
+                'Cubical.Data.FinData.Base.html#407':
+                    ('Base.Prelude', '40', 'InductiveConstructor', 'suc'),
+            },
+        }
+        rendered = semantics.inline_ref('suc (suc (suc n))', {'Base.Prelude'}, {}, {},
+                                        'Base.Prelude', reexports)
+        self.assertEqual(rendered.count('data-agda-origin="Agda.Builtin.Nat.html#234"'), 3)
+        self.assertNotIn('data-agda-origin="Cubical.Data.FinData.Base.html#407"', rendered)
+
+    def test_source_qualified_inline_constructor_uses_its_exact_compiler_anchor(self):
+        reexports = {'inline': {'suc': ('Base.Prelude.html#20', 'InductiveConstructor')},
+                     'by_href': {'Cubical.Data.FinData.Base.html#407':
+                                 ('Base.Prelude', '40', 'InductiveConstructor', 'suc')}}
+        rendered = semantics.inline_ref(
+            'Fin.suc Fin.zero', {'Base.Prelude'},
+            {'Cubical.Data.FinData.Base': {'Fin.suc': '407', 'Fin.zero': '376'}},
+            {}, 'Base.Prelude', reexports)
+        self.assertIn('data-agda-origin="Cubical.Data.FinData.Base.html#407"', rendered)
+        self.assertNotIn('data-agda-origin="Agda.Builtin.Nat', rendered)
+
+    def test_explicit_constructor_reference_keeps_correct_prelude_hop(self):
+        rendered = inline_ref_link(
+            'zero', 'Cubical.Data.FinData.Base', 'Fin.zero',
+            {'Cubical.Data.FinData.Base': {'Fin.zero': '376'}},
+            {'Cubical.Data.FinData.Base': {'376': 'InductiveConstructor'}},
+            {'by_href': {'Cubical.Data.FinData.Base.html#376':
+                         ('Base.Prelude', '133501', 'InductiveConstructor', 'zero')}})
+        self.assertIn('href="Base.Prelude.html#133501"', rendered)
+        self.assertIn('data-type="Base.Prelude#133501"', rendered)
 
 
 if __name__ == "__main__":

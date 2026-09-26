@@ -5,6 +5,7 @@ import json
 import os
 import re
 from outcrop.site.site_localization import LANG_LABELS, interface_copy, hreflang_links
+from outcrop.site.external_links import external_links_new_window
 from outcrop.site.reading_routes import own_page, twin_of
 from outcrop.core.term_registry import localized_abbreviation
 
@@ -201,6 +202,7 @@ class Publication:
             "storageNamespace": self.config.storage_namespace,
             "preludeModule": self.config.prelude_module,
             "levelNameConvention": self.config.policies.get('level_name_convention', False),
+            "naturalLiteralDefault": self.config.policies.get('natural_literal_default', False) and not is_external,
             "agentCopy": self.config.agent.get('translations', {}).get(lang, {}),
             "agentResources": self.agent_resources(lang, module),
         }
@@ -309,7 +311,11 @@ class Publication:
         lines.append("## Other editions")
         lines.append("")
         for other in langs[1:]:
-            lines.append(f"- [{LANG_LABELS[other]}]({self.config.canonical}/{other}/index.html): the same "
+            # This English agent guide is often opened as bare text by tools
+            # whose HTTP layer drops charset metadata. Keep its link labels
+            # ASCII so the two final edition links remain legible there too.
+            edition = {'zh': 'Chinese (zh)', 'ja': 'Japanese (ja)', 'en': 'English (en)'}[other]
+            lines.append(f"- [{edition}]({self.config.canonical}/{other}/index.html): the same "
                          f"book. Chapter mirrors are at `/{other}/<Module>.md`.")
         lines.append("")
         return "\n".join(lines)
@@ -449,7 +455,8 @@ class Publication:
     </body>
     </html>
     """
-        Path(os.path.join(out_dir, "index.html")).write_text(page, encoding='utf-8')
+        Path(os.path.join(out_dir, "index.html")).write_text(
+            external_links_new_window(page, self.config.canonical), encoding='utf-8')
         # A missing passage must stay missing, not silently masquerade as the homepage.
         missing = (f'<!doctype html><html lang="{default}"><meta charset="utf-8">'
                    '<meta name="viewport" content="width=device-width, initial-scale=1">'

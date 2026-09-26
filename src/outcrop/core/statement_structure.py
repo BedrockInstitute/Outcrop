@@ -7,7 +7,7 @@ STATEMENT_LABELS = frozenset((
 PROOF_LABELS = frozenset(('Proof', '证明', '証明'))
 CONSTRUCTION_LABELS = frozenset(('Construction', '构造', '構成'))
 LABEL_RE = re.compile(r'^\s*\*\*(' + '|'.join(sorted(STATEMENT_LABELS | PROOF_LABELS))
-                      + r')(?:\s*\d+)?(?:[.。])?\*\*')
+                      + r')(?:\s*\d+|\s*\(([^()`\n]+)\))?(?:[.。])?\*\*')
 NAME = r'`([^`\s]+)`\{\.Agda\}'
 NAMES_RE = re.compile(r'^ \((' + NAME + r'(?: ' + NAME + r')*)\)(?: |$)')
 MARKER_RE = re.compile(r'^\s*<!--(en|zh|ja|/)-->\s*$')

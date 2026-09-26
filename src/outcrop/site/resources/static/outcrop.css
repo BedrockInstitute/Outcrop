@@ -2,10 +2,10 @@
  *
  * The colour palette and the Agda syntax-token colours are adapted from the 1lab
  * (https://1lab.dev), which is licensed AGPL-3.0; this file is therefore likewise
- * AGPL-3.0. The page layout is Bedrock's own. See site/vendor/1lab/LICENSE and NOTICE.
+ * AGPL-3.0. The reusable page layout is Outcrop's own. See NOTICE.
  */
 
-/* All web fonts self-hosted (see site/static/fonts/, all OFL-1.1): EB Garamond (body serif),
+/* All web fonts self-hosted (see resources/static/fonts/, all OFL-1.1): EB Garamond (body serif),
    Inria Sans (UI sans), JuliaMono (code) -- matching 1lab's typefaces, but with no runtime
    dependency on Google Fonts (which can be blocked or slow). CJK falls back to the system
    rounded font (see --cjk-font). URLs are relative to this stylesheet, so they work under
@@ -35,8 +35,8 @@
 :root {
   --text-bg: #fff;       --text-fg: #222;       --fg-alt: #475569;
   --primary: #0054F4;    --ruler: #94A3B8;      --highlight: #F5DEB3;
-  /* Navigation rose stays separate from Agda's blue definitions and magenta modules. */
-  --link-color: #a53268;
+  /* Blue-violet navigation stays distinct from Agda's blue definitions. */
+  --link-color: #7244b7;
   --code-bg: #f3f5f8;    --code-inline-bg: #e9edf3; --code-fg: #1f2937;
   --code-border: #d7dde7;
   --code-symbol: #86652e;
@@ -59,6 +59,7 @@
   --font-size: 1.3rem;                      /* 1lab's default (sans-serif mode) body size */
   --code-font-size: calc(0.92 * var(--font-size));
   --reading-width: 48rem;
+  --content-frame-radius: 8px;
 }
 
 html[lang="zh"] { --reading-width: 52rem; }
@@ -73,7 +74,7 @@ html[lang="ja"] {
 :root.theme-dark, html.theme-dark {
   --text-bg: #171a21;    --text-fg: #d6dbe5;    --fg-alt: #aeb8c8;
   --primary: #119DDB;    --ruler: #475569;      --highlight: #EF444499;
-  --link-color: #ed9fbd;
+  --link-color: #ba8bea;
   --code-bg: #232936;    --code-inline-bg: #2a3240; --code-fg: #e6edf3;
   --code-border: #3b4658;
   --code-symbol: #e4c88b;
@@ -89,7 +90,7 @@ html[lang="ja"] {
   :root:not(.theme-light) {
     --text-bg: #171a21;    --text-fg: #d6dbe5;    --fg-alt: #aeb8c8;
     --primary: #119DDB;    --ruler: #475569;      --highlight: #EF444499;
-    --link-color: #ed9fbd;
+    --link-color: #ba8bea;
     --code-bg: #232936;    --code-inline-bg: #2a3240; --code-fg: #e6edf3;
     --code-border: #3b4658;
     --code-symbol: #e4c88b;
@@ -339,6 +340,13 @@ article h2, article h3 { margin-top: 2rem; }   /* no underline, like 1lab */
 /* ---- prose ---- */
 article a { color: var(--link-color); text-decoration: none; }
 article a:hover { text-decoration: underline; }
+/* Prose hyperlinks need a non-colour cue; code and glossary links retain their
+   existing semantic treatments instead of inheriting this underline. */
+article :is(p, li, blockquote, figcaption, td) > a[href]:not(.inline-ref):not(.term-ref) {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--link-color) 55%, transparent);
+  text-decoration-thickness: .055em; text-underline-offset: .16em;
+}
 article :not(pre):not(code) > code { font-family: var(--mono); font-size: 0.88em;
   color: var(--code-fg); background: var(--code-inline-bg); padding: 0.1em 0.3em;
   border: 1px solid var(--code-border); border-radius: 4px; }
@@ -424,8 +432,8 @@ article li > code { font-family: var(--mono); font-size: .88em;
   padding: 0.6rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-family: var(--sans);
   font-size: 0.9rem; }
 
-/* External-library pages (cubical): a coloured header marking you have left Bedrock. No
-   divider line (the background colour alone signals the state), to match 1lab's clean style. */
+/* External-library pages: a coloured header marks departure from the current
+   project. The background alone signals the state, without an extra divider. */
 .ext-banner { background: var(--banner-bg); color: var(--banner-fg); font-family: var(--sans);
   font-weight: 600; text-align: center; padding: 0.55rem 1rem; }
 .ext-banner a { color: var(--banner-fg); text-decoration: underline; margin-left: 0.5rem; }
@@ -436,12 +444,24 @@ blockquote { border-left: 0.3ex solid var(--ruler); margin-left: 0; padding-left
 .module-index a { font-family: var(--mono); }
 
 /* ---- prose tables ---- */
+main .prose-table { margin: 1.2rem 0; min-width: 0; max-width: 100%; }
 main .prose-table-scroll { max-width: 100%; overflow-x: auto; margin: 1.2rem 0;
   -webkit-overflow-scrolling: touch; }
-main table { border-collapse: collapse; margin: 1.2rem auto; }
+main .prose-table .prose-table-scroll { margin: 0; }
+main .prose-table > figcaption { margin: .65rem auto 0; color: var(--fg-alt);
+  font-size: .85em; line-height: 1.55; text-align: center; text-wrap: pretty; }
+main table { border-collapse: separate; border-spacing: 0; margin: 1.2rem auto;
+  border: 1px solid var(--ruler); border-radius: var(--content-frame-radius); overflow: hidden; }
 main .prose-table-scroll table { margin-block: 0; }
-main th, main td { border: 1px solid var(--ruler); padding: 0.4rem 0.9rem;
+main th, main td { border: 0; border-inline-end: 1px solid var(--ruler);
+  border-block-end: 1px solid var(--ruler); padding: 0.4rem 0.9rem;
   text-align: left; vertical-align: top; }
+main table tr > :last-child { border-inline-end: 0; }
+main table > :last-child > tr:last-child > * { border-block-end: 0; }
+main table > :first-child > tr:first-child > :first-child {
+  border-top-left-radius: calc(var(--content-frame-radius) - 1px); }
+main table > :first-child > tr:first-child > :last-child {
+  border-top-right-radius: calc(var(--content-frame-radius) - 1px); }
 main th { background: var(--code-bg); font-family: var(--sans); font-size: 0.9em; }
 main .prose-table-scroll :is(th, td) > span.Agda.inline-code { display: inline-block; }
 
@@ -465,6 +485,40 @@ pre.Agda > .agda-code-content {
 article :is(p, ul, ol, blockquote, .prose-table-scroll):has(+ pre.Agda) {
   margin-block-end: .5rem;
 }
+article :is(p, ul, ol, blockquote, .prose-table-scroll):has(+ .agda-code-preview) {
+  margin-block-end: .5rem;
+}
+.agda-code-preview { margin: .5rem 0 1.6rem; min-width: 0;
+  border: 1px solid var(--code-border); border-radius: 8px;
+  background: var(--code-bg); overflow: hidden; }
+.agda-code-preview > .agda-code-preview-clip { min-width: 0; max-height: var(--agda-preview-full-height, none); overflow: hidden; }
+.agda-code-preview.is-ready > .agda-code-preview-clip { transition: max-height .2s ease; }
+.agda-code-preview > .agda-code-preview-clip > pre.Agda {
+  margin: 0; border: 0; border-radius: 0; }
+.agda-code-preview.is-collapsed > .agda-code-preview-clip {
+  max-height: var(--agda-preview-height);
+}
+.agda-code-preview-toggle {
+  display: flex; align-items: center; justify-content: center; gap: .55rem;
+  width: 100%; min-height: 2.75rem; margin: 0; padding: .45rem .8rem;
+  border: 0; border-top: 1px solid var(--code-border); border-radius: 0;
+  background: color-mix(in srgb, var(--code-bg) 90%, var(--text-bg));
+  color: var(--fg-alt); font: 500 .82rem/1.4 var(--sans); cursor: pointer;
+  touch-action: manipulation; transition: background-color .16s ease, color .16s ease;
+}
+.agda-code-preview-toggle::after { content: ""; width: .4rem; height: .4rem;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: rotate(-135deg); transition: transform .16s ease; }
+.agda-code-preview-toggle[aria-expanded="false"]::after { transform: rotate(45deg); }
+.agda-code-preview-toggle[hidden] { display: none; }
+.agda-code-preview-toggle:hover, .agda-code-preview-toggle:focus-visible {
+  color: var(--text-fg); background: color-mix(in srgb, var(--primary) 7%, var(--code-bg));
+}
+.agda-code-preview-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; }
+@media (prefers-reduced-motion: reduce) {
+  .agda-code-preview.is-ready > .agda-code-preview-clip,
+  .agda-code-preview-toggle, .agda-code-preview-toggle::after { transition: none; }
+}
 pre.Agda a { text-decoration: none; color: var(--code-fg); }
 pre.Agda a:hover[href] { text-decoration: underline; }
 .Agda .Comment, .Agda .Markup, .Agda .Pragma { color: var(--code-comment); }
@@ -485,7 +539,10 @@ pre.Agda a:hover[href] { text-decoration: underline; }
 .inline-ref { font-family: var(--mono); font-size: 0.88em; }
 article p > .inline-ref, article li > .inline-ref,
 article :not(pre):not(code) > .Agda.inline-code { background: var(--code-inline-bg);
-  border: 1px solid var(--code-border); border-radius: 4px; padding: .08em .28em; }
+  border: 1px solid var(--code-border); border-radius: 4px;
+  /* Combining hats (x̂, b̂) rise above the ordinary glyph box. Keep their ink
+     clear of the top border without enlarging the paragraph's line spacing. */
+  padding: .24em .28em .08em; }
 /* Wrapped inline code needs a complete box on each line, not sliced edges.
    Allow long list-item names to wrap too instead of overflowing the column. */
 article :not(pre):not(code) > code,
@@ -634,6 +691,7 @@ pre.Agda .expr-node.expr-active,
   max-height: none !important; overflow: visible !important;
   visibility: hidden; pointer-events: none; }
 .type-value { padding-inline: .15rem; overflow-x: auto; overflow-y: hidden; }
+.name-hover-popup.compact-type .type-value { white-space: pre; }
 .type-definition-link { display: none; }
 
 /* Landscape code is a browser-viewport reading surface. It never depends on
@@ -887,7 +945,7 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
 .math.display { display: block; overflow-x: auto; margin: 1rem 0; text-align: center; }
 /* Shared diagram grammar. Appearance belongs here; chapter markup supplies geometry. */
 .book-diagram {
-  --diagram-radius: 8px;
+  --diagram-radius: var(--content-frame-radius);
   --diagram-gap: clamp(.75rem, 1.6vw, 1.125rem);
   --diagram-frame-padding: clamp(.8rem, 1.8vw, 1.2rem);
   --diagram-panel-padding: clamp(.7rem, 1.5vw, 1rem);
@@ -922,8 +980,8 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
   background: var(--diagram-space-bg);
 }
 .book-diagram > figcaption {
-  margin: .65rem .1rem 0; color: var(--fg-alt); font-size: .85em; line-height: 1.55;
-  text-wrap: pretty;
+  margin: .65rem auto 0; color: var(--fg-alt); font-size: .85em; line-height: 1.55;
+  text-align: center; text-wrap: pretty;
 }
 .book-diagram > figcaption p { margin: 0; }
 /* KaTeX assembles stretchy symbols from its own SVG pieces. Leave their sizing alone. */
@@ -1300,9 +1358,9 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
 .header-disclosure { display: none; }
 /* Explicit controls: scrolling never changes compact header visibility. */
 @media (max-width: 42rem) {
-  #topbar.header-controls-ready { position: relative; gap: .25rem;
+  #topbar { position: relative; gap: .25rem;
     padding-inline-end: max(.25rem, env(safe-area-inset-right)); }
-  .header-controls-ready .header-disclosure {
+  .header-disclosure {
     display: inline-flex; align-items: center; justify-content: center; flex: none;
     width: 44px; height: 44px; border: 1px solid transparent; border-radius: 8px;
     background: transparent; color: var(--fg-alt); cursor: pointer;
@@ -1312,28 +1370,28 @@ html.theme-dark .chapter-review.is-unreviewed { color: #e6b667; }
   .header-disclosure:hover, .header-disclosure[aria-expanded="true"] {
     background: var(--button-hover); color: var(--text-fg);
   }
-  .header-controls-ready :is(.header-disclosure, #theme-toggle):focus-visible {
+  #topbar :is(.header-disclosure, #theme-toggle):focus-visible {
     outline-offset: 2px; /* Keep the focus ring inside the narrower edge gutter. */
   }
-  #topbar.header-controls-ready :is(.search-form, #lang-switch) {
+  #topbar :is(.search-form, #lang-switch) {
     position: absolute; top: calc(100% + .35rem); right: .65rem; margin: 0;
     padding: .65rem; background: var(--popup-bg); border: 1px solid var(--input-border);
     border-radius: 10px; box-shadow: var(--shadow-float); z-index: 1;
     opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-4px);
     transition: opacity .12s ease, transform .12s ease, visibility 0s .12s;
   }
-  #topbar.header-controls-ready .search-form { left: .65rem; }
-  #topbar.header-controls-ready #lang-switch { gap: .5rem; font-size: 1rem; }
-  #topbar.header-controls-ready #lang-switch :is(a, .cur) { padding-inline: .6rem; }
-  #topbar.header-controls-ready :is(.search-form, #lang-switch).header-panel-open {
+  #topbar .search-form { left: .65rem; }
+  #topbar #lang-switch { gap: .5rem; font-size: 1rem; }
+  #topbar #lang-switch :is(a, .cur) { padding-inline: .6rem; }
+  #topbar :is(.search-form, #lang-switch).header-panel-open {
     opacity: 1; visibility: visible; pointer-events: auto; transform: none;
     transition-delay: 0s;
   }
-  #topbar.header-controls-ready #search-box { width: 100%; max-width: none; min-height: 44px; }
-  #topbar.header-controls-ready #search-results { width: 100%; max-width: none; }
+  #topbar #search-box { width: 100%; max-width: none; min-height: 44px; }
+  #topbar #search-results { width: 100%; max-width: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #topbar.header-controls-ready :is(.search-form, #lang-switch) { transition: none; }
+  #topbar :is(.search-form, #lang-switch) { transition: none; }
 }
 
 /* A reading surface, with navigation kept separate from the mathematical text. */
@@ -1346,7 +1404,12 @@ article, html[lang="zh"] article, html[lang="ja"] article { line-height: 1.7; }
 article h1 { font-size: clamp(1.7rem, 3vw, 2.35rem); line-height: 1.28; text-wrap: balance; margin-bottom: 1rem; }
 article h2 { line-height: 1.35; }
 /* The content grid sets the reading width; paragraphs reflow within that column. */
-article p { text-wrap: wrap; }
+/* Native language-aware wrapping supplies the first pass. The reader then
+   applies only bounded, measured tracking to exceptional CJK lines. */
+article p { text-wrap: pretty; }
+html:is([lang="zh"], [lang="ja"]) article p { line-break: strict; }
+article p.punctuation-tracking { letter-spacing: var(--punctuation-tracking); }
+article p.punctuation-tracking :is(.Agda, .katex, .math) { letter-spacing: normal; }
 button, summary, a, select { -webkit-tap-highlight-color: transparent; }
 :where(button, a, summary, select, input):focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
 [hidden] { display: none !important; }

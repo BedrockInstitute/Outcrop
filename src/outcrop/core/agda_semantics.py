@@ -13,14 +13,45 @@ from outcrop.core.html_contract import (
     _BARE_REFERENCE_ASPECTS,
 )
 from outcrop.core.agda_help import annotate_inline_code, annotate_keywords, inline_tokens
+from outcrop.core.agda_type_quality import imprecise_type
 
-def ref_link(href, aspect, label, extra_class=""):
+
+def ungrouped_constructor_argument(source):
+    """Remove only parentheses enclosing the entire constructor argument."""
+    source = source.strip()
+    while source.startswith('(') and source.endswith(')'):
+        depth = 0
+        for index, character in enumerate(source):
+            depth += (character == '(') - (character == ')')
+            if depth == 0 and index != len(source) - 1:
+                return source
+            if depth < 0:
+                return source
+        if depth:
+            return source
+        source = source[1:-1].strip()
+    return source
+
+
+def closed_natural_constructor(source):
+    """Parse constructor syntax; callers must separately certify its ℕ/Fin type."""
+    source = ungrouped_constructor_argument(source)
+    if source == 'zero':
+        return 0
+    if not source.startswith('suc '):
+        return None
+    argument = ungrouped_constructor_argument(source[4:])
+    predecessor = closed_natural_constructor(argument)
+    return predecessor + 1 if predecessor is not None else None
+
+def ref_link(href, aspect, label, extra_class="", origin=""):
     """An inline-ref anchor; hover data only when the href has a position."""
     mod, _, pos = href.rpartition(".html#")
     dt = f' data-type="{mod}#{pos}"' if mod and pos.isdigit() else ""
     cls = (extra_class + (" " + aspect if aspect else "")).strip()
     cls = f' class="{cls}"' if cls else ""
-    return f'<a href="{href}"{cls}{dt}>{label}</a>'
+    source = f' data-agda-origin="{htmllib.escape(origin, quote=True)}"' if origin else ""
+    return f'<a href="{href}"{cls}{dt}{source}>{label}</a>'
 
 
 def index_definitions(code_html, module, name2pos, pos_aspect):
@@ -376,6 +407,7 @@ def local_signature_types(code_html, module):
         result[match.group("pos")] = {
             "name": htmllib.unescape(match.group("name")),
             "type": type_html,
+            "aspect": match.group("aspect"),
         }
     # Agda permits several declarations to share one signature (``A P : V``)
     # and may place the colon on the following line.  The narrow expression
@@ -398,6 +430,7 @@ def local_signature_types(code_html, module):
                     result.setdefault(declaration.group("pos"), {
                         "name": htmllib.unescape(declaration.group("name")),
                         "type": type_html,
+                        "aspect": declaration.group("aspect"),
                     })
             pending = ""
         elif ("class=\"Symbol\">=</a>" not in line
@@ -406,6 +439,33 @@ def local_signature_types(code_html, module):
         else:
             pending = ""
     return result
+
+
+_SIMPLE_SIGNATURE_BINDER_RE = re.compile(
+    r'^<a class="Symbol">\(</a>'
+    r'<a href="(?P<href>[^"]+)" class="Bound">[^<]+</a>\s*'
+    r'<a class="Symbol">:</a>\s*'
+    r'(?P<domain>.*?)<a class="Symbol">\)</a>'
+    r'(?P<arrow>\s*<a class="Symbol">→</a>)(?P<tail>.*)$', re.DOTALL,
+)
+
+
+def simplify_vacuous_signature_binder(type_html):
+    """Show a nondependent source binder as an arrow, retaining compiler links.
+
+    The binder's source-position href is its identity.  If it occurs later, the
+    result genuinely depends on that variable and the declaration is untouched.
+    Only a single, simple leading binder is collapsed; complex syntax is left
+    exactly as highlighted rather than guessed from its text.
+    """
+    while match := _SIMPLE_SIGNATURE_BINDER_RE.match(type_html):
+        domain, tail = match.group('domain', 'tail')
+        if ('<a class="Symbol">(</a>' in domain
+                or '<a class="Symbol">)</a>' in domain
+                or f'href="{match.group("href")}"' in tail):
+            break
+        type_html = domain.strip() + match.group('arrow') + tail
+    return type_html
 
 
 def names_by_position(module, name2pos):
@@ -482,8 +542,35 @@ def annotate_expression_nodes(block, nodes):
     by_start = {start: html_start for start, _, html_start, _ in tokens}
     by_end = {end: html_end for _, end, _, html_end in tokens}
 
+    def nat_successor(source):
+        source = ungrouped_constructor_argument(source)
+        if not source.startswith('suc '):
+            return None
+        argument = ungrouped_constructor_argument(source[4:])
+        inner = nat_successor(argument)
+        if inner is not None:
+            return inner[0], inner[1] + 1
+        if re.fullmatch(r'[^\W\d_][\w′″‴⁗\'’₀-₉]*', argument, re.UNICODE):
+            return argument, 1
+        return None
+
     def source_opening(node, depth):
-        return (f'<span class="expr-node" data-expr-id="{node["id"]}" '
+        notation = ''
+        rendered_type = htmllib.unescape(re.sub(r'<[^>]+>', '', node.get('type', '')))
+        if node.get('kind') == 'application':
+            number = closed_natural_constructor(node.get('source', ''))
+            if rendered_type.startswith('Fin ') and number is not None:
+                notation = (f' data-source-notation="fin" data-notation-value="{number}" '
+                            f'data-notation-type="{htmllib.escape(node["type"], quote=True)}"')
+            elif rendered_type == 'ℕ' and number is None:
+                successor = nat_successor(node.get('source', ''))
+                if successor is not None:
+                    base, count = successor
+                    notation = (f' data-source-notation="nat-suc" '
+                                f'data-notation-value="{htmllib.escape(base, quote=True)}" '
+                                f'data-notation-count="{count}" '
+                                f'data-notation-type="{htmllib.escape(node["type"], quote=True)}"')
+        return (f'<span class="expr-node" data-expr-id="{node["id"]}"{notation} '
                 f'data-expr-start="{node["start"]}" '
                 f'data-expr-end="{node["end"]}" '
                 f'style="--expr-level:{depth % 6}">')
@@ -532,13 +619,19 @@ def write_type_sidecar(module, langs, out_dir, types_global, name2pos,
             output.write(sidecar)
 
 
-def inline_ref_link(label, module, name, name2pos, aspects=None):
+def inline_ref_link(label, module, name, name2pos, aspects=None, prelude_reexports=None):
     """Render an Agda-styled label for a specified internal declaration."""
     position = name2pos.get(module, {}).get(name)
     if position is None:
         raise ValueError(f"unknown Agda reference {module}.{name}")
     href = f"{module}.html#{position}"
     aspect = (aspects or {}).get(module, {}).get(position, '')
+    # An explicit source-qualified reference disambiguates overloaded names,
+    # while preserving the configured introductory vocabulary hop.
+    bridge = (prelude_reexports or {}).get('by_href', {}).get(href)
+    if bridge:
+        href = f'{bridge[0]}.html#{bridge[1]}'
+        aspect = bridge[2]
     return ('<span class="Agda">'
             + ref_link(href, aspect, htmllib.escape(label), "inline-ref") + '</span>')
 
@@ -712,7 +805,7 @@ class AgdaSemantics:
                     continue
                 t = (types_raw.get(m, {}).get(name)
                      or types_raw.get(m, {}).get(name.split(".")[-1]))
-                if t:
+                if t and not imprecise_type(t):
                     g[m][pos] = self.render_type(t, internal_q, name_pattern,
                                             pos_aspect, m, prelude_reexports)
         return g
@@ -723,6 +816,9 @@ class AgdaSemantics:
         """Give Prelude's explanatory import anchors the imported names' types."""
         prelude = types_by_module.setdefault(self.prelude_module, {})
         name_pattern = qualified_name_pattern(internal_q)
+        targets_by_name = {}
+        for original_href, (_, _, _, shown) in reexports["by_href"].items():
+            targets_by_name.setdefault(shown, set()).add(original_href)
         for original_href, (_, position, _, shown) in reexports["by_href"].items():
             if shown == "Type":
                 # Agda's extractor reports the sort occupied by the imported
@@ -735,15 +831,22 @@ class AgdaSemantics:
                 continue
             if position in prelude:
                 continue
-            raw_type = types_raw.get(self.prelude_module, {}).get(shown)
-            if raw_type:
-                prelude[position] = self.render_type(raw_type, internal_q, name_pattern,
-                                                pos_aspect, self.prelude_module, reexports)
-                continue
+            # A spelling can name distinct constructors imported from different
+            # modules (Nat.zero/Fin.zero, Nat.suc/Fin.suc). The compiler target,
+            # not the unqualified export name, is the identity of this anchor.
             module, _, original_position = original_href.rpartition(".html#")
             original_type = types_by_module.get(module, {}).get(original_position)
             if original_type:
                 prelude[position] = original_type
+                continue
+            if len(targets_by_name[shown]) > 1:
+                # In a partial semantic package, a missing compiler target is
+                # not licence to borrow another declaration's same-name type.
+                continue
+            raw_type = types_raw.get(self.prelude_module, {}).get(shown)
+            if raw_type and not imprecise_type(raw_type):
+                prelude[position] = self.render_type(raw_type, internal_q, name_pattern,
+                                                pos_aspect, self.prelude_module, reexports)
 
 
     def build_expression_types(self, raw, internal_q, pos_aspect, prelude_reexports=None):
@@ -768,9 +871,27 @@ class AgdaSemantics:
         return result
 
 
-    def inline_reference_resolver(self, local_refs, current_module, prelude_reexports=None):
+    def inline_reference_resolver(self, local_refs, current_module, prelude_reexports=None,
+                                  name2pos=None, inline_source=""):
         """Use real Prelude exports and compiler links, including mixfix spellings."""
         prelude = prelude_reexports or {}
+        origins = {}
+        qualified = {}
+        for original_href, bridge in prelude.get('by_href', {}).items():
+            forwarded = f'{bridge[0]}.html#{bridge[1]}'
+            origins.setdefault(forwarded, set()).add(original_href)
+        qualified_tokens = {token for _, _, token, _ in inline_tokens(inline_source)
+                            if '.' in token}
+        for source_module, names in (name2pos or {}).items():
+            for source_name in qualified_tokens:
+                position = names.get(source_name)
+                if position is None:
+                    continue
+                original_href = f'{source_module}.html#{position}'
+                bridge = prelude.get('by_href', {}).get(original_href)
+                if bridge:
+                    qualified.setdefault(source_name, set()).add(
+                        (f'{bridge[0]}.html#{bridge[1]}', bridge[2]))
         references = dict(prelude.get('inline', {}))
         if 'inline' not in prelude:
             for name, (module, position, aspect, _) in prelude.get('by_name', {}).items():
@@ -833,6 +954,8 @@ class AgdaSemantics:
             if tokens is not cached_tokens:
                 cached_tokens, matched = tokens, match_parts(tokens)
             info = matched.get(index) or references.get(token)
+            if info is None and len(qualified.get(token, ())) == 1:
+                info = next(iter(qualified[token]))
             if info is None and token.startswith(self.prelude_module + '.'):
                 info = references.get(token[len(self.prelude_module) + 1:])
             if info is None and token.startswith('.'):
@@ -845,9 +968,43 @@ class AgdaSemantics:
                 unique = set(aliases.get(token, ()))
                 if len(unique) == 1:
                     info = unique.pop()
-            return ref_link(info[0], info[1], htmllib.escape(token)) if info else None
+            if not info:
+                return None
+            forwarded = origins.get(info[0], ())
+            origin = next(iter(forwarded)) if len(forwarded) == 1 else ''
+            return ref_link(info[0], info[1], htmllib.escape(token), origin=origin)
         return resolve
 
+
+    def typed_constructor_resolver(self, type_name, name2pos, prelude_reexports=None):
+        """Resolve overloaded Nat/Fin constructors by an authored type witness.
+
+        Only a unique compiler-indexed declaration earns a link.  The type is
+        supplied by the document, but a same-spelling vocabulary entry alone
+        is never enough to guess which constructor it means.
+        """
+        head = type_name.strip().split(maxsplit=1)[0] if type_name.strip() else ''
+        family = {'ℕ': 'Nat', 'Nat': 'Nat', 'Fin': 'Fin'}.get(head)
+        targets = {}
+        if family:
+            for module, names in name2pos.items():
+                for token in ('zero', 'suc'):
+                    position = names.get(f'{family}.{token}')
+                    if position is not None:
+                        targets.setdefault(token, []).append(f'{module}.html#{position}')
+
+        def resolve(token, _tokens, _index):
+            candidates = targets.get(token, ())
+            if len(candidates) != 1:
+                return None
+            original = candidates[0]
+            bridge = (prelude_reexports or {}).get('by_href', {}).get(original)
+            if bridge:
+                href, aspect = f'{bridge[0]}.html#{bridge[1]}', bridge[2]
+            else:
+                href, aspect = original, 'InductiveConstructor'
+            return ref_link(href, aspect, htmllib.escape(token), origin=original if bridge else '')
+        return resolve
 
     def inline_ref(self, name, internal, name2pos, local_refs, current_module="",
                    prelude_reexports=None):
@@ -859,7 +1016,8 @@ class AgdaSemantics:
                        and not tokens[0][3] and not name.startswith('.'))
         if not single_name:
             return annotate_inline_code(f'<code class="Agda inline-ref">{label}</code>',
-                                        self.inline_reference_resolver(local_refs, current_module, prelude_reexports))
+                                        self.inline_reference_resolver(local_refs, current_module,
+                                                                       prelude_reexports, name2pos, name))
         if href_aspect and not _BARE_REFERENCE_ASPECTS.intersection(href_aspect[1].split()):
             return f'<code class="Agda inline-ref">{label}</code>'
         exported = (prelude_reexports or {}).get('inline', {}).get(name)
@@ -902,4 +1060,5 @@ class AgdaSemantics:
             defined = bool(_BARE_REFERENCE_ASPECTS.intersection(aspect.split()))
             return linked_inline_ref(href_aspect[0], aspect, label, defined)
         return annotate_inline_code(f'<code class="Agda inline-ref">{label}</code>',
-                                    self.inline_reference_resolver(local_refs, current_module, prelude_reexports))
+                                    self.inline_reference_resolver(local_refs, current_module,
+                                                                   prelude_reexports, name2pos, name))

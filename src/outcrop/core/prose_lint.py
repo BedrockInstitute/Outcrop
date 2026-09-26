@@ -6,8 +6,11 @@ from outcrop.core.source_syntax import ROUTE_METADATA_RE
 from outcrop.core.math_lint import unapproved_math
 from outcrop.core.submodule_structure import submodules, module_header_line
 from outcrop.core.statement_structure import (
-    STATEMENT_LABELS, PROOF_LABELS, LABEL_RE, NAMES_RE, statement_issues, named_group_issues,
+    STATEMENT_LABELS, PROOF_LABELS, LABEL_RE, NAMES_RE,
+    statement_issues, named_group_issues,
 )
+from outcrop.core.table_style import missing_table_captions
+from outcrop.core.code_preview import preview_directive_issues
 
 @dataclass(frozen=True)
 class ProsePolicy:
@@ -16,6 +19,7 @@ class ProsePolicy:
     require_submodules: bool = True
     variables: bool = True
     inline_code: bool = True
+    table_captions: bool = True
     variable_legacy: dict = field(default_factory=dict)
     inline_math_review: bool = False
     math_approvals: dict = field(default_factory=dict)
@@ -45,7 +49,8 @@ SKIP = set(" \t\r*_~()[]")        # whitespace, markdown emphasis, transparent b
 # CJK reflow never merges prose across (or into) a language switch.
 MARKER_RE = re.compile(r"^\s*<!--\s*(en|zh|ja|/)\s*-->\s*$")
 SINGLE_LINE_CODE_RE = re.compile(
-    r"^\s*<div class=\"single-line-code\"(?: data-note=\"[^\"]+\")?><code>(?:[^<\n]+|<[^>\n]+>)+</code></div>\s*$")
+    r"^\s*<div class=\"single-line-code\"(?: data-outcrop-notation=\"source\")?"
+    r"(?: data-note=\"[^\"]+\")?><code>(?:[^<\n]+|<[^>\n]+>)+</code></div>\s*$")
 
 
 def _in(cp, ranges):
@@ -94,12 +99,16 @@ def build_protected(text):
                 prot[j] = True
 
     mask(r"`[^`\n]*`")                       # inline code
+    mask(r"\{\.Agda(?:\s+[^}\n]+)?\}")       # inline Agda attributes, including type witnesses
     mask(r"\]\([^)\n]*\)", start_off=1)      # markdown link/image destination: the (...) part
     mask(r"[A-Za-z][A-Za-z0-9+.\-]*://[^\s)]+")  # bare URLs
     mask(r"\$\$[^$]*\$\$")                    # display math $$...$$ (may span lines)
     mask(r"\$[^$\n]+\$")                      # inline math $...$
     mask(r"<[^>\n]*>")                          # raw HTML tags and attributes
     mask(r"&(?:#[0-9]+|#x[0-9A-Fa-f]+|[A-Za-z][A-Za-z0-9]+);")  # HTML entities
+    # The leading colon is table-caption syntax, not sentence punctuation.
+    for match in re.finditer(r"^:[ \t]+\S", text, re.M):
+        prot[match.start()] = True
     return prot
 
 
@@ -283,15 +292,24 @@ def theorem_label_violations(text, path=None, *, numbered_theorems=()):
             label = match.group(1)
             label_start = line.index("**", match.start())
             rest = line[label_start:]
+            bold = line[label_start:match.end()]
+            following = line[match.end():]
             if label in _STATEMENT_LABELS:
                 prefix = f"**{label}**"
-                valid = rest.startswith(prefix) and NAMES_RE.match(rest[len(prefix):])
+                valid = bold == prefix and bool(NAMES_RE.match(following))
+                common = match.group(2)
+                if label in ('Theorem', '定理') and common:
+                    valid = valid or (common.strip() == common
+                                      and bold == f"**{label} ({common})**"
+                                      and bool(NAMES_RE.match(following)))
                 if numbered_theorems and label in ('Theorem', '定理'):
                     valid = valid or re.match(r'\*\*' + label + r'\s*(?:' + '|'.join(re.escape(str(n)) for n in numbered_theorems) + r')\*\* ', rest)
                 message = ("named statement label must have no period and must use "
-                           f"**{label}** (`name`{{.Agda}}) Text")
+                           f"**{label}** (`name`{{.Agda}}) Text"
+                           + (f" or **{label} (common name)** (`name`{{.Agda}}) Text"
+                              if label in ('Theorem', '定理') else ""))
             else:
-                valid = rest.startswith(f"**{label}** ")
+                valid = bold == f"**{label}**" and following.startswith(" ")
                 message = ("proof label must have no period and must use "
                            f"**{label}** Text")
             if not valid:
@@ -311,7 +329,7 @@ def statement_violations(text):
 
 
 _INLINE_AGDA_ATOM = re.compile(
-    r'`[^`\n]+`\{\.Agda\}|\[([^\]\n]+)\]\(([^)\n]+)\)\{\.Agda\}')
+    r'`[^`\n]+`\{\.Agda(?: \.raw-notation)?(?: type="[^"\n]+")?\}|\[([^\]\n]+)\]\(([^)\n]+)\)\{\.Agda\}')
 _AGDA_MATH_RIGHT = re.compile(r'^\s*(?:≡|→|∙|×|∈|∘|=|\+)(?=\s|`|\[|[A-Za-zℓ(])')
 _AGDA_MATH_LEFT = re.compile(r'(?:≡|→|∙|×|∈|∘|=|\+)\s*$')
 _TABLE_AGDA_OPERATOR = re.compile(r'≡|→|∙|×|∈|∘|∥|λ|Σ|Π|∀')
@@ -322,7 +340,7 @@ def inline_agda_violations(text):
 
     A link-only rendering is reserved for one declaration name. Code spans may
     contain full expressions; an operator outside their boundary means the
-    expression has been split. Origin follows exactly the same rule.
+    expression has been split. Overview chapters follow the same rule.
     """
     out = []
     fenced = False
@@ -721,6 +739,8 @@ def analyze(text, path=None, *, policy=None):
 
     # Rule 6: Agda code blocks must be English-only (no Chinese / full-width)
     manual.extend(agda_block_violations(text))
+    manual.extend(Violation(sum(len(line) + 1 for line in text.splitlines()[:line_number - 1]), message, False)
+                  for line_number, message in preview_directive_issues(text))
 
     # Rule 8: centered single-line code displays have one canonical form.
     manual.extend(single_line_code_violations(text))
@@ -729,6 +749,9 @@ def analyze(text, path=None, *, policy=None):
     manual.extend(theorem_label_violations(text, numbered_theorems=policy.numbered_theorems))
     # Rule 10: prose statements/proofs contain code, without authored end marks.
     manual.extend(statement_violations(text))
+    if policy.table_captions:
+        manual.extend(Violation(index, "Markdown table needs a nonempty ': caption' line immediately after its last row", False)
+                      for index in missing_table_captions(text))
     # Rule 12: Japanese prose consistently uses plain style.
     manual.extend(japanese_polite_violations(text, prot))
     # Rule 13: a standalone declaration may be a bare link; expressions are boxed.

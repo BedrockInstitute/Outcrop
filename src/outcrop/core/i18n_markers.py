@@ -15,6 +15,7 @@ never appear inside a code fence (``` / ~~~), where code is language-neutral.
 
 import re
 from outcrop.core.source_syntax import strip_route_metadata
+from outcrop.core.table_style import caption_text, table_end
 
 LANGS = ["en", "zh", "ja"]
 FALLBACK = "en"  # language used when a group lacks the requested one
@@ -161,11 +162,13 @@ def _markdown_blocks(lines):
                         break
             blocks.append(("protected", block))
             continue
-        if (line.lstrip().startswith("|") and i + 1 < len(lines)
-                and re.match(r"^\s*\|?\s*:?-+", lines[i + 1])):
+        if table_end(lines, i) is not None:
             block = [line, lines[i + 1]]
             i += 2
             while i < len(lines) and lines[i].lstrip().startswith("|"):
+                block.append(lines[i])
+                i += 1
+            if i < len(lines) and caption_text(lines[i]) is not None:
                 block.append(lines[i])
                 i += 1
             blocks.append(("prose", block))

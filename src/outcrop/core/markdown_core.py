@@ -12,6 +12,7 @@ from outcrop.core.html_contract import (
 )
 from outcrop.core.statement_structure import LABEL_RE, PROOF_LABELS
 from outcrop.core.submodule_structure import module_header_line
+from outcrop.core.table_style import caption_text, is_table_separator, table_end
 from outcrop.core.term_registry import TERM_MARK_RE, auto_match_allowed, localized_forms
 
 def dedent_submodule_code(body):
@@ -147,8 +148,7 @@ def _is_block_start(line):
 
 
 def _is_table_sep(line):
-    s = line.strip()
-    return bool(s) and set(s) <= set("|:- ") and "-" in s
+    return is_table_separator(line)
 
 
 def md_to_html(text):
@@ -212,7 +212,7 @@ def md_to_html(text):
             inner, _ = md_to_html("\n".join(block))
             out.append("<blockquote>" + inner + "</blockquote>")
             continue
-        if line.lstrip().startswith("|") and i + 1 < n and _is_table_sep(lines[i + 1]):
+        if table_end(lines, i) is not None:
             def _cells(s):
                 return [c.strip() for c in s.strip().strip("|").split("|")]
             header = _cells(line)
@@ -224,8 +224,14 @@ def md_to_html(text):
                     + "</tr></thead><tbody>"]
             for r in body:
                 rows.append("<tr>" + "".join(f"<td>{_inline(c)}</td>" for c in r) + "</tr>")
-            out.append('<div class="prose-table-scroll"><table>' + "".join(rows)
-                       + "</tbody></table></div>")
+            table = '<div class="prose-table-scroll"><table>' + "".join(rows) + "</tbody></table></div>"
+            caption = caption_text(lines[i]) if i < n else None
+            if caption is not None:
+                out.append('<figure class="prose-table">' + table
+                           + '<figcaption>' + _inline(caption) + '</figcaption></figure>')
+                i += 1
+            else:
+                out.append(table)
             continue
         para = [line]; i += 1
         while i < n and lines[i].strip() and not _is_block_start(lines[i]):

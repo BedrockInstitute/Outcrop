@@ -46,9 +46,9 @@ and eventually close with per-branch delays. Touch first shows a persistent
 hover, never a modal; its explicit action opens the modal. Node gestures return
 to leaf names and clear the previous highlight. Loading requests are cancelable.
 
-Definition inspection uses one full-body iframe modal with target-based history,
+Definition and prose-link inspection use one full-body iframe modal with target-based history,
 not stacked dialogs or history of incidental scroll positions. Keep dark/light
-loading, ordinary link navigation, same-definition entry, code-block anchors,
+loading, native navigation for non-content links, same-target entry, code-block anchors,
 sticky contents, scroll controls and explicit/outside close. Test Safari layout
 when the browser is available; do not equate narrow Chrome with iPhone Safari.
 

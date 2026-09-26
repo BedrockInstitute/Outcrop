@@ -82,7 +82,9 @@ def _build_site(config, args):
         return 2
 
     corpus = SourceCorpus(config, source_dir=src, highlighted_dir=html_dir)
-    diagram_errors = check_diagrams(corpus.sources.values(), stylesheets=sorted(Path(static_dir).glob('*.css')))
+    project_stylesheets = [config.path(path) for path in config.stylesheets]
+    diagram_errors = check_diagrams(corpus.sources.values(), stylesheets=[
+        *sorted(Path(static_dir).glob('*.css')), *project_stylesheets])
     if diagram_errors:
         sys.stderr.write("\n".join(diagram_errors) + "\n")
         return 1
@@ -119,8 +121,13 @@ def _build_site(config, args):
     for name, path in (('favicon', config.favicon), ('logo', config.logo or config.favicon)):
         if path:
             project_assets[f'assets/{name}.svg'] = config.path(path).read_bytes()
+    stylesheet_assets = []
+    for index, path in enumerate(project_stylesheets):
+        asset = f'project/style-{index}.css'
+        project_assets[asset] = path.read_bytes()
+        stylesheet_assets.append(asset)
     assets = AssetBundle(static_dir, project_assets=project_assets)
-    tpl = assets.template(tpl)
+    tpl = assets.template(tpl, stylesheets=stylesheet_assets)
 
     code = (read_context(args.code_cache, args.code_cache_key, semantics, internal, rendered)
             if args.code_cache else None)

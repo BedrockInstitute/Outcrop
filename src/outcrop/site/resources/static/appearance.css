@@ -2,7 +2,7 @@
    layout, code gutters, typography and interaction geometry in outcrop.css. */
 :root {
   --text-bg: #fcfcfd; --text-fg: #252a34; --fg-alt: #596273;
-  --primary: #285fa5; --link-color: #a53268;
+  --primary: #285fa5; --link-color: #7244b7;
   --surface-muted: #f1f3f6; --popup-bg: #fff;
   --ruler: #d4dae3; --input-border: #bdc6d3; --border-subtle: #dce1e9;
   --button-hover: #e9edf3; --on-primary: #fff; --ui-success: #24784f;
@@ -13,7 +13,7 @@
 }
 :root.theme-dark, html.theme-dark {
   --text-bg: #191d25; --text-fg: #dce2ec; --fg-alt: #acb7c8;
-  --primary: #91bced; --link-color: #ed9fbd;
+  --primary: #91bced; --link-color: #ba8bea;
   --surface-muted: #222833; --popup-bg: #242b36;
   --ruler: #394352; --input-border: #536176; --border-subtle: #35404f;
   --button-hover: #323d4d; --on-primary: #15273d; --ui-success: #79d0a6;
@@ -24,7 +24,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not(.theme-light) {
     --text-bg: #191d25; --text-fg: #dce2ec; --fg-alt: #acb7c8;
-    --primary: #91bced; --link-color: #ed9fbd;
+    --primary: #91bced; --link-color: #ba8bea;
     --surface-muted: #222833; --popup-bg: #242b36;
     --ruler: #394352; --input-border: #536176; --border-subtle: #35404f;
     --button-hover: #323d4d; --on-primary: #15273d; --ui-success: #79d0a6;
@@ -126,20 +126,28 @@ main th { background: var(--surface-muted); }
   font-synthesis: none;
 }
 .universe-parameter .universe-parameter { font-size: 1em; }
-.universe-notation { position: relative; display: inline-block; vertical-align: baseline;
+.source-notation { position: relative; display: inline-block; vertical-align: baseline;
   margin: 0; padding: 0; border: 0; background: none; cursor: help; white-space: nowrap;
   text-decoration: underline dotted color-mix(in srgb, var(--code-fg) 28%, transparent);
   text-underline-offset: .15em; text-decoration-thickness: 1px; }
 .universe-notation::after { content: attr(data-level-math); }
-.universe-notation:is(:hover, .info-active) { color: var(--code-fg); text-decoration-color: currentColor; }
-.universe-notation:focus-visible { outline: 2px solid var(--fg-alt); outline-offset: 3px; }
+.fin-notation::after { content: attr(data-math-label); }
+.nat-suc-notation::before { content: attr(data-math-base); }
+.nat-suc-notation::after { content: attr(data-math-power); font-size: .7em;
+  vertical-align: super; line-height: 0; }
+.fin-notation, .nat-suc-notation { color: color-mix(in srgb, var(--code-fg) 78%, var(--code-bg)); }
+.source-notation:is(:hover, .info-active) { color: var(--code-fg); text-decoration-color: currentColor; }
+.source-notation:focus-visible { outline: 2px solid var(--fg-alt); outline-offset: 3px; }
 /* Source text is retained for Unicode offsets, copying and existing anchors.
    A clipped, positioned box keeps anchor destinations at the visible notation. */
 .universe-source { position: absolute; inset: 0 auto auto 0; width: 1px; height: 1px;
   overflow: hidden; clip-path: inset(50%); white-space: pre; pointer-events: none; }
-[data-universe-raw] { white-space: pre-wrap; }
+.notation-elided-parenthesis { position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip-path: inset(50%); white-space: pre; pointer-events: none; }
+[data-universe-raw], [data-source-raw] { white-space: pre-wrap; }
+.source-notation-type { display: block; margin-bottom: .35em; color: var(--code-fg); }
 .source-hover-label { margin: 0 0 .4rem; color: var(--code-comment); font: .72rem/1.3 var(--sans); white-space: normal; }
-@media (forced-colors: active) { .universe-notation { border-color: ButtonText; color: ButtonText; } }
+@media (forced-colors: active) { .source-notation { border-color: ButtonText; color: ButtonText; } }
 @media (pointer: coarse) {
   #search-box, .definition-modal-history-button, .definition-modal-close, .definition-modal-jump,
   .ask-ai-close, .ask-ai-button { min-width: 44px; min-height: 44px; }
@@ -147,7 +155,8 @@ main th { background: var(--surface-muted); }
   .appearance-palette select { font-size: 1rem; }
 }
 @media (max-width: 28rem) {
-  #topbar { gap: .25rem; padding-inline: .65rem; }
+  #topbar { gap: .25rem; padding-inline: .65rem;
+    padding-inline-end: max(.25rem, env(safe-area-inset-right)); }
   #topbar .topbar-spacer { min-width: 0; }
   #brand { font-size: 1.05rem; gap: .3rem; }
   #brand .brand-logo { width: 1.2rem; height: 1.2rem; }
