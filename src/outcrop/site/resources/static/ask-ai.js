@@ -379,7 +379,6 @@
   var region = null;
   var status = null;
   var pending = "";
-  var selecting = false;
 
   function buildTrigger() {
     trigger = document.createElement("button");
@@ -562,7 +561,6 @@
   }
 
   function refresh() {
-    if (selecting) return hideTrigger();
     var range = currentRange();
     if (!range) return hideTrigger();
     placeTrigger(range);
@@ -577,17 +575,12 @@
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(refresh, 60);
     }
-    document.addEventListener("selectionchange", function () {
-      if (!selecting) schedule();
-    });
-    document.addEventListener("pointerup", function () {
-      selecting = false;
-      schedule();
-    });
-    document.addEventListener("pointercancel", function () {
-      selecting = false;
-      schedule();
-    });
+    /* A native touch selection handle can change the range without sending its
+       pointerup back to the document. The debounced live range, not a pointer
+       lifecycle flag, is the source of truth for the action's visibility. */
+    document.addEventListener("selectionchange", schedule);
+    document.addEventListener("pointerup", schedule);
+    document.addEventListener("pointercancel", schedule);
     document.addEventListener("keyup", function (event) {
       if (event.shiftKey || event.key === "Shift") schedule();
     });
@@ -601,7 +594,6 @@
     });
     document.addEventListener("pointerdown", function (event) {
       if (article().contains(event.target) && (!trigger || !trigger.contains(event.target))) {
-        selecting = true;
         hideTrigger();
       }
       if (trigger && !trigger.contains(event.target)) hideTrigger();
