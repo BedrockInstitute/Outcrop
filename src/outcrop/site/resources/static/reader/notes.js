@@ -25,11 +25,12 @@ import { cfg } from "./document.js";
   function positionMarginNotes(article, pairs) {
     var articleRect = article.getBoundingClientRect();
     pairs.forEach(function (pair) {
-      // Vertical alignment is structural: the positioned inline anchor moves
-      // with its line through every fold, preview and route disclosure.
-      var anchorRect = pair.anchor.getBoundingClientRect();
-      pair.anchor.style.setProperty("--note-rail-offset",
-        (articleRect.right - anchorRect.right) + "px");
+      // The article is the containing block for both the note and connector.
+      // An inline target may wrap across lines: its union rect is not the
+      // containing block used by CSS absolute positioning on an inline span.
+      var targetRect = pair.target.getBoundingClientRect();
+      pair.anchor.style.setProperty("--note-top",
+        (targetRect.top + targetRect.height / 2 - articleRect.top) + "px");
       pair.anchor.style.setProperty("--note-width",
         Math.max(0, window.innerWidth - articleRect.right - 48) + "px");
     });

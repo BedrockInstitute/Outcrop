@@ -375,15 +375,15 @@ article :not(pre):not(code) > code { font-family: var(--mono); font-size: 0.88em
   border-left-color: color-mix(in srgb, var(--primary) 80%, white);
   background: color-mix(in srgb, var(--primary) 16%, var(--code-bg));
   box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 20%, transparent); }
-.prose-annotation { display: inline; position: relative; }
+.prose-annotation { display: inline; }
 .prose-annotation-target { border-bottom: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
   background: color-mix(in srgb, var(--primary) 8%, transparent);
   transition: background-color .16s ease, border-color .16s ease; }
-.prose-annotation-connector { position: absolute; top: 50%;
-  left: calc(100% + var(--note-rail-offset, 0px) + .35rem); width: 1.3rem;
+.prose-annotation-connector { position: absolute; top: var(--note-top, 0px);
+  left: calc(100% + .35rem); width: 1.3rem;
   height: 2px; transform: translateY(-50%); content: ""; background: var(--primary); opacity: .65; }
-.prose-annotation-note { position: absolute; top: 50%;
-  left: calc(100% + var(--note-rail-offset, 0px) + 2rem);
+.prose-annotation-note { position: absolute; top: var(--note-top, 0px);
+  left: calc(100% + 2rem);
   width: min(22rem, var(--note-width, 30vw)); transform: translateY(-50%); color: var(--fg-alt);
   border-left: 3px solid var(--primary); padding: .35rem .65rem; background: var(--code-bg);
   border-radius: 0 6px 6px 0; font-size: .86em; line-height: 1.4; text-align: left;
