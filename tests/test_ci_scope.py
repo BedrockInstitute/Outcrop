@@ -151,6 +151,9 @@ class FrameworkCIPolicyTests(unittest.TestCase):
 
     def test_package_gate_always_runs_and_compiler_is_scoped(self):
         workflow = (ROOT / '.github/workflows/check.yml').read_text()
+        triggers = workflow.split('\npermissions:', 1)[0]
+        self.assertIn('on:\n  push:\n    branches:\n      - main\n  workflow_dispatch:', triggers)
+        self.assertNotIn('pull_request:', triggers)
         package, compiler = workflow.split('  agda-integration:\n')
         self.assertIn('fetch-depth: 0', package)
         self.assertIn('run: make check PY=python', package)
