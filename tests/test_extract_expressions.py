@@ -36,6 +36,55 @@ class ExpressionSourceTests(unittest.TestCase):
             trace.write_text(json.dumps(records[1]) + '\n')
             self.assertEqual(extractor.normalize(src, highlighted, trace)[0]['A'], [])
 
+    def test_data_endings_and_mutual_data_group_are_compiler_scoped(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            src, highlighted = root / 'src', root / 'html'
+            src.mkdir(); highlighted.mkdir()
+            source = ('```agda\n'
+                      'data Solo : Set where\n  solo : Solo\n'
+                      'mutual\n  data U : Set where\n    code : U\n'
+                      '```\nExplanation.\n```agda\n'
+                      '  El : U → Set\n  El code = U\n'
+                      '```\n'
+                      '```agda\nordinary : Set\nordinary = U\n```\n')
+            path = src / 'A.lagda.md'
+            path.write_text(source)
+            positions = {name: source.index(fragment) + 1 for name, fragment in (
+                ('Solo', 'Solo : Set'), ('U', 'U : Set'),
+                ('El', 'El : U'), ('ordinary', 'ordinary : Set'))}
+            (highlighted / 'A.md').write_text(''.join(
+                f'<a id="{position}" href="A.html#{position}" class="Function">{name}</a>'
+                for name, position in positions.items()))
+            records = []
+            def add(kind, name, end):
+                records.append(dict(version=1, run='one', path=str(path),
+                                    sourceHash=extractor.source_hash(path),
+                                    start=positions[name], end=end, kind=kind, type=''))
+            for name in positions:
+                add('signature', name, positions[name] + len(name) + 6)
+            add('data-end', 'Solo', source.index('solo : Solo') + len('solo : Solo') + 1)
+            add('data-end', 'U', source.index('code : U') + len('code : U') + 1)
+            add('definition-end', 'El', source.index('El code = U') + len('El code = U') + 1)
+            add('mutual-data-end', 'U', source.index('El code = U') + len('El code = U') + 1)
+            add('definition-end', 'ordinary', source.index('ordinary = U') + len('ordinary = U') + 1)
+            trace = root / 'trace.jsonl'
+            trace.write_text(''.join(json.dumps(record) + '\n' for record in records))
+            nodes, _ = extractor.normalize(src, highlighted, trace)
+            self.assertEqual([(node['name'], node['end']) for node in nodes['A']], [
+                ('Solo', source.index('solo : Solo') + len('solo : Solo') + 1),
+                ('U, El', source.index('El code = U') + len('El code = U') + 1),
+                ('ordinary', source.index('ordinary = U') + len('ordinary = U') + 1),
+            ])
+            self.assertTrue(all(node['kind'] == 'definition-end' for node in nodes['A']))
+
+            # A group without its certified data member cannot erase the
+            # function's otherwise valid QED marker.
+            trace.write_text(''.join(json.dumps(record) + '\n' for record in records
+                                     if not (record['kind'] == 'data-end' and record['start'] == positions['U'])))
+            nodes, _ = extractor.normalize(src, highlighted, trace)
+            self.assertEqual([node['name'] for node in nodes['A']], ['Solo', 'El', 'ordinary'])
+
     def test_plain_and_mixed_sources_keep_unicode_nodes_and_compacted_trace(self):
         for mixed in (False, True):
             with self.subTest(mixed=mixed), tempfile.TemporaryDirectory() as directory:

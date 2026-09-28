@@ -34,7 +34,7 @@ UNLINKED_BOUND_RE = re.compile(
     r'<a\s+id="(\d+)"\s+class="[^"]*\bBound\b[^"]*">([^<]*)</a>'
 )
 KIND_PRIORITY = {"name": 1, "binding": 2, "application": 3, "pattern": 4}
-DECLARATION_KINDS = {'signature', 'definition-end'}
+DECLARATION_KINDS = {'signature', 'definition-end', 'data-end', 'mutual-data-end'}
 DUMMY_TYPE_RE = re.compile(r'__DUMMY_(?:TYPE|SORT|TERM|LEVEL|DOM)__|dummy(?:Type|Sort|Term|Level):')
 SOURCE_SUFFIXES = (".lagda.md", ".agda")
 
@@ -250,17 +250,21 @@ def normalize(source_root: Path, html_dir: Path, trace_path: Path,
         signatures = {record['start'] for record in path_records
                       if record['kind'] == 'signature'
                       and inside_code(record['start'], record['start'] + 1, intervals)}
-        endings = {}
+        individual_endings = []
+        mutual_data_ranges = []
         for record in path_records:
             start, end = record["start"], record["end"]
             if record['kind'] in DECLARATION_KINDS:
                 # A declaration may cross prose-separated code fences. Only
                 # its endpoints need to lie in code; expression nodes may not.
-                if (record['kind'] == 'definition-end' and start in signatures
+                if (record['kind'] in ('definition-end', 'data-end') and start in signatures
                         and 1 <= start < end <= len(source) + 1
                         and inside_code(end - 1, end, intervals)):
-                    endings[start, end] = {'start': start, 'end': end,
-                        'kind': 'definition-end', 'name': labels.get(start, '')}
+                    individual_endings.append(record)
+                elif (record['kind'] == 'mutual-data-end'
+                        and 1 <= start < end <= len(source) + 1
+                        and inside_code(end - 1, end, intervals)):
+                    mutual_data_ranges.append(record)
                 continue
             if record["kind"] == "binding" and start in labels:
                 end = start + len(labels[start])
@@ -274,6 +278,41 @@ def normalize(source_root: Path, html_dir: Path, trace_path: Path,
                 continue
             key = (start, end)
             by_range[key] = prefer_record(by_range.get(key), record)
+
+        # Agda's mutual block is the authority for grouping, including
+        # forward-declared and interleaved inductive-recursive definitions.
+        # Require a separately validated data definition inside the boundary;
+        # stale or incomplete group evidence must not suppress other endings.
+        groups = []
+        for group in sorted(mutual_data_ranges,
+                            key=lambda record: (record['start'], -record['end'])):
+            if any(outer['start'] <= group['start'] and group['end'] <= outer['end']
+                   for outer in groups):
+                continue
+            if any(record['kind'] == 'data-end'
+                   and group['start'] < record['end'] <= group['end']
+                   for record in individual_endings):
+                groups.append(group)
+
+        def in_mutual_group(record):
+            return any(group['start'] < record['end'] <= group['end'] for group in groups)
+
+        endings = {
+            (record['start'], record['end']): {
+                'start': record['start'], 'end': record['end'],
+                'kind': 'definition-end', 'name': labels.get(record['start'], ''),
+            }
+            for record in individual_endings if not in_mutual_group(record)
+        }
+        for group in groups:
+            members = [record for record in individual_endings
+                       if group['start'] < record['end'] <= group['end']]
+            names = dict.fromkeys(labels.get(record['start'], '') for record in members)
+            endings[group['start'], group['end']] = {
+                'start': group['start'], 'end': group['end'],
+                'kind': 'definition-end',
+                'name': ', '.join(name for name in names if name),
+            }
 
         nodes = list(endings.values())
         for (start, end), record in sorted(by_range.items()):

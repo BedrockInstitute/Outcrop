@@ -130,8 +130,11 @@ traceType :: HasRange a => String -> a -> Type -> TCM ()
 traceType = recordType
 
 -- | Declaration boundaries come from the checked language's abstract syntax,
--- not from Markdown or a scan for equals signs. Where-local declarations are
+-- not from Markdown or a scan for equals signs. Where-local functions are
 -- part of their enclosing definition, not independently marked definitions.
+-- A mutual block containing data and another definition has one shared end:
+-- its members are still traced, but the extractor replaces their individual
+-- ends with this compiler-certified group boundary.
 traceDeclaration :: A.Declaration -> TCM ()
 traceDeclaration declaration = case declaration of
   -- The nicifier gives an inferred underscore the name's own range. An
@@ -140,10 +143,23 @@ traceDeclaration declaration = case declaration of
     | getRange type_ /= noRange
     , getRange type_ /= A.nameBindingSite (A.qnameName name) ->
     recordSpan "signature" $ fuseRange (A.nameBindingSite $ A.qnameName name) type_
+  A.DataSig _ _ name _ type_
+    | getRange type_ /= noRange
+    , getRange type_ /= A.nameBindingSite (A.qnameName name) ->
+    recordSpan "signature" $ fuseRange (A.nameBindingSite $ A.qnameName name) type_
   A.FunDef _ name clauses -> do
     checkingWhere <- asksTC envCheckingWhere
     when (checkingWhere == C.NoWhere_ && any (hasEquation . A.clauseRHS) clauses) $
       recordSpan "definition-end" $ fuseRange (A.nameBindingSite $ A.qnameName name) clauses
+  A.DataDef _ name _ _ constructors ->
+    recordSpanFromBinding "data-end" (A.nameBindingSite $ A.qnameName name)
+      (fuseRange declaration constructors)
+  A.Mutual _ declarations -> do
+    let members = concatMap definingMembers declarations
+    when (length members > 1 && any isDataDefinition members) $
+      recordSpanFromBinding "mutual-data-end"
+        (foldl1 fuseRange $ map memberBinding members)
+        (foldl1 fuseRange $ map memberRange members)
   _ -> pure ()
   where
     hasEquation A.RHS{} = True
@@ -151,10 +167,47 @@ traceDeclaration declaration = case declaration of
     hasEquation (A.WithRHS _ _ clauses) = any (hasEquation . A.clauseRHS) clauses
     hasEquation (A.RewriteRHS _ _ rhs _) = hasEquation rhs
 
+    definingMembers d = case d of
+      A.DataDef{}        -> [d]
+      A.FunDef{}         -> [d]
+      A.RecDef{}         -> [d]
+      A.ScopedDecl _ ds  -> concatMap definingMembers ds
+      _                  -> []
+
+    isDataDefinition A.DataDef{} = True
+    isDataDefinition _           = False
+
+    memberBinding d = case d of
+      A.DataDef _ name _ _ _ -> A.nameBindingSite $ A.qnameName name
+      A.FunDef _ name _ -> A.nameBindingSite $ A.qnameName name
+      A.RecDef _ name _ _ _ _ _ -> A.nameBindingSite $ A.qnameName name
+      _ -> getRange d
+
+    memberRange d = case d of
+      A.DataDef _ name _ _ constructors -> fuseRange (withBinding name) constructors
+      A.FunDef _ name clauses -> fuseRange (A.nameBindingSite $ A.qnameName name) clauses
+      A.RecDef _ name _ _ _ _ _ -> withBinding name
+      _ -> getRange d
+      where
+        withBinding name = fuseRange (A.nameBindingSite $ A.qnameName name) d
+
 recordSpan :: String -> Range -> TCM ()
 recordSpan kind range = case rangeToIntervalWithFile $ continuous range of
   Nothing -> pure ()
-  Just interval -> case srcFile $ iStart interval of
+  Just interval -> recordSpanEndpoints kind (iStart interval) (iEnd interval)
+
+-- A data declaration's range starts at the @data@ keyword, whereas its
+-- signature and Agda's highlighted target start at the name binding. Keep
+-- those two source positions separate instead of searching source text.
+recordSpanFromBinding :: String -> Range -> Range -> TCM ()
+recordSpanFromBinding kind binding body =
+  case (rangeToIntervalWithFile $ continuous binding,
+        rangeToIntervalWithFile $ continuous body) of
+    (Just first, Just last) -> recordSpanEndpoints kind (iStart first) (iEnd last)
+    _ -> pure ()
+
+recordSpanEndpoints :: String -> Position -> Position -> TCM ()
+recordSpanEndpoints kind startPosition endPosition = case srcFile startPosition of
     Strict.Nothing -> pure ()
     Strict.Just source -> liftIO $ do
       sink <- getTraceSink
@@ -162,8 +215,8 @@ recordSpan kind range = case rangeToIntervalWithFile $ continuous range of
         TraceDisabled -> pure ()
         TraceSink handle run -> do
           let path = filePath (rangeFilePath source)
-              start = posPos (iStart interval)
-              end = posPos (iEnd interval)
+              start = posPos startPosition
+              end = posPos endPosition
               key = (path, start, end, kind)
           hash <- sourceHash path
           written <- Map.member key <$> readMVar writtenTypes

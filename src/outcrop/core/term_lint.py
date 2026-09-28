@@ -1,6 +1,6 @@
 """Strict term introduction and prerequisite rules over an explicit corpus."""
 import re
-from outcrop.core.term_registry import (LANGS, TERM_MARK_RE, auto_match_allowed,
+from outcrop.core.term_registry import (LANGS, TERM_MARK_RE, auto_match_allowed, auto_matching,
                                         localized_forms, reader_terms, schema_errors)
 from outcrop.core.i18n_markers import weave
 from outcrop.core.prose_lint import build_protected
@@ -51,6 +51,10 @@ def prerequisite_occurrences(text, entry, language, module):
     chapter. Its label and unique introduction are still validated by check().
     """
     protected = build_protected(text)
+    # Chapter titles do not receive automatic glossary links. Match the ATX h1
+    # form understood by the renderer; subsection headings remain linkable.
+    for heading in re.finditer(r"^#[ \t]+[^\n]*", text, re.M):
+        protected[heading.start():heading.end()] = [True] * len(heading[0])
     for reference in TERM_MARK_RE.finditer(text):
         # Attributes and concept IDs are metadata, not additional uses of the label.
         protected[reference.end(1):reference.end()] = [True] * (reference.end() - reference.end(1))
@@ -110,7 +114,7 @@ def check_terms(sources, entries, reading):
             for language in LANGS:
                 text = weave(raw, language)
                 for entry in terms:
-                    if entry.get("matching", "explicit") != "auto":
+                    if not auto_matching(entry, language):
                         continue
                     occurrences = prerequisite_occurrences(text, entry, language, module)
                     if not occurrences:

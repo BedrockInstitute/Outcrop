@@ -20,6 +20,12 @@ def reader_terms(entries):
     return [entry for entry in entries if entry.get("audience") == "reader"]
 
 
+def auto_matching(entry, lang):
+    """Whether this language has an unambiguous automatic form for the entry."""
+    return (entry.get("matching") == "auto" and
+            lang in entry.get("auto_languages", LANGS))
+
+
 def schema_errors(entries):
     """Validate only the optional reader-facing extension of glossary entries."""
     errors = []
@@ -44,6 +50,15 @@ def schema_errors(entries):
         matching = entry.get("matching")
         if matching not in ("auto", "explicit"):
             errors.append(f"term {entry.get('en', index)!r}: matching must be auto or explicit")
+        auto_languages = entry.get("auto_languages")
+        if (auto_languages is not None and
+                (matching != "auto" or not isinstance(auto_languages, list) or
+                 not auto_languages or
+                 any(not isinstance(lang, str) or lang not in LANGS
+                     for lang in auto_languages) or
+                 len(auto_languages) != len(set(auto_languages)))):
+            errors.append(f"term {entry.get('en', index)!r}: auto_languages must be a "
+                          "nonempty, unique subset of en/zh/ja with matching = auto")
         if "abbreviations" in entry:
             abbreviations = entry["abbreviations"]
             if (not isinstance(abbreviations, dict) or
@@ -81,7 +96,7 @@ def schema_errors(entries):
     for lang in LANGS:
         automatic = {}
         for entry in reader_terms(entries):
-            if entry.get("matching", "explicit") != "auto":
+            if not auto_matching(entry, lang):
                 continue
             for form in localized_forms(entry, lang):
                 key = form.casefold() if lang == "en" else form

@@ -77,6 +77,35 @@ withClause x with x
 data Empty : Set where
 absurd : Empty → Marker
 absurd ()
+
+data Flag : Set where
+  on : Flag
+
+mutual
+  data Left : Set where
+    left : Right → Left
+
+  data Right : Set where
+    right : Left → Right
+
+mutual
+  data TypeCode : Set where
+    atom : TypeCode
+    arrow : (a : TypeCode) (b : Meaning a → TypeCode) → TypeCode
+
+  Meaning : TypeCode → Set
+  Meaning atom = Marker
+  Meaning (arrow a b) = (x : Meaning a) → Meaning (b x)
+
+interleaved mutual
+  data U : Set
+  El : U → Set
+
+  data U where
+    base : U
+  El _ = Marker
+  data _ where
+    later : U
 ```
 ''', encoding='utf-8')
         environment = {**os.environ, 'GHCRTS': '-A64m -I0 -M8g',
@@ -104,11 +133,30 @@ absurd ()
         assert expressions['Start'], expressions
         ends = {module: {node['name']: node for node in nodes if node['kind'] == 'definition-end'}
                 for module, nodes in expressions.items()}
-        assert set(ends['Seed']) == {'identity', 'same'}, ends
-        assert set(ends['Start']) == {'result', 'boxed', 'local', 'split', 'explicitHole', 'withClause'}, ends
+        declarations = [(record['kind'], record['path'].rsplit('/', 1)[-1],
+                         record['start'], record['end'])
+                        for line in trace.splitlines() if
+                        (record := json.loads(line))['kind'] in
+                        {'signature', 'definition-end', 'data-end', 'mutual-data-end'}]
+        assert set(ends['Seed']) == {'Marker', 'identity', 'same'}, (ends, declarations)
+        assert set(ends['Start']) == {
+            'result', 'boxed', 'local', 'split', 'explicitHole', 'withClause',
+            'Empty', 'Flag', 'Left, Right', 'TypeCode, Meaning', 'U, El',
+        }, ends
         text = (source / 'Start.lagda.md').read_text()
         assert text[ends['Start']['local']['end'] - 2] == 'y', ends
         assert text[ends['Start']['split']['start'] - 1:].startswith('split :'), ends
+        for name, last_line in (
+            ('Empty', 'data Empty : Set where'),
+            ('Flag', 'on : Flag'),
+            ('Left, Right', 'right : Left → Right'),
+            ('TypeCode, Meaning', 'Meaning (arrow a b) = (x : Meaning a) → Meaning (b x)'),
+            ('U, El', 'later : U'),
+        ):
+            expected_end = text.index(last_line) + len(last_line) + 1
+            assert ends['Start'][name]['end'] == expected_end, (name, ends['Start'][name], expected_end)
+        seed = (source / 'Seed.lagda.md').read_text()
+        assert ends['Seed']['Marker']['end'] == seed.index('mark : Marker') + len('mark : Marker') + 1
         print('Outcrop Agda smoke: real safe non-Cubical source, Unicode ranges, name types, expression trace and module application passed')
     return 0
 

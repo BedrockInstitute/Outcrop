@@ -75,7 +75,10 @@ A matching final dotted component never turns a whole expression or an unknown
 qualified name into a standalone declaration link. ` ```agda ` fences retain the
 entire code stream. Without compiler input they receive lexical syntax help, but no
 invented definition links, expression ranges or types. Other fences are ordinary
-escaped code. Math is retained for the shared KaTeX client.
+escaped code. Every formal Agda fence, including a one-line fence, offers a
+source-copy action; inline code and centered single-line display code do not.
+The action copies the original Agda text, not its optional compact notation or
+the decorative definition-end mark. Math is retained for the shared KaTeX client.
 
 When imported declarations share a spelling (for example the `zero`
 constructors of `ℕ` and `Fin`), mark the intended type on the complete inline
@@ -95,9 +98,9 @@ expression remains intact in the Markdown mirror.
 When the type has the form `Fin n` and the expression is a closed `zero`/`suc`
 chain, Site displays its numeric value while the hover retains both the original
 expression and the marked type. Likewise, an open successor such as
-`` `suc (suc n)`{.Agda type="ℕ"} `` gets the compact superscript only with
-this explicit type assertion; an unmarked inline constructor link is not proof
-of the whole expression's type. Pair either with
+`` `suc (suc n)`{.Agda type="ℕ"} `` gets the compact superscript from
+this explicit type assertion when compiler evidence is unavailable. An unmarked
+inline constructor link is not proof of the whole expression's type. Pair either with
 `` `suc zero`{.Agda .raw-notation type="Fin 3"} `` when introducing the original
 constructor spelling. Do not use this attribute for a type not justified by the
 surrounding mathematics; a compiler-resolved code block remains authoritative.
@@ -107,8 +110,11 @@ copied Agda. A compiler-certified `Fin` constructor value or an explicitly
 type-marked inline `Fin` constructor may display as a numeral while retaining
 its source and type in the shared hover;
 an open natural successor may display with a superscript successor count. Inline
-successors require an explicit type marker; fenced Agda expressions require
-compiler-certified `ℕ` or `Fin` semantics. A same-spelled `Fin.suc` or an
+successors require either an explicit type marker for the whole expression or
+matching, unambiguous module-local compiler evidence for that expression or a
+contained subexpression. Thus a checked `suc n : ℕ` can also display inside
+`` `Formula K (suc n)`{.Agda} `` while the source remains intact. Fenced Agda
+expressions require compiler-certified `ℕ` or `Fin` semantics. A same-spelled `Fin.suc` or an
 unresolved token alone never licenses a natural-successor display. A
 project may opt into natural-number help on literal digits through its Site
 configuration. The ordinary Core HTML and
@@ -188,11 +194,15 @@ retain their typography and tight proof/code spacing independently of decoration
 With compiler evidence, the renderer automatically places the exact rectangular
 `∎` just below each eligible definition's last line, inside the code frame at the
 right, even when another definition follows in that same block. Its opacity is
-0.25; it reserves no row or padding and never enters copied code. Definitions
-have an explicit type signature and equation clauses. Submodule definitions are
-included, where-local definitions are excluded; the enclosing definition ends
-after its complete body including where declarations. Signature-only imports,
-postulates, records and data declarations are not equation definitions.
+0.25; it reserves no row or padding and never enters copied code. Function
+definitions need an explicit type signature and equation clauses. All `data`
+declarations, including empty datatypes, also receive the mark. An Agda mutual
+group containing data and another definition receives only one mark at the end
+of the whole group, not marks between its members; this includes
+inductive-recursive groups. Submodule definitions are included, where-local
+functions are excluded; an enclosing function ends after its complete body
+including where declarations. Signature-only imports, postulates and records
+do not receive the mark.
 Missing semantic evidence produces no guessed mark. Ordinary and final
 code blocks use the full width of their containing column, with no external QED
 gutter or left outdent; each submodule retains its own indented width.
@@ -235,6 +245,13 @@ Bare automatic terminology remains subject to prerequisite/introduction order;
 one explicit lookup does not exempt other bare occurrences. No glossary is read
 unless supplied by the caller. Bedrock's particular translations are not built
 into the renderer.
+Chapter-level `#` titles are excluded from automatic term matching and its
+prerequisite check. Subsection headings (`##` and deeper) remain eligible;
+explicit `term-intro` and `term-ref` markers still work in chapter titles.
+An entry with `matching = "auto"` may set `auto_languages` to a nonempty subset
+of `en`, `zh`, `ja`. Only those languages receive automatic links and prerequisite
+checks; the others remain available through explicit `term-ref` markers. If the
+field is omitted, all three languages use the entry's automatic forms.
 An automatic glossary entry may list language-local `auto_exclude_en`,
 `auto_exclude_zh` or `auto_exclude_ja` phrases. A term form wholly inside an
 excluded phrase stays plain text in both rendering and prerequisite lint;

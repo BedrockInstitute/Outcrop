@@ -66,8 +66,11 @@ declaration headers. Code uses its full containing width, with no QED outdent or
 external gutter. The exact rectangular `∎` is a noninteractive absolute overlay
 at each compiler-certified definition's last line at fixed opacity `.25`, even when overlapping code. It
 reserves no row, height or extra padding. Do not restore overlap measurement or
-dynamic opacity. Markdown has no authored QED delimiter. Require a signature and
-equation clauses; exclude where-local definitions, retain submodule definitions.
+dynamic opacity. Markdown has no authored QED delimiter. Functions require a
+signature and equation clauses; all data declarations also receive an end. A
+mutual or inductive-recursive group containing data has one end at the group's
+final definition, not member-wise marks. Exclude where-local functions and
+retain submodule definitions.
 Keep proof prose close to its code without introducing a special frame wrapper.
 
 Retain trilingual search independent of edition, IME and keyboard controls,

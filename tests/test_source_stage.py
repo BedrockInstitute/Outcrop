@@ -31,11 +31,19 @@ class SourceStageTests(unittest.TestCase):
             self.assertFalse(staged.exists())
             self.assertTrue((dest / 'B.lagda.md').exists())
 
-    def test_code_only_preserves_order_and_fence_boundaries(self):
+    def test_code_only_preserves_order_independent_of_fence_boundaries(self):
         source = (b'ignored\n```agda\nx = 1\n```\nmore ignored\n'
                   b'```agda\ny = 2\n```\n')
         self.assertEqual(code_only_source(source),
-                         b'```agda\nx = 1\n```\n```agda\ny = 2\n```\n')
+                         b'```agda\nx = 1\ny = 2\n```\n')
+        repartitioned = (b'```agda\nx = 1\ny = 2\n```\n')
+        self.assertEqual(code_only_source(repartitioned), code_only_source(source))
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder)
+            (path / 'A.lagda.md').write_bytes(source)
+            before = code_fingerprint(path)
+            (path / 'A.lagda.md').write_bytes(repartitioned)
+            self.assertEqual(code_fingerprint(path), before)
 
     def test_allows_parent_directory_alias(self):
         with tempfile.TemporaryDirectory() as folder:

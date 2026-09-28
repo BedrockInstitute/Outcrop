@@ -18,6 +18,7 @@ from collections import Counter
 import json
 import re
 from outcrop.core.source_syntax import imports
+from outcrop.core.term_registry import TERM_MARK_RE
 from outcrop.site.site_inputs import source_paths
 
 from outcrop.core.i18n_markers import LANGS, weave
@@ -44,6 +45,7 @@ def plain_title(text):
     """Navigation labels are plain text, even when a heading uses inline code."""
     text = re.sub(r"`([^`]+)`(?:\{\.Agda\})?", r"\1", text)
     text = re.sub(r"\[([^]]+)\]\([^)]*\)", r"\1", text)
+    text = TERM_MARK_RE.sub(r"\1", text)
     text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
     return text.strip()
 

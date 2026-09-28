@@ -66,6 +66,8 @@ The `static/reader/` modules own separate lifecycles:
   nor arbitrary user-scroll restoration.
 - `code-surface` owns the coordinate transform for the current code surface;
   `code-fullscreen` moves the existing code DOM into a landscape reading surface.
+- `code-copy` copies the original Agda text from a formal fenced code surface;
+  desktop overlay, touch control and landscape reader share the same action.
 - `route-store` shares catalog loading and route selection; `preferences` supplies
   failure-tolerant namespaced storage. Navigation, search, notes and diagrams own
   their respective listeners and local state.
@@ -133,8 +135,10 @@ literal rectangular `∎` appears semi-transparently at each compiler-certified
 definition's final line, at the right without extra padding or a reserved line. Its opacity is fixed
 at 0.25 in CSS, including over code; no overlap measurement or observer is needed.
 It never intercepts pointer events or becomes part of copied code.
-Markdown carries no authored end marker. Signature/equation boundaries are traced
-from Agda ASTs; where-local helpers are excluded, submodule definitions included.
+Markdown carries no authored end marker. Function, data and data-containing
+mutual-group boundaries are traced from Agda ASTs; where-local helpers are
+excluded, submodule definitions included. A mutual or inductive-recursive group
+with data has one end mark after the entire group.
 Source-hash validation prevents stale offsets. Core maps endpoints through
 highlighted Unicode anchors to code-local lines. CSS line units preserve the
 line-relative position during font changes and fullscreen rotation. Prose-proof

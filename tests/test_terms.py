@@ -67,6 +67,18 @@ class SchemaTests(PublicationCase):
         self.assertTrue(any("requires matching" in error
                             for error in terms.schema_errors([value])))
 
+    def test_auto_languages_are_validated_and_local(self):
+        local = entry(auto_languages=["en", "zh"])
+        self.assertEqual(terms.schema_errors([local]), [])
+        self.assertTrue(terms.auto_matching(local, "en"))
+        self.assertFalse(terms.auto_matching(local, "ja"))
+        for languages in ([], ["en", "en"], ["fr"], "en", [{}]):
+            self.assertTrue(any("auto_languages" in error for error in
+                                terms.schema_errors([entry(auto_languages=languages)])))
+        self.assertTrue(any("auto_languages" in error for error in
+                            terms.schema_errors([entry(matching="explicit",
+                                                       auto_languages=["en"])])))
+
     def test_structured_abbreviation_is_an_audited_form_in_each_language(self):
         value = entry(abbreviations={"en": "HIT", "zh": "HIT", "ja": "HIT"})
         self.assertEqual(terms.schema_errors([value]), [])
@@ -96,6 +108,16 @@ class SchemaTests(PublicationCase):
 
 
 class RenderingTests(PublicationCase):
+    def test_chapter_title_skips_automatic_terms_but_sections_keep_them(self):
+        for language, label in (('en', 'host'), ('zh', '宿主'), ('ja', 'ホスト')):
+            with self.subTest(language=language):
+                body = f'<h1>{label}</h1><h2>{label}</h2><p>{label}</p>'
+                rendered = auto_link_terms(body, language, 'Other', [entry()])
+                self.assertIn(f'<h1>{label}</h1>', rendered)
+                self.assertEqual(rendered.count('class="term-ref"'), 2)
+        explicit = '<h1><dfn id="term-host-environment">host</dfn></h1>'
+        self.assertEqual(auto_link_terms(explicit, 'en', 'Base.Prelude', [entry()]), explicit)
+
     def test_auto_links_prose_but_not_code_or_introduction(self):
         body = ('<p>The <dfn id="term-host-environment" data-term="host-environment">host</dfn> '
                 'contains another host.</p><pre><code>host</code></pre>')
@@ -121,6 +143,13 @@ class RenderingTests(PublicationCase):
         rendered = auto_link_terms("<p>host</p>", "en", "M",
                                             [entry(matching="explicit")])
         self.assertEqual(rendered, "<p>host</p>")
+
+    def test_auto_languages_leave_ambiguous_language_explicit(self):
+        local = entry(auto_languages=["en", "zh"])
+        self.assertIn('data-term="host-environment"',
+                      auto_link_terms("<p>host</p>", "en", "M", [local]))
+        self.assertEqual(auto_link_terms("<p>ホスト</p>", "ja", "M", [local]),
+                         "<p>ホスト</p>")
 
     def test_abbreviation_links_and_appears_in_glossary_outputs(self):
         value = entry(abbreviations={"en": "HIT", "zh": "HIT"})
@@ -154,6 +183,14 @@ class RenderingTests(PublicationCase):
 
 
 class IntroductionGateTests(PublicationCase):
+    def test_chapter_title_is_not_an_automatic_prerequisite_use(self):
+        for language, label in (('en', 'host'), ('zh', '宿主'), ('ja', 'ホスト')):
+            with self.subTest(language=language):
+                text = f'# {label}\n\n## {label}\n\n{label}'
+                matches = prerequisite_occurrences(text, entry(), language, 'Other')
+                self.assertEqual([match.start() for match in matches],
+                                 [text.index(label, text.index('##')), text.rindex(label)])
+
     def test_japanese_carrier_exclusions_align_with_renderer(self):
         carrier = entry(id="carrier", ja="台", auto_exclude_ja=["土台", "舞台"])
         text = "構造の台と台集合を扱う。土台と舞台は別の意味である。"

@@ -148,7 +148,9 @@ class SiteNavigationTests(PublicationCase):
             self.assertIn('<h1 id="sec-0">Title</h1>', body)
             self.assertGreater(body.index('chapter-review '), body.index('</h1>'))
             self.book.meta['A']['human_reviewed'] = False
-            self.assertIn('未人工校阅', self.pages.render_review_status('<h1>Title</h1>', 'A', 'zh'))
+            self.assertIn('正在人工审阅', self.pages.render_review_status('<h1>Title</h1>', 'A', 'zh'))
+            self.assertIn('Under human review', self.pages.render_review_status('<h1>Title</h1>', 'A', 'en'))
+            self.assertIn('人手による校閲中', self.pages.render_review_status('<h1>Title</h1>', 'A', 'ja'))
             home = self.pages.learning_home(body, '<section id="reading-explorer"></section>', 'zh', [])
             self.assertEqual(home.count('class="chapter-review '), 1)
         finally:

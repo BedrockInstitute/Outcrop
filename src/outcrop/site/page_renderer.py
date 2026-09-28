@@ -29,9 +29,9 @@ class PageRenderer:
         """Human editorial review is catalog metadata, not inferred from CI success."""
         reviewed = self.book.meta.get(module, {}).get('human_reviewed', False)
         label = {
-            'en': ('Human-reviewed', 'Not yet human-reviewed'),
-            'zh': ('已人工校阅', '未人工校阅'),
-            'ja': ('人手による校閲済み', '人手による校閲は未実施'),
+            'en': ('Human-reviewed', 'Under human review'),
+            'zh': ('已人工校阅', '正在人工审阅'),
+            'ja': ('人手による校閲済み', '人手による校閲中'),
         }[lang][0 if reviewed else 1]
         icon = ('<path d="M12 3 20 6v6c0 5-8 9-8 9s-8-4-8-9V6Z"/>'
                 '<path d="m8 12 3 3 5-6"/>' if reviewed else

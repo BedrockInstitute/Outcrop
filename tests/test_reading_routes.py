@@ -92,6 +92,10 @@ class BuildTests(unittest.TestCase):
     def test_navigation_title_removes_prose_markup(self):
         self.assertEqual(routes.plain_title("The order in `L`{.Agda}"), "The order in L")
         self.assertEqual(routes.plain_title("[Codes](Codes.html) and **sets**"), "Codes and sets")
+        self.assertEqual(routes.plain_title("The [object language]{.term-intro #object-language}"),
+                         "The object language")
+        self.assertEqual(routes.plain_title("[Terms]{.term-ref #object-term} and **formulas**"),
+                         "Terms and formulas")
 
     def test_japanese_catalog_is_not_appended_to_chinese_description(self):
         catalog = metadata(('A',))

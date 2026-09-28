@@ -59,16 +59,22 @@ register it and call the semantic hooks. Keep old patches when adding support
 for another Agda version. The old `BEDROCK_AGDA_*` activation names are not used;
 regenerate evidence when switching compiler identities.
 
-Declaration tracing emits `signature` and `definition-end` records from Agda's
-abstract declarations. Only signatures with source ranges count, not inferred
-signatures inserted by the compiler. Function clauses include their complete
-where bodies, but `envCheckingWhere` excludes nested helpers from independent
-end markers. Data/record declarations, module imports and signature-only axioms
-have no equation end. Normalization joins signatures to ends by binding position,
-permits a definition to span literate fences, and keeps these records separate
-from hover expressions. No Markdown marker or textual equals-sign heuristic is
-used. Regenerate traced interfaces and the semantic package after this overlay
-changes; unchanged source hashes alone cannot upgrade an old trace's schema.
+Declaration tracing emits `signature`, `definition-end`, `data-end` and
+`mutual-data-end` records from Agda's abstract declarations. Only signatures
+with source ranges count, not inferred signatures inserted by the compiler.
+Function clauses include their complete where bodies, but `envCheckingWhere`
+excludes nested helpers from independent end markers. Every completed `data`
+declaration receives an end, including an empty datatype. If an Agda mutual
+declaration group contains data and another definition, normalization replaces
+its member ends with one mark at the group's final definition. This covers
+mutually recursive and inductive-recursive data/function groups, including
+forward-declared and interleaved syntax. Record declarations, imports and
+signature-only axioms do not receive an end. Normalization joins signatures to
+ends by binding position, permits a declaration to span literate fences, and
+keeps these records separate from hover expressions. No Markdown marker or
+textual equals-sign heuristic is used. Regenerate traced interfaces and the
+semantic package after this overlay changes; unchanged source hashes alone
+cannot upgrade an old trace's schema.
 
 For parallel checking or HTML plus traces:
 

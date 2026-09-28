@@ -2,6 +2,7 @@
  * AGPL-3.0-only. Geometry is shared with popups and AST gestures. */
 import { cfg, compactPointer, isDefinitionModalDocument, modalReadingScroller } from './document.js';
 import { setCodeSurface } from './code-surface.js';
+import { createCodeCopyButton } from './code-copy.js';
 
 let view = null;
 let nextSurface = 0;
@@ -96,7 +97,8 @@ export function initCodeFullscreen() {
       scrollY: scroller ? scroller.scrollTop : window.scrollY, rotated: false};
     setCodeSurface(view);
     block.dataset.module = sourceModule;
-    content.before(marker); plane.append(content); controls.append(closeButton); shell.append(plane, controls);
+    const copyButton = createCodeCopyButton(block, 'code-copy-fullscreen');
+    content.before(marker); plane.append(content); controls.append(copyButton, closeButton); shell.append(plane, controls);
     document.body.appendChild(shell); document.body.classList.add('code-fullscreen-open');
     inert.forEach(([node]) => { node.inert = true; });
     button.hidden = true;

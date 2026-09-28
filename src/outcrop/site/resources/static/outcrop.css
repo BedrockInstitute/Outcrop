@@ -484,6 +484,36 @@ pre.Agda > .agda-code-content {
   display: block; min-width: 0; max-width: 100%; height: auto; max-height: none;
   overflow-x: auto; overflow-y: hidden;
 }
+.code-copy-button {
+  display: grid; place-items: center; box-sizing: border-box;
+  width: 2rem; height: 2rem; padding: 0;
+  border: 1px solid var(--input-border); border-radius: 7px;
+  color: var(--fg-alt); background: var(--popup-bg);
+  font: 500 .75rem/1 var(--sans); cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: opacity .14s ease, color .14s ease, background-color .14s ease;
+}
+.code-copy-button svg { width: 19px; height: 19px; fill: none;
+  stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.code-copy-button:is(:hover, :focus-visible), .code-copy-button.is-copied {
+  color: var(--text-fg); background: color-mix(in srgb, var(--primary) 9%, var(--popup-bg));
+}
+.code-copy-button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.code-copy-button[data-feedback]::after { content: attr(data-feedback); position: absolute;
+  z-index: 2; inset-inline-end: 0; top: calc(100% + .3rem);
+  width: max-content; max-width: 12rem; padding: .4rem .55rem;
+  border: 1px solid var(--input-border); border-radius: 6px;
+  color: var(--text-fg); background: var(--popup-bg); box-shadow: var(--shadow-float);
+  white-space: nowrap; pointer-events: none; }
+.code-copy-inline { position: absolute; z-index: 4; top: .35rem; inset-inline-end: .35rem;
+  opacity: 0; pointer-events: none; }
+pre.Agda:is(:hover, :focus-within) > .code-copy-inline,
+.code-copy-inline:focus-visible { opacity: 1; pointer-events: auto; }
+.code-copy-mobile { position: fixed; z-index: 170; width: 44px; height: 44px;
+  box-shadow: var(--shadow-float); }
+.code-copy-mobile[hidden] { display: none; }
+@media (hover: none), (pointer: coarse) { .code-copy-inline { display: none; } }
+@media (prefers-reduced-motion: reduce) { .code-copy-button { transition: none; } }
 article :is(p, ul, ol, blockquote, .prose-table-scroll):has(+ pre.Agda) {
   margin-block-end: .5rem;
 }
@@ -698,7 +728,7 @@ pre.Agda .expr-node.expr-active,
 
 /* Landscape code is a browser-viewport reading surface. It never depends on
    device orientation lock, and uses the original nodes, anchors and gestures. */
-.code-fullscreen-toggle, .code-fullscreen-close {
+.code-fullscreen-toggle, .code-fullscreen-close, .code-copy-fullscreen {
   display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
   border: 1px solid var(--input-border); border-radius: 8px;
   color: var(--fg-alt); background: var(--popup-bg); cursor: pointer;
@@ -734,11 +764,14 @@ pre.Agda .expr-node.expr-active,
 .code-fullscreen-close { position: absolute; pointer-events: auto;
   right: max(.5rem, var(--code-safe-right)); top: max(.35rem, var(--code-safe-top));
   font: 1.5rem/1 var(--sans); }
+.code-copy-fullscreen { position: absolute; pointer-events: auto;
+  right: calc(max(.5rem, var(--code-safe-right)) + 52px);
+  top: max(.35rem, var(--code-safe-top)); }
 .code-fullscreen-plane > pre.Agda { margin: 0; min-width: 0; }
 .code-fullscreen-plane .hover-popup { max-width: min(42rem, calc(var(--code-surface-width) - 1rem)); }
 body.code-fullscreen-open { overflow: hidden; }
 body.code-fullscreen-open > .ast-swipe-hint { display: none; }
-.code-fullscreen :focus-visible, .code-fullscreen-toggle:focus-visible {
+.code-fullscreen :focus-visible, .code-fullscreen-toggle:focus-visible, .code-copy-mobile:focus-visible {
   outline: 2px solid var(--primary); outline-offset: 2px;
 }
 

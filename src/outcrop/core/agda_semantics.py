@@ -7,6 +7,7 @@ import html as htmllib
 import re
 import json
 import os
+from bisect import bisect_left
 from outcrop.core.html_contract import (
     A_TAG_RE, CLASS_RE, DEF_RE, HREF_RE, ID_RE, LINK_RE, LOCAL_DECL_RE, LOCAL_SIGNATURE_RE,
     NON_HOVER_PRIMITIVE_SORTS, NUL, PRE_RE, RENAMED_RE, SPAN_EVENT_RE, TOKEN_RE, TYPE_COLON_RE,
@@ -43,6 +44,143 @@ def closed_natural_constructor(source):
     argument = ungrouped_constructor_argument(source[4:])
     predecessor = closed_natural_constructor(argument)
     return predecessor + 1 if predecessor is not None else None
+
+
+def _nat_successor(source):
+    source = ungrouped_constructor_argument(source)
+    if not source.startswith('suc '):
+        return None
+    argument = ungrouped_constructor_argument(source[4:])
+    inner = _nat_successor(argument)
+    if inner is not None:
+        return inner[0], inner[1] + 1
+    if re.fullmatch(r'[^\W\d_][\w′″‴⁗\'’₀-₉]*', argument, re.UNICODE):
+        return argument, 1
+    return None
+
+
+def _numeric_notation(node):
+    """A notation badge requires an application and its compiler-certified type."""
+    if node.get('kind') != 'application':
+        return None
+    rendered_type = htmllib.unescape(re.sub(r'<[^>]+>', '', node.get('type', '')))
+    number = closed_natural_constructor(node.get('source', ''))
+    if rendered_type.startswith('Fin ') and number is not None:
+        return 'fin', str(number), 0
+    if rendered_type == 'ℕ' and number is None:
+        successor = _nat_successor(node.get('source', ''))
+        if successor is not None:
+            return 'nat-suc', successor[0], successor[1]
+    return None
+
+
+def _expression_opening(node, depth):
+    notation = ''
+    if metadata := _numeric_notation(node):
+        kind, value, count = metadata
+        notation = (f' data-source-notation="{kind}" '
+                    f'data-notation-value="{htmllib.escape(value, quote=True)}" '
+                    + (f'data-notation-count="{count}" ' if kind == 'nat-suc' else '')
+                    + f'data-notation-type="{htmllib.escape(node["type"], quote=True)}"')
+    return (f'<span class="expr-node" data-expr-id="{node["id"]}"{notation} '
+            f'data-expr-start="{node["start"]}" '
+            f'data-expr-end="{node["end"]}" '
+            f'style="--expr-level:{depth % 6}">')
+
+
+def inline_numeric_expression_index(nodes):
+    """Find unambiguous numeric subterms of complete compiler-traced snippets.
+
+    The prose snippet itself was not typechecked. Reuse only exact source text
+    occurring in this module's trace, and only when every occurrence agrees on
+    each numeric subterm's range and type. Never infer Nat from a `suc` spelling.
+    """
+    applications = [node for node in nodes if node.get('kind') == 'application']
+    numeric = sorted((node for node in applications if _numeric_notation(node)),
+                     key=lambda node: node['start'])
+    starts = [node['start'] for node in numeric]
+    evidence = {}
+    for outer in applications:
+        source = outer.get('source', '')
+        if not source or '\n' in source:
+            continue
+        found = []
+        for index in range(bisect_left(starts, outer['start']), len(numeric)):
+            node = numeric[index]
+            if node['start'] >= outer['end']:
+                break
+            if node['end'] > outer['end']:
+                continue
+            start, end = node['start'] - outer['start'], node['end'] - outer['start']
+            if source[start:end] != node.get('source'):
+                continue
+            signature = (start, end, *_numeric_notation(node), node['type'])
+            found.append((signature, {**node, 'start': start, 'end': end}))
+        signature = tuple(sorted(item[0] for item in found))
+        if source not in evidence:
+            evidence[source] = (signature, [item[1] for item in found])
+        elif evidence[source][0] != signature:
+            evidence[source] = (None, [])
+    return {source: selected for source, (signature, selected) in evidence.items()
+            if signature and selected}
+
+
+def inline_numeric_nodes_for_source(source, index):
+    """Use the longest matching checked subexpression when prose adds context.
+
+    A complete prose expression need not itself occur in executable code, e.g.
+    ``# n ∈ # (suc n)`` can contain a checked ``# (suc n)``. Identifier
+    boundaries and module-local unanimous evidence prevent prefix guesses and
+    Nat/Fin confusion. The exact-source match takes precedence.
+    """
+    if source in index:
+        return index[source]
+    if 'suc ' not in source and 'zero' not in source:
+        return ()
+    matches = {}
+    def identifier(character):
+        return character.isalnum() or character in "_′″‴⁗'’₀₁₂₃₄₅₆₇₈₉"
+    for phrase, nodes in index.items():
+        start = source.find(phrase)
+        while start >= 0:
+            end = start + len(phrase)
+            if not ((start and identifier(source[start - 1]) and identifier(phrase[0]))
+                    or (end < len(source) and identifier(source[end]) and identifier(phrase[-1]))):
+                for node in nodes:
+                    left, right = start + node['start'], start + node['end']
+                    key = (left, right)
+                    candidate = {**node, 'start': left, 'end': right}
+                    previous = matches.get(key)
+                    if previous is None or len(phrase) > previous[0]:
+                        matches[key] = (len(phrase), candidate)
+                    elif len(phrase) == previous[0] and previous[1] is not None and (
+                            _numeric_notation(candidate), candidate['type']) != (
+                            _numeric_notation(previous[1]), previous[1]['type']):
+                        matches[key] = (len(phrase), None)
+            start = source.find(phrase, start + 1)
+    candidates = [node for _, node in matches.values() if node is not None]
+    candidates.sort(key=lambda node: (node['start'], -node['end']))
+    selected = []
+    for node in candidates:
+        if any(existing['start'] < node['start'] < existing['end'] < node['end']
+               for existing in selected):
+            continue
+        selected.append(node)
+    return selected
+
+
+def annotate_inline_numeric_expressions(source, nodes):
+    """Wrap certified inline subterms before lexical Agda links are inserted."""
+    if not nodes:
+        return htmllib.escape(source)
+    offsets = [0]
+    for character in source:
+        offsets.append(offsets[-1] + len(htmllib.escape(character, quote=False)))
+    escaped = htmllib.escape(source, quote=False)
+    return wrap_expression_ranges(escaped, nodes,
+        {node['start']: offsets[node['start']] for node in nodes},
+        {node['end']: offsets[node['end']] for node in nodes},
+        _expression_opening)
 
 def ref_link(href, aspect, label, extra_class="", origin=""):
     """An inline-ref anchor; hover data only when the href has a position."""
@@ -542,41 +680,8 @@ def annotate_expression_nodes(block, nodes):
     by_start = {start: html_start for start, _, html_start, _ in tokens}
     by_end = {end: html_end for _, end, _, html_end in tokens}
 
-    def nat_successor(source):
-        source = ungrouped_constructor_argument(source)
-        if not source.startswith('suc '):
-            return None
-        argument = ungrouped_constructor_argument(source[4:])
-        inner = nat_successor(argument)
-        if inner is not None:
-            return inner[0], inner[1] + 1
-        if re.fullmatch(r'[^\W\d_][\w′″‴⁗\'’₀-₉]*', argument, re.UNICODE):
-            return argument, 1
-        return None
-
-    def source_opening(node, depth):
-        notation = ''
-        rendered_type = htmllib.unescape(re.sub(r'<[^>]+>', '', node.get('type', '')))
-        if node.get('kind') == 'application':
-            number = closed_natural_constructor(node.get('source', ''))
-            if rendered_type.startswith('Fin ') and number is not None:
-                notation = (f' data-source-notation="fin" data-notation-value="{number}" '
-                            f'data-notation-type="{htmllib.escape(node["type"], quote=True)}"')
-            elif rendered_type == 'ℕ' and number is None:
-                successor = nat_successor(node.get('source', ''))
-                if successor is not None:
-                    base, count = successor
-                    notation = (f' data-source-notation="nat-suc" '
-                                f'data-notation-value="{htmllib.escape(base, quote=True)}" '
-                                f'data-notation-count="{count}" '
-                                f'data-notation-type="{htmllib.escape(node["type"], quote=True)}"')
-        return (f'<span class="expr-node" data-expr-id="{node["id"]}"{notation} '
-                f'data-expr-start="{node["start"]}" '
-                f'data-expr-end="{node["end"]}" '
-                f'style="--expr-level:{depth % 6}">')
-
     return wrap_expression_ranges(
-        block, nodes, by_start, by_end, source_opening, split_multiline=True
+        block, nodes, by_start, by_end, _expression_opening, split_multiline=True
     )
 
 
@@ -1007,7 +1112,7 @@ class AgdaSemantics:
         return resolve
 
     def inline_ref(self, name, internal, name2pos, local_refs, current_module="",
-                   prelude_reexports=None):
+                   prelude_reexports=None, numeric_nodes=()):
         """Render Agda prose, linking declarations but not temporary variables."""
         href_aspect = local_refs.get(name)
         label = htmllib.escape(name)
@@ -1015,7 +1120,8 @@ class AgdaSemantics:
         single_name = (len(tokens) == 1 and tokens[0][:2] == (0, len(name))
                        and not tokens[0][3] and not name.startswith('.'))
         if not single_name:
-            return annotate_inline_code(f'<code class="Agda inline-ref">{label}</code>',
+            source = annotate_inline_numeric_expressions(name, numeric_nodes)
+            return annotate_inline_code(f'<code class="Agda inline-ref">{source}</code>',
                                         self.inline_reference_resolver(local_refs, current_module,
                                                                        prelude_reexports, name2pos, name))
         if href_aspect and not _BARE_REFERENCE_ASPECTS.intersection(href_aspect[1].split()):

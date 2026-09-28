@@ -19,6 +19,7 @@ from outcrop.core.i18n_markers import weave_for_site, group_languages
 from outcrop.core.agda_help import annotate_inline_code, annotate_keywords
 from outcrop.core.agda_semantics import (
     AgdaSemantics, inline_ref_link, annotate_expression_nodes, annotate_unlinked_bound_types,
+    inline_numeric_expression_index, inline_numeric_nodes_for_source,
 )
 from outcrop.core.boilerplate import mirror_boilerplate
 from outcrop.core.chapter_structure import OPTIONS
@@ -87,6 +88,7 @@ class MarkdownDocument:
                 self.local_refs.setdefault(name, target)
         nodes = [node for node in self.code.expressions.get(module, [])
                  if node.get('kind') not in ('definition', 'binding', 'variable', 'binder')]
+        self.inline_numeric_nodes = inline_numeric_expression_index(nodes)
         self.blocks = [annotate_unlinked_bound_types(annotate_expression_nodes(block, nodes),
                        module, self.code.types.get(module, {})) for block in self.blocks]
 
@@ -147,7 +149,8 @@ class MarkdownDocument:
             else:
                 rendered = self.code.semantics.inline_ref(
                     match[1], self.code.internal, self.code.names, self.local_refs,
-                    self.module, self.code.vocabulary)
+                    self.module, self.code.vocabulary,
+                    inline_numeric_nodes_for_source(match[1], self.inline_numeric_nodes))
             if match[2]:
                 rendered = '<span data-outcrop-notation="source">' + rendered + '</span>'
             return stash('REF', rendered)

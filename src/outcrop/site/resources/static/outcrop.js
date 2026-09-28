@@ -18,6 +18,7 @@ import { initNav, initPageScroll, initHeaderOffset, initSectionTracking } from '
 import { initHeaderControls } from './reader/header-controls.js';
 import { initCurrentRoute } from './reader/current-route.js';
 import { initCodeFullscreen } from './reader/code-fullscreen.js';
+import { initCodeCopy } from './reader/code-copy.js';
 import { initPunctuationWrap } from './reader/punctuation-wrap.js';
 
 function start() {
@@ -26,6 +27,7 @@ function start() {
   initPunctuationWrap();
   initSearch();
   initCodeFullscreen();
+  initCodeCopy();
   initHover();
   initDefinitionModals();
   initOccur();

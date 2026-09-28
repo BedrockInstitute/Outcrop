@@ -8,15 +8,15 @@ from outcrop.core.source_syntax import AGDA_FENCE
 
 
 def code_only_source(raw: bytes) -> bytes:
-    """Canonical literate source: retain Agda fences, omit all prose.
+    """Canonical literate source: retain code order, not prose or fence cuts.
 
     The pure-check interface hashes its entire input file, so timestamps alone
-    cannot prevent a prose edit from invalidating it. The traced website build
-    continues to use the original source, not this isolated mirror.
+    cannot prevent a prose edit or fence repartition from invalidating it. The
+    traced website build continues to use the original source, not this mirror.
     """
     text = raw.decode('utf-8')
     blocks = AGDA_FENCE.findall(text)
-    return ''.join(f'```agda\n{block}```\n' for block in blocks).encode('utf-8')
+    return (f'```agda\n{"".join(blocks)}```\n' if blocks else '').encode('utf-8')
 
 
 def code_fingerprint(source: Path, *, extension='.lagda.md') -> str:

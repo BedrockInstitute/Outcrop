@@ -23,6 +23,51 @@ EXAMPLE = ROOT / 'examples/renderer'
 
 
 class RendererLibraryTests(unittest.TestCase):
+    def test_compiler_certified_nested_inline_successor_uses_shared_notation(self):
+        outer = 'Formula K (suc n)'
+        nodes = [
+            {'id': 1, 'start': 100, 'end': 100 + len(outer), 'kind': 'application',
+             'source': outer, 'type': 'Type'},
+            {'id': 2, 'start': 111, 'end': 116, 'kind': 'application',
+             'source': 'suc n', 'type': 'ℕ'},
+        ]
+        code = CodeContext(expressions={'Demo': nodes})
+        source = ('`Formula K (suc n)`{.Agda} and '
+                  '`Formula K (suc n)`{.Agda .raw-notation}')
+        rendered = MarkdownDocument(source, module='Demo', code=code).render('en')
+        self.assertEqual(rendered.body.count('data-source-notation="nat-suc"'), 2)
+        self.assertIn('data-notation-value="n"', rendered.body)
+        self.assertEqual(rendered.body.count('data-outcrop-notation="source"'), 1)
+        self.assertEqual(rendered.mirror.count('`Formula K (suc n)`'), 2)
+
+    def test_nested_inline_notation_needs_consistent_compiler_evidence(self):
+        source = 'Formula K (suc n)'
+        def occurrence(start, type_, ids):
+            return [
+                {'id': ids, 'start': start, 'end': start + len(source),
+                 'kind': 'application', 'source': source, 'type': 'Type'},
+                {'id': ids + 1, 'start': start + 11, 'end': start + 16,
+                 'kind': 'application', 'source': 'suc n', 'type': type_},
+            ]
+        code = CodeContext(expressions={'Demo': occurrence(100, 'ℕ', 1)
+                                      + occurrence(200, 'Fin 3', 3)})
+        rendered = MarkdownDocument('`Formula K (suc n)`{.Agda}',
+                                    module='Demo', code=code).render('en')
+        self.assertNotIn('data-source-notation', rendered.body)
+
+    def test_checked_inline_subexpression_survives_unchecked_surrounding_prose(self):
+        code = CodeContext(expressions={'Demo': [
+            {'id': 1, 'start': 100, 'end': 109, 'kind': 'application',
+             'source': '# (suc n)', 'type': 'Object'},
+            {'id': 2, 'start': 103, 'end': 108, 'kind': 'application',
+             'source': 'suc n', 'type': 'ℕ'},
+        ]})
+        body = MarkdownDocument('`# n ∈ # (suc n)`{.Agda} and '
+                                '`# n ∈ # (suc number)`{.Agda}',
+                                module='Demo', code=code).render('en').body
+        self.assertEqual(body.count('data-source-notation="nat-suc"'), 1)
+        self.assertIn('data-expr-start="9" data-expr-end="14"', body)
+
     def test_inline_source_notation_opt_out_is_rendered_not_literal_html(self):
         source = 'Original `suc n`{.Agda .raw-notation}; later `suc n`{.Agda}.'
         result = MarkdownDocument(source).render('en')
@@ -179,6 +224,9 @@ class RendererLibraryTests(unittest.TestCase):
             cache = root / 'code-context.json.gz'
             cache_args = ['--code-cache', str(cache), '--code-cache-key', 'fixture-v1']
             self.assertEqual(build_site(config, ['--out', str(output), *cache_args]), 0)
+            seed_page = (output / 'en/Sample.Seed.html').read_text()
+            self.assertIn('aria-label="End of definition: Marker"', seed_page)
+            self.assertIn('aria-label="End of definition: keep"', seed_page)
             cache_mtime = cache.stat().st_mtime_ns
             other_page = output / 'en/Sample.Use.html'
             other_mtime = other_page.stat().st_mtime_ns

@@ -13,7 +13,7 @@ from outcrop.core.html_contract import (
 from outcrop.core.statement_structure import LABEL_RE, PROOF_LABELS
 from outcrop.core.submodule_structure import module_header_line
 from outcrop.core.table_style import caption_text, is_table_separator, table_end
-from outcrop.core.term_registry import TERM_MARK_RE, auto_match_allowed, localized_forms
+from outcrop.core.term_registry import TERM_MARK_RE, auto_match_allowed, auto_matching, localized_forms
 
 def dedent_submodule_code(body):
     """Hide module-scope indentation in HTML without changing Agda source offsets.
@@ -340,7 +340,7 @@ def plain_code(block):
 class _TermLinker(HTMLParser):
     """Add term links to text nodes without entering code, math, or existing links."""
 
-    EXCLUDED_TAGS = {"a", "code", "dfn", "pre", "script", "style", "textarea"}
+    EXCLUDED_TAGS = {"a", "code", "dfn", "h1", "pre", "script", "style", "textarea"}
     VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link",
                  "meta", "param", "source", "track", "wbr"}
 
@@ -386,7 +386,7 @@ def auto_link_terms(body, lang, module, terms):
     """Link audited unambiguous glossary forms in rendered prose, longest first."""
     forms = {}
     for entry in terms:
-        if entry.get("matching", "explicit") != "auto":
+        if not auto_matching(entry, lang):
             continue
         for form in localized_forms(entry, lang):
             key = form.casefold() if lang == "en" else form
