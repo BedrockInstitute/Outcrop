@@ -34,11 +34,16 @@
       [...route.querySelectorAll('.route-nav [data-chapter]')].every(link=>
         [...link.parentElement.querySelector('.route-statuses').children].map(icon=>icon.classList[0]).join('|')===
         'route-review-status|route-reading-status'));
-    check('compact status controls have separate 44px tap targets',
+    check('compact status controls retain the original icon spacing and separate hit regions',
       [...route.querySelectorAll('.route-nav [data-chapter]')].every(link=>{
         const buttons=[...link.parentElement.querySelectorAll('.route-statuses > button')];
-        return buttons.length===2&&buttons.every(button=>button.getBoundingClientRect().width>=44)&&
-          link.getBoundingClientRect().right<=buttons[0].getBoundingClientRect().left;
+        if(buttons.length!==2) return false;
+        const first=buttons[0].getBoundingClientRect();
+        const second=buttons[1].getBoundingClientRect();
+        const rem=parseFloat(win.getComputedStyle(doc.documentElement).fontSize);
+        return Math.abs(first.width-rem)<1&&Math.abs(second.width-rem)<1&&
+          Math.abs(second.left-first.right-rem/4)<1&&
+          link.getBoundingClientRect().right<=first.left;
       }));
     check('sidebar shares ready and blocked reading symbols',
       status('Sample.Seed').querySelector('.route-reading-status').classList.contains('is-available')&&

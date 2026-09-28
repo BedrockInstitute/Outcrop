@@ -308,8 +308,7 @@ details.navsec:last-child { border-bottom: 0; }
   #toc .route-statuses > button:hover::after { visibility: visible; opacity: 1; pointer-events: auto; }
 }
 @media (max-width: 60rem), (pointer: coarse) {
-  #toc .route-statuses { gap: 0; padding-inline-end: .2rem; }
-  #toc .route-statuses > button { width: 2.75rem; height: 2.75rem; }
+  #toc .route-statuses { padding-inline-end: .2rem; }
 }
 #toc a[aria-current] { color: var(--link-color); font-weight: 600;
   background: color-mix(in srgb, var(--primary) 10%, transparent);
