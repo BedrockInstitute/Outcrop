@@ -1,6 +1,7 @@
 import { cfg } from './reader/document.js';
 import { storageKey as preferenceKey } from './reader/preferences.js';
 import { routes as loadRoutes, chooseRoute } from './reader/route-store.js';
+import { chapterState, readProgress, writeProgress } from './reader/reading-progress.js';
 import { enhanceDisclosure } from "./reader/disclosure.js";
 (() => {
   "use strict";
@@ -79,7 +80,6 @@ import { enhanceDisclosure } from "./reader/disclosure.js";
     }
   }[lang];
 
-  const storageKey = preferenceKey("reading-progress-v1");
   const el = (tag, cls, text) => {
     const node = document.createElement(tag);
     if (cls) node.className = cls;
@@ -100,15 +100,8 @@ import { enhanceDisclosure } from "./reader/disclosure.js";
   let addresses = new Map();
   const chapterHref = id => addresses.get(id) || "";
 
-  let completed = new Set();
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
-    if (Array.isArray(saved)) completed = new Set(saved.filter(x => typeof x === "string"));
-  } catch (_) { /* A blocked or corrupt store simply starts empty. */ }
-
-  const save = () => {
-    try { localStorage.setItem(storageKey, JSON.stringify([...completed])); } catch (_) { /* optional */ }
-  };
+  let completed = readProgress();
+  const save = () => writeProgress(completed);
 
   loadRoutes(host.dataset.source || undefined)
     .then(initialise)
@@ -307,9 +300,10 @@ import { enhanceDisclosure } from "./reader/disclosure.js";
     }
 
     function chapterCard(node, routeId) {
-      const isDone = completed.has(node.id);
+      const status = chapterState(node, completed, nodes);
+      const isDone = status === "complete";
       const gaps = missing(node);
-      const card = el("article", `chapter-card${isDone ? " is-done" : gaps.length ? " is-blocked" : " is-ready"}`);
+      const card = el("article", `chapter-card${isDone ? " is-done" : status === "pending" ? " is-blocked" : " is-ready"}`);
       card.dataset.chapter = node.id;
       const meta = el("div", "chapter-meta");
       meta.append(el("span", "chapter-stage", local(node.stage)));
@@ -394,7 +388,7 @@ import { enhanceDisclosure } from "./reader/disclosure.js";
     const details = el("div", "compact-details");
     const prereq = prerequisites(node);
     details.append(compactList(copy.prerequisites, prereq,
-      item => completed.has(item.id) ? "is-complete" : "is-pending", node.id));
+      item => chapterState(item, completed, nodes) === "complete" ? "is-complete" : "is-pending", node.id));
     const successors = [...nodes.values()].filter(item => (item.prerequisites || []).includes(node.id)).slice(0, 5);
     details.append(compactList(copy.onward, successors,
       item => ready(item) ? "is-available" : "is-pending"));

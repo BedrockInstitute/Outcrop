@@ -2,15 +2,10 @@
   --route-surface: color-mix(in srgb, var(--surface-muted, var(--code-bg)) 72%, var(--text-bg));
   --route-soft: color-mix(in srgb, var(--primary) 9%, var(--text-bg));
   --route-line: color-mix(in srgb, var(--ruler) 62%, transparent);
-  --route-good: #207b1d;
+  --route-good: var(--reading-done-color);
   margin: 1.6rem 0 2.2rem;
   width: 100%; max-width: none; box-sizing: border-box;
   font-family: var(--sans);
-}
-
-html.theme-dark #reading-explorer { --route-good: #2fcb8f; }
-@media (prefers-color-scheme: dark) {
-  html:not(.theme-light) #reading-explorer { --route-good: #2fcb8f; }
 }
 
 .reading-shell, .reading-compact {

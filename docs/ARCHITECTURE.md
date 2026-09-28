@@ -145,7 +145,15 @@ line-relative position during font changes and fullscreen rotation. Prose-proof
 spacing depends on semantic paragraph/code structure, not a QED wrapper.
 
 The sidebar's localized Current route label includes its colon; the route name
-follows it, while the disclosure arrow remains on the right. Section titles link
+follows it, while the disclosure arrow remains on the right. Each chapter link
+ends with two right-aligned, noninteractive statuses: the reading route's
+complete/ready/pending symbols (✓/→/○) and the catalog's human-review
+shield/warning icon. Reading status uses the same stored completion set and
+direct-prerequisite rule as the route explorer, and updates immediately after
+completion changes or cross-tab storage events. The server renders only the
+current route with empty-progress fallback so links and review status remain
+usable before JavaScript; the client uses the catalog payload for route switches.
+Section titles link
 only over their text; remaining branch-row space toggles children. Preserve one
 row highlight, keyboard disclosure, drawer focus and Escape behavior.
 At 80rem and above, symmetric fluid side tracks (at least 10rem) keep the

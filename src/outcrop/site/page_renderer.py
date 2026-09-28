@@ -17,6 +17,12 @@ from outcrop.core.document_renderer import MarkdownDocument
 from outcrop.core.definition_endings import render_code_frames
 from outcrop.core.agda_lint import AgdaPolicy
 
+REVIEW_ICON = {
+    True: ('<path d="M12 3 20 6v6c0 5-8 9-8 9s-8-4-8-9V6Z"/>'
+           '<path d="m8 12 3 3 5-6"/>'),
+    False: '<path d="m12 3 10 18H2Z"/><path d="M12 9v5m0 3v.1"/>',
+}
+
 class PageRenderer:
     def __init__(self, config, book, publication):
         self.config = config
@@ -33,13 +39,10 @@ class PageRenderer:
             'zh': ('已人工校阅', '正在人工校阅'),
             'ja': ('人手による校閲済み', '人手による校閲中'),
         }[lang][0 if reviewed else 1]
-        icon = ('<path d="M12 3 20 6v6c0 5-8 9-8 9s-8-4-8-9V6Z"/>'
-                '<path d="m8 12 3 3 5-6"/>' if reviewed else
-                '<path d="m12 3 10 18H2Z"/><path d="M12 9v5m0 3v.1"/>')
         badge = (f'<span class="chapter-review {"is-reviewed" if reviewed else "is-unreviewed"}" '
                  f'role="img" tabindex="0" aria-label="{label}" data-label="{label}">'
                  '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
-                 + icon + '</svg></span>')
+                 + REVIEW_ICON[reviewed] + '</svg></span>')
         return re.sub(r'<h1\b[^>]*>.*?</h1>',
                       lambda match: '<div class="chapter-heading-row">' + match[0]
                       + badge + '</div>', body, count=1, flags=re.S)
@@ -84,17 +87,52 @@ class PageRenderer:
         routes = reading["routes"]
         route = next((item for item in routes if current in item["chapters"]), routes[0])
         route_title = htmllib.escape(route["title"][lang])
+        nodes = {node["id"]: node for node in reading.get("nodes", [])}
+        progress_labels = {
+            "en": {"complete": "Completed", "available": "Ready to read",
+                   "pending": "Prerequisites not complete"},
+            "zh": {"complete": "已完成", "available": "可以开始",
+                   "pending": "先修尚未完成"},
+            "ja": {"complete": "完了", "available": "読めます",
+                   "pending": "前提が未完了"},
+        }[lang]
+        review_labels = {
+            "en": ("Human-reviewed", "Not human-reviewed"),
+            "zh": ("已人工校阅", "未人工校阅"),
+            "ja": ("人手による校閲済み", "人手による校閲前"),
+        }[lang]
         def route_link(module):
             active = ' aria-current="page"' if module == current else ""
-            return (f'<li><a href="{self.book.href(module)}" data-chapter="{module}"{active}>'
-                    f'{htmllib.escape(self.book.title(module, lang))}</a></li>')
+            node = nodes.get(module, {})
+            prerequisites = [name for name in node.get("prerequisites", [])
+                             if name in nodes and not nodes[name].get("preview")]
+            initial_state = "pending" if prerequisites else "available"
+            reviewed = node.get("human_reviewed", self.book.meta.get(module, {}).get("human_reviewed", False))
+            progress_label = progress_labels[initial_state]
+            review_label = review_labels[0 if reviewed else 1]
+            dependencies = htmllib.escape(" ".join(prerequisites), quote=True)
+            return (f'<li data-prerequisites="{dependencies}"><a href="{self.book.href(module)}" '
+                    f'data-chapter="{module}"{active}>'
+                    f'<span class="route-chapter-title">{htmllib.escape(self.book.title(module, lang))}</span>'
+                    '<span class="route-statuses">'
+                    f'<span class="route-reading-status is-{initial_state}" role="img" '
+                    f'aria-label="{progress_label}" title="{progress_label}"></span>'
+                    f'<span class="route-review-status {"is-reviewed" if reviewed else "is-unreviewed"}" '
+                    f'role="img" aria-label="{review_label}" title="{review_label}">'
+                    '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+                    + REVIEW_ICON[reviewed] + '</svg></span></span></a></li>')
         route_links = "".join(route_link(module) for module in route["chapters"])
         return (f'<details class="navsec reading-guide"><summary class="nav-title">'
                 f'{self.ui[lang]["guide"]}</summary><ul class="guide-nav">{guide}</ul></details>'
                 f'<details class="navsec current-route" open data-current="{current}" '
-                f'data-lang="{lang}"><summary class="nav-title">'
+                f'data-lang="{lang}" '
+                f'data-complete-label="{progress_labels["complete"]}" '
+                f'data-available-label="{progress_labels["available"]}" '
+                f'data-pending-label="{progress_labels["pending"]}" '
+                f'data-reviewed-label="{review_labels[0]}" '
+                f'data-unreviewed-label="{review_labels[1]}"><summary class="nav-title">'
                 f'{self.ui[lang]["current_route"]}<span class="current-route-name">{route_title}</span>'
-                f'</summary><ul class="route-nav" data-route="{route["id"]}">'
+                f'</summary><ul class="route-nav" data-route="{htmllib.escape(route["id"], quote=True)}">'
                 f'{route_links}</ul></details>')
 
 

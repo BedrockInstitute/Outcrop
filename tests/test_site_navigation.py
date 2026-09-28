@@ -214,12 +214,26 @@ class SiteNavigationTests(PublicationCase):
 
     def test_sidebar_folds_guide_and_opens_current_route(self):
         data = {"routes": [{"id": "foundation", "title": {"en": "Foundations"},
-                            "chapters": ["A.One", "A.Two"]}]}
+                            "chapters": ["A.One", "A.Two"]},
+                           {"id": "reference", "title": {"en": "Reference"},
+                            "chapters": ["A.One"]}],
+                "nodes": [{"id": "A.One", "prerequisites": [], "human_reviewed": True},
+                          {"id": "A.Two", "prerequisites": ["A.One"],
+                           "human_reviewed": False}]}
         nav = self.pages.modules_nav("A.Two", ["A.One", "A.Two"], "en", data)
         self.assertIn('<details class="navsec reading-guide"><summary', nav)
         self.assertIn('<details class="navsec current-route" open', nav)
         self.assertIn('data-route="foundation"', nav)
         self.assertIn('data-chapter="A.Two" aria-current="page"', nav)
+        self.assertIn('data-prerequisites="A.One"', nav)
+        self.assertIn('route-reading-status is-available', nav)
+        self.assertIn('route-reading-status is-pending', nav)
+        self.assertIn('route-review-status is-reviewed', nav)
+        self.assertIn('route-review-status is-unreviewed', nav)
+        self.assertEqual(nav.count('class="route-nav"'), 1)
+        self.assertNotIn('data-route="reference"', nav)
+        self.assertIn('aria-label="Not human-reviewed"', nav)
+        self.assertIn('aria-label="Prerequisites not complete"', nav)
         self.assertNotIn('modnav', nav)
         self.assertNotIn('modgroup', nav)
         self.assertIn('Interactive contents', nav)

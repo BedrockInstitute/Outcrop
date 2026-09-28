@@ -21,6 +21,20 @@
     check('compiler definitions preserved',doc.querySelectorAll('a[data-type]').length>5);
     check('real expression metadata rendered',doc.querySelectorAll('.expr-node').length>=2);
     check('review status and QED retained',doc.querySelector('.chapter-review')&&doc.querySelector('.agda-definition-end'));
+    const route=doc.querySelector('#toc .current-route');
+    const routeItem=id=>route.querySelector(`.route-nav:not([hidden]) [data-chapter="${id}"]`);
+    check('sidebar route has two right-aligned statuses per chapter',
+      route.querySelectorAll('.route-nav').length===1&&
+      [...route.querySelectorAll('.route-nav [data-chapter]')].every(link=>
+        link.querySelector('.route-statuses .route-reading-status')&&link.querySelector('.route-statuses .route-review-status')));
+    check('sidebar shares ready and blocked reading symbols',
+      routeItem('Sample.Seed').querySelector('.route-reading-status').classList.contains('is-available')&&
+      routeItem('Sample.Use').querySelector('.route-reading-status').classList.contains('is-pending')&&
+      win.getComputedStyle(routeItem('Sample.Seed').querySelector('.route-reading-status'),'::before').content==='"→"'&&
+      win.getComputedStyle(routeItem('Sample.Use').querySelector('.route-reading-status'),'::before').content==='"○"');
+    check('sidebar review icons match catalog states',
+      routeItem('Sample.Seed').querySelector('.route-review-status').classList.contains('is-reviewed')&&
+      routeItem('Sample.Use').querySelector('.route-review-status').classList.contains('is-unreviewed'));
     // QED is a watermark, not an extra source row. Use real reader resources,
     // including dynamic insertion, resizing, scrolling and folded statements.
     const probe=doc.createElement('div');
@@ -104,6 +118,8 @@
     win.outcropAppearance.setMode('light');win.outcropAppearance.setPalette('light','github');
     doc.querySelector('.compact-done').click();
     check('first completion persists',JSON.parse(localStorage.getItem('lantern-notes-reading-progress-v1')).includes('Sample.Use'));
+    check('sidebar completed status follows learning-route action',
+      routeItem('Sample.Use').querySelector('.route-reading-status').classList.contains('is-complete'));
     check('first namespace theme written',localStorage.getItem('lantern-notes-theme')==='light');
     [doc,win]=await load('/prism/en/Sample.Use.html');
     check('second brand and prefix',doc.querySelector('#brand').textContent==='Prism Reader'&&doc.querySelector('#brand').getAttribute('href')==='/prism/en/index.html');
@@ -176,6 +192,23 @@
       check(lang+' growing out of drawer clears backdrop',!doc.body.classList.contains('nav-open')&&win.getComputedStyle(doc.querySelector('#nav-backdrop')).display==='none');
     }
     frame.style.maxWidth='';frame.style.width='390px';
+    frame.src='/academy/en/index.html#reading-explorer';
+    await new Promise(resolve=>frame.onload=resolve);
+    await until(()=>frame.contentDocument.querySelector('.reading-mode'));
+    frame.contentDocument.querySelector('.reading-mode').click();
+    await until(()=>frame.contentDocument.querySelectorAll('.route-view').length===2);
+    frame.contentDocument.querySelectorAll('.route-view')[1].click();
+    check('changing routes updates the sidebar without duplicating lists',
+      frame.contentDocument.querySelector('.current-route-name').textContent==='Reference'&&
+      frame.contentDocument.querySelectorAll('.current-route .route-nav').length===1&&
+      frame.contentDocument.querySelectorAll('.current-route .route-nav [data-chapter]').length===1);
+    frame.src='/academy/en/Sample.Seed.html';
+    await new Promise(resolve=>frame.onload=resolve);
+    await until(()=>frame.contentDocument.querySelector('.current-route-name')?.textContent==='Reference');
+    check('selected route and both icons persist after chapter navigation',
+      frame.contentDocument.querySelectorAll('.current-route .route-nav [data-chapter]').length===1&&
+      !!frame.contentDocument.querySelector('.current-route .route-reading-status')&&
+      !!frame.contentDocument.querySelector('.current-route .route-review-status'));
     const plain=await fetch('/plain.html').then(r=>r.text());
     check('raw core renders unknown code without fake semantic links',plain.includes('unknown value')&&!plain.includes('data-type=')&&!plain.includes('expr-node'));
     document.querySelector('#test-status').textContent='PASS '+checks.length+'/'+checks.length;
