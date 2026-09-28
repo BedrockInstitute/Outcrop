@@ -60,6 +60,8 @@
   --code-font-size: calc(0.92 * var(--font-size));
   --reading-width: 48rem;
   --reading-done-color: #207b1d;
+  --reviewed-color: #24784f;
+  --unreviewed-color: #9b6519;
   --content-frame-radius: 8px;
 }
 
@@ -87,6 +89,8 @@ html[lang="ja"] {
   --occ-bg: #EAD16E2E;     /* same-definition occurrence highlight */
   --ast-node-lightness: 76%; --ast-node-chroma: .14;
   --reading-done-color: #2fcb8f;
+  --reviewed-color: #65c99d;
+  --unreviewed-color: #e6b667;
 }
 @media (prefers-color-scheme: dark) {
   :root:not(.theme-light) {
@@ -104,6 +108,8 @@ html[lang="ja"] {
     --occ-bg: #EAD16E2E;     /* same-definition occurrence highlight */
     --ast-node-lightness: 76%; --ast-node-chroma: .14;
     --reading-done-color: #2fcb8f;
+    --reviewed-color: #65c99d;
+    --unreviewed-color: #e6b667;
   }
 }
 
@@ -242,16 +248,18 @@ details.navsec:last-child { border-bottom: 0; }
 #toc .route-statuses { flex: none; display: inline-flex; align-items: center;
   gap: .25rem; margin-inline-start: auto; }
 #toc .route-reading-status { display: inline-grid; place-items: center;
-  width: 1rem; height: 1rem; color: var(--ruler); font-size: .82rem; line-height: 1; }
+  width: 1rem; height: 1rem; color: var(--fg-alt); font-size: .78rem; line-height: 1; }
 #toc .route-reading-status::before { content: "○"; }
-#toc .route-reading-status.is-complete { color: var(--reading-done-color); font-weight: 800; }
+#toc .route-reading-status.is-complete { color: color-mix(in srgb, var(--reading-done-color) 38%, var(--fg-alt)); font-weight: 700; }
 #toc .route-reading-status.is-complete::before { content: "✓"; }
-#toc .route-reading-status.is-available { color: var(--primary); font-weight: 800; }
+#toc .route-reading-status.is-available { color: color-mix(in srgb, var(--primary) 38%, var(--fg-alt)); font-weight: 700; }
 #toc .route-reading-status.is-available::before { content: "→"; }
 #toc .route-review-status { display: inline-grid; place-items: center;
   width: 1rem; height: 1rem; }
-#toc .route-review-status svg { width: .96rem; height: .96rem; fill: none;
-  stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+#toc .route-review-status svg { width: .9rem; height: .9rem; fill: none;
+  stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+#toc .route-review-status.is-reviewed { color: color-mix(in srgb, var(--reviewed-color) 38%, var(--fg-alt)); }
+#toc .route-review-status.is-unreviewed { color: color-mix(in srgb, var(--unreviewed-color) 38%, var(--fg-alt)); }
 #toc a[aria-current] { color: var(--link-color); font-weight: 600;
   background: color-mix(in srgb, var(--primary) 10%, transparent);
   box-shadow: inset 2px 0 var(--primary); }
@@ -965,14 +973,8 @@ html.definition-modal-document #main-content {
   width: 2.5rem; height: 2.5rem; border-radius: 50%; cursor: help; }
 .chapter-review svg { width: 1.45rem; height: 1.45rem; fill: none;
   stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.chapter-review.is-reviewed, .route-review-status.is-reviewed { color: #24784f; }
-.chapter-review.is-unreviewed, .route-review-status.is-unreviewed { color: #9b6519; }
-html.theme-dark :is(.chapter-review, .route-review-status).is-reviewed { color: #65c99d; }
-html.theme-dark :is(.chapter-review, .route-review-status).is-unreviewed { color: #e6b667; }
-@media (prefers-color-scheme: dark) {
-  html:not(.theme-light) :is(.chapter-review, .route-review-status).is-reviewed { color: #65c99d; }
-  html:not(.theme-light) :is(.chapter-review, .route-review-status).is-unreviewed { color: #e6b667; }
-}
+.chapter-review.is-reviewed { color: var(--reviewed-color); }
+.chapter-review.is-unreviewed { color: var(--unreviewed-color); }
 .chapter-review:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .chapter-review::after { content: attr(data-label); position: absolute;
   z-index: 5; inset-inline-end: 0; top: 100%; width: max-content; max-width: 16rem;
