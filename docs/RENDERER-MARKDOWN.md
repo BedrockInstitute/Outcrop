@@ -246,8 +246,10 @@ one explicit lookup does not exempt other bare occurrences. No glossary is read
 unless supplied by the caller. Bedrock's particular translations are not built
 into the renderer.
 Chapter-level `#` titles are excluded from automatic term matching and its
-prerequisite check. Subsection headings (`##` and deeper) remain eligible;
-explicit `term-intro` and `term-ref` markers still work in chapter titles.
+prerequisite check, and must not contain explicit `term-intro` or `term-ref`
+markers. Put the first introduction in the prose beneath the title instead:
+chapter titles may already be interactive source-popup triggers. Subsection
+headings (`##` and deeper) remain eligible for automatic and explicit terms.
 An entry with `matching = "auto"` may set `auto_languages` to a nonempty subset
 of `en`, `zh`, `ja`. Only those languages receive automatic links and prerequisite
 checks; the others remain available through explicit `term-ref` markers. If the

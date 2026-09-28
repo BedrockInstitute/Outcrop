@@ -699,6 +699,9 @@ pre.Agda .expr-node.expr-active,
   padding: .12em .1em; text-align: inherit; cursor: help; border-radius: 4px;
   text-decoration: underline dashed color-mix(in srgb, var(--primary) 55%, transparent);
   text-underline-offset: .22em; text-decoration-thickness: 1px; }
+/* A chapter title is already prominent; its code mark alone signals the source
+   popup without making the whole title look like a reader-term link. */
+.chapter-heading-row .boilerplate-hover { text-decoration: none; }
 .boilerplate-hover::after { content: " ‹/›"; font: .55em var(--mono); color: var(--fg-alt);
   vertical-align: middle; white-space: nowrap; }
 .boilerplate-hover.info-active { background: color-mix(in srgb, var(--primary) 12%, transparent); }

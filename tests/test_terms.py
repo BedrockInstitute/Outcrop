@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 from outcrop.core.markdown_core import auto_link_terms, md_to_html, restore_toc_labels
+from outcrop.core.document_renderer import MarkdownDocument
 from outcrop.core.term_registry import TERM_MARK_RE
 from outcrop.core.term_lint import prerequisite_occurrences, check_terms
 from outcrop.site.site_inputs import source_paths
@@ -118,6 +119,20 @@ class RenderingTests(PublicationCase):
         explicit = '<h1><dfn id="term-host-environment">host</dfn></h1>'
         self.assertEqual(auto_link_terms(explicit, 'en', 'Base.Prelude', [entry()]), explicit)
 
+    def test_chapter_title_rejects_explicit_term_but_body_introduction_works(self):
+        marked = '# [host]{.term-intro #host-environment}'
+        with self.assertRaisesRegex(ValueError, 'chapter title must not contain reader term'):
+            MarkdownDocument(marked, module='Base.Prelude', terms=[entry()]).render('en')
+        fenced = '```markdown\n# [host]{.term-intro #host-environment}\n```\n\n# host'
+        self.assertIn('<h1 id="sec-0">host</h1>',
+                      MarkdownDocument(fenced, module='Base.Prelude', terms=[entry()]).render('en').body)
+        source = '# host\n\nThe [host]{.term-intro #host-environment} is a host.'
+        body = MarkdownDocument(source, module='Base.Prelude', terms=[entry()]).render('en').body
+        self.assertIn('<h1 id="sec-0">host</h1>', body)
+        self.assertIn('<dfn id="term-host-environment" class="term-intro" '
+                      'data-term="host-environment" tabindex="0">host</dfn>', body)
+        self.assertIn('<a class="term-ref" data-term="host-environment"', body)
+
     def test_auto_links_prose_but_not_code_or_introduction(self):
         body = ('<p>The <dfn id="term-host-environment" data-term="host-environment">host</dfn> '
                 'contains another host.</p><pre><code>host</code></pre>')
@@ -183,6 +198,18 @@ class RenderingTests(PublicationCase):
 
 
 class IntroductionGateTests(PublicationCase):
+    def test_chapter_title_rejects_explicit_intro_and_reference(self):
+        for kind in ('intro', 'ref'):
+            with self.subTest(kind=kind):
+                source = ('<!--en-->\n# [host]{.term-' + kind + ' #host-environment}\n'
+                          '<!--zh-->\n# 宿主\n<!--ja-->\n# ホスト\n<!--/-->\n')
+                errors = check_terms({'Base.Prelude': source}, [entry()], {'nodes': []})
+                self.assertTrue(any('chapter title must not contain reader term markers'
+                                    in error for error in errors), errors)
+        fenced = '```markdown\n# [host]{.term-ref #host-environment}\n```\n'
+        self.assertFalse(any('chapter title' in error for error in
+                             check_terms({'Base.Prelude': fenced}, [entry()], {'nodes': []})))
+
     def test_chapter_title_is_not_an_automatic_prerequisite_use(self):
         for language, label in (('en', 'host'), ('zh', '宿主'), ('ja', 'ホスト')):
             with self.subTest(language=language):

@@ -8,7 +8,19 @@ LANGS = ("en", "zh", "ja")
 TERM_MARK_RE = re.compile(
     r"\[([^\]\n]+)\]\{\.term-(intro|ref)\s+#([a-z][a-z0-9-]*)\}"
 )
+CHAPTER_HEADING_RE = re.compile(r"^#[ \t]+[^\n]*", re.M)
 TERM_ID_RE = re.compile(r"[a-z][a-z0-9-]*")
+
+
+def chapter_heading_term_markers(text):
+    """Yield real ATX h1 lines with explicit term markers, ignoring code fences."""
+    fenced = False
+    for line_number, line in enumerate(text.splitlines(), 1):
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+            continue
+        if not fenced and CHAPTER_HEADING_RE.fullmatch(line) and TERM_MARK_RE.search(line):
+            yield line_number
 
 
 def load_entries(path):

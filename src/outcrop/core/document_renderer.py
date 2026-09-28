@@ -25,7 +25,7 @@ from outcrop.core.boilerplate import mirror_boilerplate
 from outcrop.core.chapter_structure import OPTIONS
 from outcrop.core.definition_endings import render_code_frames
 from outcrop.core.code_preview import render_code_previews
-from outcrop.core.term_registry import TERM_MARK_RE
+from outcrop.core.term_registry import TERM_MARK_RE, chapter_heading_term_markers
 
 
 @dataclass
@@ -94,6 +94,8 @@ class MarkdownDocument:
 
     def render(self, lang):
         woven = weave_for_site(self.text, lang)
+        if any(chapter_heading_term_markers(woven)):
+            raise ValueError(f'chapter title must not contain reader term markers in {self.module}')
         mirror = markdown_body(woven, self.blocks)
         store = {}
         def stash(kind, payload):

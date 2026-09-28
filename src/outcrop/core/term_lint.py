@@ -1,6 +1,8 @@
 """Strict term introduction and prerequisite rules over an explicit corpus."""
 import re
-from outcrop.core.term_registry import (LANGS, TERM_MARK_RE, auto_match_allowed, auto_matching,
+from outcrop.core.term_registry import (CHAPTER_HEADING_RE, LANGS, TERM_MARK_RE,
+                                        auto_match_allowed, auto_matching,
+                                        chapter_heading_term_markers,
                                         localized_forms, reader_terms, schema_errors)
 from outcrop.core.i18n_markers import weave
 from outcrop.core.prose_lint import build_protected
@@ -53,7 +55,7 @@ def prerequisite_occurrences(text, entry, language, module):
     protected = build_protected(text)
     # Chapter titles do not receive automatic glossary links. Match the ATX h1
     # form understood by the renderer; subsection headings remain linkable.
-    for heading in re.finditer(r"^#[ \t]+[^\n]*", text, re.M):
+    for heading in CHAPTER_HEADING_RE.finditer(text):
         protected[heading.start():heading.end()] = [True] * len(heading[0])
     for reference in TERM_MARK_RE.finditer(text):
         # Attributes and concept IDs are metadata, not additional uses of the label.
@@ -75,6 +77,8 @@ def check_terms(sources, entries, reading):
 
     for module, text in sorted(sources.items()):
         path = module
+        for line in chapter_heading_term_markers(text):
+            errors.append(f"{path}:{line}: chapter title must not contain reader term markers")
         for line, language, kind, term_id, label in markers(text):
             if term_id not in by_id:
                 errors.append(f"{path}:{line}: unknown reader term id {term_id!r}")

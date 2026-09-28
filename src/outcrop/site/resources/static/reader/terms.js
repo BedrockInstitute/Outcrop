@@ -101,8 +101,9 @@ import { cfg } from "./document.js";
       target.addEventListener("blur", laterHide);
       target.addEventListener("click", function (event) {
         if (target.tagName === "DFN" || compact.matches) {
-          if (active === target && !popup.hidden && compact.matches) hide();
-          else show(target);
+          // A touch can synthesize mouseenter/focus before click. Reopening the
+          // same term must not toggle away the popup those events just showed.
+          show(target);
           if (compact.matches) event.preventDefault();
         }
       });
