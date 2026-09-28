@@ -146,13 +146,19 @@ spacing depends on semantic paragraph/code structure, not a QED wrapper.
 
 The sidebar's localized Current route label includes its colon; the route name
 follows it, while the disclosure arrow remains on the right. Each chapter link
-ends with two right-aligned, noninteractive statuses: the reading route's
-complete/ready/pending symbols (✓/→/○) and the catalog's human-review
-shield/warning icon. Reading status uses the same stored completion set and
-direct-prerequisite rule as the route explorer, and updates immediately after
+ends with two right-aligned status controls: the catalog's human-review
+shield/warning icon, then the reading route's complete/ready/pending symbols
+(✓/→/○). Desktop hover or keyboard focus shows each localized label; touch taps
+toggle it. The controls sit outside the chapter link, so touching an icon or its
+label never navigates. Their accessible names use those same labels. Reading
+status uses the same stored completion set and direct-prerequisite rule as the
+route explorer, and updates immediately after
 completion changes or cross-tab storage events. The server renders only the
 current route with empty-progress fallback so links and review status remain
 usable before JavaScript; the client uses the catalog payload for route switches.
+Only overflowing chapter titles pan slowly within their link, independently of
+the fixed status controls. Desktop hover or keyboard focus on an overflowing
+title shows its full localized text; reduced-motion preferences disable the pan.
 Section titles link
 only over their text; remaining branch-row space toggles children. Preserve one
 row highlight, keyboard disclosure, drawer focus and Escape behavior.

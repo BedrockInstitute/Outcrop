@@ -23,18 +23,72 @@
     check('review status and QED retained',doc.querySelector('.chapter-review')&&doc.querySelector('.agda-definition-end'));
     const route=doc.querySelector('#toc .current-route');
     const routeItem=id=>route.querySelector(`.route-nav:not([hidden]) [data-chapter="${id}"]`);
+    const status=id=>routeItem(id)?.parentElement.querySelector('.route-statuses');
     check('sidebar route has two right-aligned statuses per chapter',
       route.querySelectorAll('.route-nav').length===1&&
       [...route.querySelectorAll('.route-nav [data-chapter]')].every(link=>
-        link.querySelector('.route-statuses .route-reading-status')&&link.querySelector('.route-statuses .route-review-status')));
+        link.parentElement.querySelector('.route-statuses .route-reading-status')&&
+        link.parentElement.querySelector('.route-statuses .route-review-status')&&
+        !link.contains(link.parentElement.querySelector('.route-statuses'))));
+    check('sidebar review status precedes reading status',
+      [...route.querySelectorAll('.route-nav [data-chapter]')].every(link=>
+        [...link.parentElement.querySelector('.route-statuses').children].map(icon=>icon.classList[0]).join('|')===
+        'route-review-status|route-reading-status'));
+    check('compact status controls have separate 44px tap targets',
+      [...route.querySelectorAll('.route-nav [data-chapter]')].every(link=>{
+        const buttons=[...link.parentElement.querySelectorAll('.route-statuses > button')];
+        return buttons.length===2&&buttons.every(button=>button.getBoundingClientRect().width>=44)&&
+          link.getBoundingClientRect().right<=buttons[0].getBoundingClientRect().left;
+      }));
     check('sidebar shares ready and blocked reading symbols',
-      routeItem('Sample.Seed').querySelector('.route-reading-status').classList.contains('is-available')&&
-      routeItem('Sample.Use').querySelector('.route-reading-status').classList.contains('is-pending')&&
-      win.getComputedStyle(routeItem('Sample.Seed').querySelector('.route-reading-status'),'::before').content==='"→"'&&
-      win.getComputedStyle(routeItem('Sample.Use').querySelector('.route-reading-status'),'::before').content==='"○"');
+      status('Sample.Seed').querySelector('.route-reading-status').classList.contains('is-available')&&
+      status('Sample.Use').querySelector('.route-reading-status').classList.contains('is-pending')&&
+      win.getComputedStyle(status('Sample.Seed').querySelector('.route-reading-status'),'::before').content==='"→"'&&
+      win.getComputedStyle(status('Sample.Use').querySelector('.route-reading-status'),'::before').content==='"○"');
     check('sidebar review icons match catalog states',
-      routeItem('Sample.Seed').querySelector('.route-review-status').classList.contains('is-reviewed')&&
-      routeItem('Sample.Use').querySelector('.route-review-status').classList.contains('is-unreviewed'));
+      status('Sample.Seed').querySelector('.route-review-status').classList.contains('is-reviewed')&&
+      status('Sample.Use').querySelector('.route-review-status').classList.contains('is-unreviewed'));
+    if(win.matchMedia('(hover: hover) and (pointer: fine)').matches){
+      check('sidebar status hover help uses localized accessible labels',
+        win.getComputedStyle(status('Sample.Seed').querySelector('.route-review-status'),'::after').content==='"Human-reviewed"'&&
+        win.getComputedStyle(status('Sample.Seed').querySelector('.route-reading-status'),'::after').content==='"Ready to read"');
+    }
+    const statusButton=status('Sample.Seed').querySelector('.route-review-status');
+    const routeUrl=win.location.href;
+    statusButton.click();
+    check('touch-style status tap opens help without chapter navigation',
+      statusButton.classList.contains('is-tip-open')&&win.location.href===routeUrl&&
+      win.getComputedStyle(statusButton,'::after').visibility==='visible');
+    status('Sample.Seed').querySelector('.route-reading-status').click();
+    check('another status replaces the open help without navigation',
+      !statusButton.classList.contains('is-tip-open')&&
+      status('Sample.Seed').querySelector('.route-reading-status').classList.contains('is-tip-open')&&
+      win.location.href===routeUrl);
+    doc.querySelector('article').click();
+    check('outside tap closes status help',
+      !status('Sample.Seed').querySelector('.is-tip-open'));
+    const longLink=routeItem('Sample.Use');
+    const title=longLink.querySelector('.route-chapter-title');
+    const originalTitle=title.textContent;
+    title.textContent='An intentionally long chapter title that exceeds the route sidebar width';
+    longLink.dataset.fullTitle=title.textContent;
+    win.dispatchEvent(new win.Event('resize'));
+    await pause(100);
+    check('overflowing chapter title pans only inside its clipped title area',
+      longLink.classList.contains('is-title-overflowing')&&
+      parseFloat(longLink.style.getPropertyValue('--route-title-overflow'))>0&&
+      win.getComputedStyle(title.parentElement).overflow==='hidden');
+    if(!win.matchMedia('(prefers-reduced-motion: reduce)').matches){
+      check('overflowing chapter title has a back-and-forth animation',
+        win.getComputedStyle(title).animationName==='route-title-pan');
+    }
+    if(win.matchMedia('(hover: hover) and (pointer: fine)').matches){
+      check('desktop overflowing title hover shows its full name',
+        win.getComputedStyle(longLink,'::after').content==='"'+title.textContent+'"');
+    }
+    title.textContent=originalTitle;
+    longLink.dataset.fullTitle=originalTitle;
+    win.dispatchEvent(new win.Event('resize'));
     // QED is a watermark, not an extra source row. Use real reader resources,
     // including dynamic insertion, resizing, scrolling and folded statements.
     const probe=doc.createElement('div');
@@ -119,7 +173,8 @@
     doc.querySelector('.compact-done').click();
     check('first completion persists',JSON.parse(localStorage.getItem('lantern-notes-reading-progress-v1')).includes('Sample.Use'));
     check('sidebar completed status follows learning-route action',
-      routeItem('Sample.Use').querySelector('.route-reading-status').classList.contains('is-complete'));
+      status('Sample.Use').querySelector('.route-reading-status').classList.contains('is-complete')&&
+      status('Sample.Use').querySelector('.route-reading-status').getAttribute('aria-label')==='Completed');
     check('first namespace theme written',localStorage.getItem('lantern-notes-theme')==='light');
     [doc,win]=await load('/prism/en/Sample.Use.html');
     check('second brand and prefix',doc.querySelector('#brand').textContent==='Prism Reader'&&doc.querySelector('#brand').getAttribute('href')==='/prism/en/index.html');
@@ -202,6 +257,9 @@
       frame.contentDocument.querySelector('.current-route-name').textContent==='Reference'&&
       frame.contentDocument.querySelectorAll('.current-route .route-nav').length===1&&
       frame.contentDocument.querySelectorAll('.current-route .route-nav [data-chapter]').length===1);
+    check('client-rendered route keeps review before reading',
+      [...frame.contentDocument.querySelector('.current-route .route-statuses').children]
+        .map(icon=>icon.classList[0]).join('|')==='route-review-status|route-reading-status');
     frame.src='/academy/en/Sample.Seed.html';
     await new Promise(resolve=>frame.onload=resolve);
     await until(()=>frame.contentDocument.querySelector('.current-route-name')?.textContent==='Reference');

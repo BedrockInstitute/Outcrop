@@ -112,15 +112,17 @@ class PageRenderer:
             review_label = review_labels[0 if reviewed else 1]
             dependencies = htmllib.escape(" ".join(prerequisites), quote=True)
             return (f'<li data-prerequisites="{dependencies}"><a href="{self.book.href(module)}" '
-                    f'data-chapter="{module}"{active}>'
-                    f'<span class="route-chapter-title">{htmllib.escape(self.book.title(module, lang))}</span>'
+                    f'data-chapter="{module}" data-full-title="{htmllib.escape(self.book.title(module, lang), quote=True)}"{active}>'
+                    f'<span class="route-chapter-viewport"><span class="route-chapter-title">'
+                    f'{htmllib.escape(self.book.title(module, lang))}</span></span></a>'
                     '<span class="route-statuses">'
-                    f'<span class="route-reading-status is-{initial_state}" role="img" '
-                    f'aria-label="{progress_label}" title="{progress_label}"></span>'
-                    f'<span class="route-review-status {"is-reviewed" if reviewed else "is-unreviewed"}" '
-                    f'role="img" aria-label="{review_label}" title="{review_label}">'
+                    f'<button type="button" class="route-review-status {"is-reviewed" if reviewed else "is-unreviewed"}" '
+                    f'aria-label="{review_label}">'
                     '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
-                    + REVIEW_ICON[reviewed] + '</svg></span></span></a></li>')
+                    + REVIEW_ICON[reviewed] + '</svg></button>'
+                    f'<button type="button" class="route-reading-status is-{initial_state}" '
+                    f'aria-label="{progress_label}"></button>'
+                    '</span></li>')
         route_links = "".join(route_link(module) for module in route["chapters"])
         return (f'<details class="navsec reading-guide"><summary class="nav-title">'
                 f'{self.ui[lang]["guide"]}</summary><ul class="guide-nav">{guide}</ul></details>'

@@ -243,23 +243,74 @@ details.navsec:last-child { border-bottom: 0; }
 #toc .current-route-name { min-width: 0; overflow: hidden;
   color: var(--fg-alt); font-size: .72rem; font-weight: 500; text-overflow: ellipsis;
   white-space: nowrap; }
-#toc .route-nav a { display: flex; align-items: center; gap: .4rem; }
-#toc .route-chapter-title { flex: 1; min-width: 0; }
+#toc .route-nav li { display: flex; align-items: stretch; border-radius: 5px; }
+#toc .route-nav li:has(> a[aria-current]) { background: color-mix(in srgb, var(--primary) 10%, transparent);
+  box-shadow: inset 2px 0 var(--primary); }
+#toc .route-nav a { display: flex; flex: 1 1 auto; align-items: center; min-width: 0; padding-inline-end: .3rem; }
+#toc .route-nav a[aria-current] { background: none; box-shadow: none; }
+#toc .route-chapter-viewport { display: block; flex: 1; min-width: 0; overflow: hidden; }
+#toc .route-chapter-title { display: inline-block; white-space: nowrap; }
+#toc .route-nav a.is-title-overflowing .route-chapter-title {
+  animation: route-title-pan var(--route-title-duration, 8s) ease-in-out infinite; }
+@keyframes route-title-pan {
+  0%, 12%, 100% { transform: translateX(0); }
+  50%, 62% { transform: translateX(calc(0px - var(--route-title-overflow, 0px))); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #toc .route-nav a.is-title-overflowing .route-chapter-title { animation: none; }
+}
+@media (hover: hover) and (pointer: fine) {
+  #toc .route-nav a.is-title-overflowing { position: relative; }
+  #toc .route-nav a.is-title-overflowing::after {
+    content: attr(data-full-title); position: absolute; z-index: 12;
+    inset-block-start: calc(100% + .2rem); inset-inline-start: 0;
+    width: max-content; max-width: calc(100% + 2.4rem); padding: .35rem .5rem;
+    border: 1px solid var(--code-border); border-radius: 6px;
+    color: var(--text-fg); background: var(--popup-bg); box-shadow: 0 4px 14px #0002;
+    font: .7rem/1.35 var(--sans); text-align: start; white-space: normal;
+    pointer-events: none; visibility: hidden; opacity: 0;
+  }
+  #toc .route-nav a.is-title-overflowing:is(:hover, :focus-visible)::after {
+    visibility: visible; opacity: 1; }
+}
 #toc .route-statuses { flex: none; display: inline-flex; align-items: center;
-  gap: .25rem; margin-inline-start: auto; }
+  gap: .25rem; padding-inline: .2rem .55rem; }
+#toc .route-statuses > button { position: relative; display: inline-grid; place-items: center;
+  width: 1rem; height: 1rem; padding: 0; border: 0; border-radius: 3px;
+  background: transparent; font-family: var(--sans); cursor: help; }
+#toc .route-statuses > button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 #toc .route-reading-status { display: inline-grid; place-items: center;
-  width: 1rem; height: 1rem; color: var(--fg-alt); font-size: .78rem; line-height: 1; }
+  color: var(--fg-alt); font-size: .78rem; line-height: 1; }
 #toc .route-reading-status::before { content: "○"; }
 #toc .route-reading-status.is-complete { color: color-mix(in srgb, var(--reading-done-color) 38%, var(--fg-alt)); font-weight: 700; }
 #toc .route-reading-status.is-complete::before { content: "✓"; }
 #toc .route-reading-status.is-available { color: color-mix(in srgb, var(--primary) 38%, var(--fg-alt)); font-weight: 700; }
 #toc .route-reading-status.is-available::before { content: "→"; }
 #toc .route-review-status { display: inline-grid; place-items: center;
-  width: 1rem; height: 1rem; }
+  color: var(--fg-alt); }
 #toc .route-review-status svg { width: .9rem; height: .9rem; fill: none;
   stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 #toc .route-review-status.is-reviewed { color: color-mix(in srgb, var(--reviewed-color) 38%, var(--fg-alt)); }
 #toc .route-review-status.is-unreviewed { color: color-mix(in srgb, var(--unreviewed-color) 38%, var(--fg-alt)); }
+#toc .route-statuses > button::after {
+  content: attr(aria-label); position: absolute; z-index: 10;
+  inset-block-end: calc(100% + .3rem); inset-inline-end: 0;
+  width: max-content; max-width: 9rem; padding: .35rem .5rem;
+  border: 1px solid var(--code-border); border-radius: 6px;
+  color: var(--text-fg); background: var(--popup-bg); box-shadow: 0 4px 14px #0002;
+  font: .7rem/1.35 var(--sans); text-align: start; white-space: normal;
+  pointer-events: none; visibility: hidden; opacity: 0;
+}
+#toc .route-statuses > button.is-tip-open { z-index: 2; }
+#toc .route-statuses > button.is-tip-open::after,
+#toc .route-statuses > button:focus-visible::after { visibility: visible; opacity: 1; pointer-events: auto; }
+@media (hover: hover) and (pointer: fine) {
+  #toc .route-statuses > button:hover::after { visibility: visible; opacity: 1; pointer-events: auto; }
+}
+@media (max-width: 60rem), (pointer: coarse) {
+  #toc .route-statuses { gap: 0; padding-inline-end: .2rem; }
+  #toc .route-statuses > button { width: 2.75rem; height: 2.75rem; }
+}
 #toc a[aria-current] { color: var(--link-color); font-weight: 600;
   background: color-mix(in srgb, var(--primary) 10%, transparent);
   box-shadow: inset 2px 0 var(--primary); }
