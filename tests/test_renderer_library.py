@@ -23,6 +23,21 @@ EXAMPLE = ROOT / 'examples/renderer'
 
 
 class RendererLibraryTests(unittest.TestCase):
+    def test_compiler_code_touching_fold_closing_tags_stays_block_content(self):
+        source = ('<details open class="submodule-fold">\n'
+                  '<summary class="submodule-fold-heading">'
+                  '<pre class="Agda">module Example where\n</pre></summary>\n'
+                  '<div class="submodule-fold-content">\n\n'
+                  'A definition.\n\n'
+                  '<pre class="Agda">  x = y\n</pre></div>\n'
+                  '</details>')
+        rendered = MarkdownDocument(source).render('en')
+        self.assertIn('<div class="submodule-fold-content">', rendered.body)
+        self.assertIn('</pre>\n</div>\n</details>', rendered.body)
+        self.assertNotIn('&lt;/div&gt;', rendered.body)
+        self.assertNotIn('<p', rendered.body.split('x = y', 1)[1].split('</details>', 1)[0])
+        self.assertIn('```agda\n  x = y\n```', rendered.mirror)
+
     def test_compiler_certified_nested_inline_successor_uses_shared_notation(self):
         outer = 'Formula K (suc n)'
         nodes = [

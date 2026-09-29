@@ -73,7 +73,10 @@ class MarkdownDocument:
         text = re.sub(r'^```agda[ \t]*\n(.*?)^```[ \t]*$', plain_fence, text, flags=re.M | re.S)
         def lift(match):
             self.blocks.append(match.group(0))
-            return f'{NUL}CODE{len(self.blocks)-1}{NUL}'
+            # Agda's highlighted Markdown can join a closing HTML tag directly
+            # to </pre>. Keep the block placeholder on its own line so that
+            # Markdown parsing does not turn </div> into paragraph text.
+            return f'{NUL}CODE{len(self.blocks)-1}{NUL}\n'
         self.text = PRE_RE.sub(lift, text)
         self.local_refs = {}
         for block in self.blocks:
