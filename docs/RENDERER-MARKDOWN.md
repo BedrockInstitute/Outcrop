@@ -80,6 +80,17 @@ source-copy action; inline code and centered single-line display code do not.
 The action copies the original Agda text, not its optional compact notation or
 the decorative definition-end mark. Math is retained for the shared KaTeX client.
 
+With compiler evidence and a configured `prelude_module`, its public vocabulary
+is recognized on inline, single-line and formal code surfaces. Compiler-declared
+`syntax` notation participates too, including notation defined locally in the
+introductory module as well as imported notation. The literal pieces of a
+notation share its declaration's link and hover type; binder names remain separate.
+The introductory page marks imported targets and local syntax declarations with
+`data-introduction-section`, using the enclosing subsection of each rendered
+edition. Definition inspection aligns that heading while retaining the original
+declaration identity for hover, history and enter-page navigation. The visible
+library import itself keeps its original library link.
+
 When imported declarations share a spelling (for example the `zero`
 constructors of `ℕ` and `Fin`), mark the intended type on the complete inline
 expression: `` `zero`{.Agda type="Fin 3"} `` or `` `zero`{.Agda type="ℕ"} ``.

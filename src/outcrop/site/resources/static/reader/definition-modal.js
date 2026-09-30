@@ -264,12 +264,11 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
           view.title.replaceChildren(document.createTextNode(chapterText + " "), titleName);
           frame.title = chapterText + " " + definitionName;
         }
-        // Prelude re-exports are introduced by their explanatory import. In
-        // the inspection modal show that import's enclosing section first,
-        // including nested sections. Keep the definition URL/identity itself
-        // unchanged for history, enter-page and same-definition navigation.
-        var importSection = preludeImportSection(entry, target);
-        var targetBlock = importSection || (entry.target.kind === "prose"
+        // The renderer marks introductory vocabulary, including local syntax,
+        // with its enclosing section in this edition. Keep declaration identity
+        // for hover, history, enter-page and same-definition navigation.
+        var introduction = vocabularyIntroductionSection(target);
+        var targetBlock = introduction || (entry.target.kind === "prose"
           ? target.closest("pre.Agda, figure, h1, h2, h3, h4, p, li, table") || target
           : chapterConfig.external && target.closest("pre.Agda")
             // External Agda HTML has one pre for the whole module. Aligning its
@@ -372,17 +371,12 @@ const isDarkTheme = () => window.outcropAppearance.effectiveMode() === "dark";
       push(target, qualifiedLabel(target, name), link);
     }
 
-    function preludeImportSection(entry, target) {
-      if (entry.target.module !== cfg.preludeModule) return null;
-      var code = target.closest('pre.Agda');
-      if (!code || !/(?:^|\n)\s*(?:open\s+)?import\s+\S/u.test(code.textContent)) return null;
-      var article = code.closest('article');
-      if (!article) return null;
-      var section = null;
-      article.querySelectorAll('h2[id], h3[id], h4[id], h5[id], h6[id]').forEach(function (heading) {
-        if (heading.compareDocumentPosition(code) & Node.DOCUMENT_POSITION_FOLLOWING) section = heading;
-      });
-      return section;
+    function vocabularyIntroductionSection(target) {
+      var id = target.getAttribute('data-introduction-section');
+      if (!id) return null;
+      var section = target.ownerDocument.getElementById(id);
+      return section && section.matches('h2, h3, h4, h5, h6')
+        && section.closest('article') === target.closest('article') ? section : null;
     }
 
     document.addEventListener("click", function (event) {

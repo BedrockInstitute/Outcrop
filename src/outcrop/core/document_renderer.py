@@ -26,6 +26,7 @@ from outcrop.core.chapter_structure import OPTIONS
 from outcrop.core.definition_endings import render_code_frames
 from outcrop.core.code_preview import render_code_previews
 from outcrop.core.term_registry import TERM_MARK_RE, chapter_heading_term_markers
+from outcrop.core.vocabulary_sections import mark_vocabulary_sections
 
 
 @dataclass
@@ -168,6 +169,8 @@ class MarkdownDocument:
         toc = restore_toc_labels(toc, store)
         for index, block in enumerate(self.blocks):
             body = body.replace(f'{NUL}CODE{index}{NUL}', block)
+        body = mark_vocabulary_sections(body, self.module, self.code.semantics,
+                                        self.code.vocabulary)
         body = annotate_inline_code(body, self.code.semantics.inline_reference_resolver(
             self.local_refs, self.module, self.code.vocabulary))
         if self.code.rendered:

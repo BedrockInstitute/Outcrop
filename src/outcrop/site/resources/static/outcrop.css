@@ -583,6 +583,9 @@ pre.Agda > .agda-code-content {
   white-space: nowrap; pointer-events: none; }
 .code-copy-inline { position: absolute; z-index: 4; top: .35rem; inset-inline-end: .35rem;
   opacity: 0; pointer-events: none; }
+.submodule-fold-heading > pre.Agda > .code-copy-inline {
+  top: 50%; transform: translateY(-50%);
+}
 pre.Agda:is(:hover, :focus-within) > .code-copy-inline,
 .code-copy-inline:focus-visible { opacity: 1; pointer-events: auto; }
 .code-copy-mobile { position: fixed; z-index: 170; width: 44px; height: 44px;

@@ -76,7 +76,7 @@ not a sandbox for executing untrusted authors' documents.
 | `favicon`, `logo` | Required project SVG favicon; optional logo defaults to that explicit asset |
 | `stylesheets` | Optional project-relative CSS paths for instance-specific figures or branding; published as versioned assets after framework styles and included in diagram-style lint |
 | `landing_module` | Overview chapter embedded in the interactive contents |
-| `prelude_module` | Optional teaching-vocabulary reexport point; empty disables forwarding |
+| `prelude_module` | Optional teaching-vocabulary module: reexports and its local syntax are recognized across code surfaces, with definition inspection aligned to their introductory sections; empty disables forwarding |
 | `hubs` | Graph hub modules, explicitly validated against the corpus |
 | `visible_import_chapters` | Explicit formal-setup exceptions for visible theorem imports |
 | `prerequisites` | Optional per-chapter overrides; omitted chapters keep their inferred imports |

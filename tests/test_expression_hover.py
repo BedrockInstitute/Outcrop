@@ -1197,28 +1197,23 @@ process.stdout.write(JSON.stringify(outcomes));
         })
 
     @unittest.skipUnless(shutil.which("node"), "Node.js is needed for the JavaScript behavior test")
-    def test_prelude_import_modal_aligns_nested_section_without_changing_target(self):
+    def test_vocabulary_modal_uses_certified_section_in_its_own_article(self):
         javascript = source('definition-modal')
-        helper = re.search(r'^    function preludeImportSection\(entry, target\) \{.*?^    \}',
+        helper = re.search(r'^    function vocabularyIntroductionSection\(target\) \{.*?^    \}',
                            javascript, re.MULTILINE | re.DOTALL)
         self.assertIsNotNone(helper)
         scenario = r'''
-const cfg = {preludeModule: "Base.Prelude"};
-const Node = {DOCUMENT_POSITION_FOLLOWING: 4};
-const h2 = {id: "sec-basic-types", compareDocumentPosition: () => 4};
-const h3 = {id: "sec-natural-numbers", compareDocumentPosition: () => 4};
-const later = {id: "sec-vectors", compareDocumentPosition: () => 2};
-const article = {querySelectorAll: () => [h2, h3, later]};
-const code = {textContent: "open import Cubical.Data.Nat public\n  using ( zero; suc )",
-              closest: selector => selector === "article" ? article : null};
-const target = {closest: selector => selector === "pre.Agda" ? code : null};
-const imported = {target: {module: "Base.Prelude", url: {hash: "#123"}}};
-const section = preludeImportSection(imported, target);
-code.textContent = "zero : ℕ";
-const local = preludeImportSection(imported, target);
+const article = {};
+const heading = {id: "sec-natural-numbers", matches: () => true, closest: () => article};
+const target = {id: "123", getAttribute: () => heading.id, closest: () => article,
+                ownerDocument: {getElementById: () => heading}};
+const section = vocabularyIntroductionSection(target);
+heading.closest = () => ({});
+const otherArticle = vocabularyIntroductionSection(target);
+target.getAttribute = () => null;
+const local = vocabularyIntroductionSection(target);
 process.stdout.write(JSON.stringify({section: section?.id, local,
-  originalHash: imported.target.url.hash,
-  other: preludeImportSection({target: {module: "Other"}}, target)}));
+  originalId: target.id, otherArticle}));
 '''
         completed = subprocess.run(
             [shutil.which("node"), "-e", helper.group(0) + "\n" + scenario],
@@ -1226,7 +1221,7 @@ process.stdout.write(JSON.stringify({section: section?.id, local,
         )
         self.assertEqual(json.loads(completed.stdout), {
             "section": "sec-natural-numbers", "local": None,
-            "originalHash": "#123", "other": None,
+            "originalId": "123", "otherArticle": None,
         })
 
     @unittest.skipUnless(shutil.which("node"), "Node.js is needed for the JavaScript behavior test")

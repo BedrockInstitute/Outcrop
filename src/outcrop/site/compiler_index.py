@@ -59,10 +59,13 @@ def build_code_context(corpus, internal, rendered, semantics, types_raw, express
             prelude_reexports['inline'][name] = (
                 f'{semantics.prelude_module}.html#{position}', pos_aspect[semantics.prelude_module].get(position, ''))
     prelude_reexports['syntax'] = []
+    vocabulary_names = {href: name for name, (href, _) in prelude_reexports['inline'].items()}
     for href, parts in notations:
         bridge = prelude_reexports['by_href'].get(href)
-        if bridge and bridge[3] in prelude_reexports['inline']:
-            prelude_reexports['syntax'].append((bridge[3], parts))
+        target = f'{bridge[0]}.html#{bridge[1]}' if bridge else href
+        name = vocabulary_names.get(target)
+        if name:
+            prelude_reexports['syntax'].append((name, parts))
     add_prelude_qualified_names(internal_q, prelude_reexports)
     types_by_module = semantics.build_types(rendered, name2pos, types_raw, internal_q,
                                   pos_aspect, prelude_reexports)
