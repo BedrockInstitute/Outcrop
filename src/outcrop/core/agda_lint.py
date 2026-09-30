@@ -11,6 +11,9 @@ class AgdaPolicy:
     empty_family: str = ''
     forbid_monomorphic_empty: bool = False
     hprop_projection: bool = False
+    postfix_projections: tuple = ()
+    infix_applications: bool = False
+    fixity_before_definition: bool = False
 
     @property
     def options_pragma(self):
@@ -248,6 +251,75 @@ def parse_statements(lines):
     return stmts
 
 
+def fixity_order_findings(text):
+    """Check fixities against earlier declarations in their layout namespace.
+
+    Fences and prose do not reset scope. Data constructors and field blocks are
+    transparent; record/module bodies and where-local declarations are not.
+    Agda remains responsible for resolving imported names and valid fixities.
+    """
+    lines = agda_lines(text)
+    masked, _, _ = mask_code('\n'.join(line for _, line in lines))
+    scopes, declarations, findings = [], {}, []
+    root_module_seen = False
+    pending_namespace = None
+    source = list(zip(lines, masked.splitlines()))
+    for index, ((number, _), line) in enumerate(source):
+        body = line.strip()
+        if not body:
+            continue
+        indent = len(line) - len(line.lstrip())
+        if pending_namespace is not None and indent <= pending_namespace[1] and body != 'where':
+            pending_namespace = None
+        while scopes and indent < scopes[-1][0]:
+            scopes.pop()
+        scope = tuple(item[1] for item in scopes)
+        fixity = re.fullmatch(r'infix[lr]?\s+-?\d+(?:\.\d+)?\s+(.+)', body)
+        if fixity:
+            for name in fixity[1].split():
+                previous = declarations.get((scope, name))
+                if previous is not None:
+                    findings.append((number, 'fixity-order',
+                        f'move fixity for `{name}` before its declaration on line {previous}; '
+                        'adjacency is not required'))
+            continue
+        # A signature starts with one or more complete names, not a telescope.
+        signature = re.match(r'((?:[^\s(){}:;]+\s+)+):(?:\s|$)', body)
+        if signature:
+            names = signature[1].split()
+            if names[0] in {'field', 'instance'}:
+                names = names[1:]
+            for name in names:
+                declarations.setdefault((scope, name), number)
+        constructor = re.fullmatch(r'constructor\s+(\S+)', body)
+        if constructor:
+            declarations.setdefault((scope, constructor[1]), number)
+        # Signature-less equations: record the prefix head and the complete
+        # operator spelling reconstructed from its literal mixfix parts.
+        if ' = ' in body and not re.match(r'(?:open |import |module |syntax )', body):
+            lhs = body.split(' = ', 1)[0].split()
+            if lhs:
+                declarations.setdefault((scope, lhs[0]), number)
+                for token in lhs[1:]:
+                    if token and not any(c.isalnum() for c in token) and token not in {'|', '...', ':', '→'}:
+                        declarations.setdefault((scope, '_' + token + '_'), number)
+        namespace = re.match(r'(?:private\s+)?(module|record)\s+(\S+)', body)
+        if namespace and '=' not in body:
+            if namespace[1] == 'record':
+                declarations.setdefault((scope, namespace[2]), number)
+            if namespace[1] == 'module' and not root_module_seen and indent == 0:
+                root_module_seen = True
+            else:
+                pending_namespace = (number, indent)
+        if (pending_namespace is not None and body.endswith('where')) or body == 'where':
+            following = next((s for _, s in source[index + 1:] if s.strip()), None)
+            if following is not None:
+                scopes.append((len(following) - len(following.lstrip()),
+                               pending_namespace[0] if pending_namespace else number))
+            pending_namespace = None
+    return findings
+
+
 # ---- the checks ------------------------------------------------------------
 
 def lint_text(text, policy=None):
@@ -258,6 +330,12 @@ def lint_text(text, policy=None):
     masked, pragmas, holes = mask_code(code)
     mlines = list(zip((ln for ln, _ in lines), masked.splitlines()))
     findings = []
+    if policy.infix_applications:
+        findings.extend(infix_application_findings(text))
+    if policy.fixity_before_definition:
+        findings.extend(fixity_order_findings(text))
+    if policy.postfix_projections:
+        findings.extend(postfix_projection_findings(text, policy.postfix_projections))
 
     def report(idx_or_lineno, rule, msg, by_index=True):
         lineno = mlines[idx_or_lineno][0] if by_index else idx_or_lineno
@@ -376,7 +454,7 @@ def lint_text(text, policy=None):
     stripped = {t.strip("_") for t in tokset}
 
     def used(name):
-        if name in tokset or name.endswith("-syntax"):
+        if name in tokset or '.' + name in tokset or name.endswith("-syntax"):
             return True
         # A QUALIFIED USE IS A USE, and missing this once broke the tree.
         # A record or module brought in by name, `using ( SWO )`, is then
@@ -412,3 +490,140 @@ def lint_text(text, policy=None):
                        f"`{name}` (renamed) imported from {st.module} but never used")
 
     return sorted(findings)
+
+
+def infix_application_findings(text):
+    """Reject operator names in unambiguous prefix application-head positions.
+
+    This is a source-notation check, not an Agda elaborator. Track expression
+    boundaries and grouping rather than banning underscored names as arguments.
+    Ordinary value passing, declarations, sections and import bindings remain
+    legal. No compiler cache is needed, including for authored inline examples.
+    """
+    findings = []
+    operator = re.compile(r'(?:[^\s(){};@.]+\.)*_[^\s(){};@]+_$')
+    tokenizer = re.compile(r'[^\s(){};@]+|[(){};@]')
+    boundaries = {'=', ':', '→', 'in', 'then', 'else'}
+    stops = boundaries | {')', '}', ';', 'where', 'with', '|', 'to'}
+
+    def scan(source, line_numbers, expression=False):
+        source = mask_code(source)[0]
+        for match in reversed(list(re.finditer(r'\b(?:using|hiding|renaming)\s*\(', source))):
+            start = source.index('(', match.start())
+            end = balanced(source, start)
+            source = source[:start] + re.sub(r'[^\n]', ' ', source[start:end]) + source[end:]
+        tokens = list(tokenizer.finditer(source))
+        lines = source.splitlines()
+        at_head, groups = expression, []
+
+        def argument_after(index, head):
+            if index >= len(tokens) or tokens[index][0] in stops:
+                return False
+            # A bare operator value at the end of a declaration does not take
+            # the next layout declaration as an argument.
+            between = source[head.end():tokens[index].start()]
+            if '\n' in between:
+                first_line = source.count('\n', 0, head.start())
+                next_line = source.count('\n', 0, tokens[index].start())
+                indent = lambda line: len(line) - len(line.lstrip())
+                if indent(lines[next_line]) <= indent(lines[first_line]):
+                    return False
+            return True
+
+        for index, token in enumerate(tokens):
+            value = token[0]
+            if operator.fullmatch(value) and at_head:
+                after = index + 1
+                # Specializing implicit parameters still passes the operator
+                # as a value, unless explicit operands follow it.
+                while after < len(tokens) and tokens[after][0] == '{':
+                    nesting = 1
+                    after += 1
+                    while after < len(tokens) and nesting:
+                        nesting += (tokens[after][0] == '{') - (tokens[after][0] == '}')
+                        after += 1
+                # Parenthesized operator values can themselves be the head:
+                # (_+_) x y, but not cong₂ (_+_) p q.
+                depth = len(groups)
+                while after < len(tokens) and tokens[after][0] == ')' and depth and groups[depth - 1]:
+                    after += 1
+                    depth -= 1
+                if argument_after(after, token):
+                    line = source.count('\n', 0, token.start())
+                    findings.append((line_numbers[line], 'infix-application',
+                        f'apply `{value}` in infix/mixfix notation, not prefix form; '
+                        'open the required module instance locally'))
+            if value in {'(', '{'}:
+                groups.append(at_head)
+                at_head = True
+            elif value in {')', '}'}:
+                if groups:
+                    groups.pop()
+                at_head = False
+            elif value in boundaries or value in {'⟨', '⟪'}:
+                at_head = True
+            else:
+                # An infix symbolic token starts its right operand. Identifier
+                # operators require resolved fixities and are left to review.
+                at_head = (not operator.fullmatch(value) and value not in stops
+                           and value not in {'_', 'λ', '∀', '.'}
+                           and not any(c in value for c in '_⟨⟩⟪⟫∀∃')
+                           and all(not c.isalnum() and c not in "_'." for c in value))
+
+    lines = agda_lines(text)
+    if lines:
+        scan('\n'.join(line for _, line in lines), [n for n, _ in lines])
+    fenced = False
+    for lineno, line in enumerate(text.splitlines(), 1):
+        if line.lstrip().startswith('```'):
+            fenced = not fenced
+            continue
+        if not fenced:
+            for match in re.finditer(r'`([^`\n]+)`\{([^}\n]*\.Agda\b[^}\n]*)\}', line):
+                scan(match[1], [lineno], expression=True)
+    return findings
+
+
+def postfix_projection_findings(text, names):
+    """Enforce a configured source spelling, not inferred projection semantics.
+
+    Import bindings, declarations and single-name literary references name the
+    API itself. Every expression use (including higher-order arguments) uses
+    postfix syntax; pass a lambda when a projection is needed as a function.
+    The policy is opt-in because a generic document may define unrelated names.
+    """
+    name = '(?:' + '|'.join(re.escape(value) for value in names) + ')'
+    token = re.compile(r'(?<![^\s(){};@])(?:[^\s(){};@.]+\.)*' + name
+                       + r'(?![^\s(){};@])')
+    lines = agda_lines(text)
+    code = mask_code('\n'.join(line for _, line in lines))[0]
+    # Mask only binding clauses, not the module arguments preceding them.
+    for match in reversed(list(re.finditer(r'\b(?:using|hiding|renaming)\s*\(', code))):
+        start = code.index('(', match.start())
+        end = balanced(code, start)
+        code = code[:start] + re.sub(r'[^\n]', ' ', code[start:end]) + code[end:]
+    findings = []
+    def scan(source, line_number, single_name=False):
+        if single_name and source.strip() in names:
+            return
+        for match in token.finditer(source):
+            # Field declarations/assignments name a field rather than apply it.
+            if re.match(r'\s*[:=](?:\s|$)', source[match.end():]):
+                continue
+            findings.append((line_number, 'postfix-projection',
+                             f'write `{match[0]}` in postfix form; use a lambda '
+                             'such as `(λ p → p .fst)` when passing a projection as a function'))
+    for (lineno, _), line in zip(lines, code.splitlines()):
+        scan(line, lineno)
+    fenced = False
+    for lineno, line in enumerate(text.splitlines(), 1):
+        if line.lstrip().startswith('```'):
+            fenced = not fenced
+            continue
+        if fenced:
+            continue
+        # Inline help examples obey the same rule, but ordinary untyped prose
+        # identifiers, HTML attributes and authored diagram math are not code.
+        for match in re.finditer(r'`([^`\n]+)`\{([^}\n]*\.Agda\b[^}\n]*)\}', line):
+            scan(mask_code(match[1])[0], lineno, single_name=True)
+    return findings

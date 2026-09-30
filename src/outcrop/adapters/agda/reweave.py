@@ -162,6 +162,10 @@ def rebase_trace(trace: str, paths: dict[str, tuple[CodeRelocation, str, str]]) 
         relocation, _, new_hash = entry
         record['start'] = relocation.point(record['start'])
         record['end'] = relocation.end(record['end'])
+        if record.get('kind') == 'projection':
+            record['headEnd'] = relocation.end(record['headEnd'])
+            record['argumentStart'] = relocation.point(record['argumentStart'])
+            record['argumentEnd'] = relocation.end(record['argumentEnd'])
         record['sourceHash'] = new_hash
         lines.append(json.dumps(record, ensure_ascii=False, separators=(',', ':')) + '\n')
     return ''.join(lines)

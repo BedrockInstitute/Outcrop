@@ -1,0 +1,54 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Projection notation regression</title>
+<link rel="stylesheet" href="/static/outcrop.css">
+<link rel="stylesheet" href="/static/appearance.css">
+<script>window.outcrop={lang:'en',chapter:'ProjectionFixture',storageNamespace:'projection-fixture'};</script>
+<script src="/static/appearance.js"></script>
+<script defer src="/static/universe-levels.js"></script>
+<script defer src="/static/mathematical-notation.js"></script>
+<script type="module" src="/static/outcrop.js"></script>
+</head><body><header id="site-header"><button id="theme-toggle">Appearance</button></header><h1 id="status">RUNNING</h1><main id="main-content"><article id="fixture">
+<p>Single-letter receiver, long receiver, function application, and raw opt-out:</p>
+<code class="Agda inline-ref" id="pair">p .<a class="Field" data-pair-projection="1" href="/zh/Base.Prelude.html">fst</a></code>
+<code class="Agda inline-ref" id="long">pair .<a class="Field" data-pair-projection="1">fst</a></code>
+<code class="Agda inline-ref" id="application">g p .<a class="Field" data-pair-projection="2">snd</a></code>
+<code class="Agda inline-ref" id="raw" data-outcrop-notation="source">p .<a class="Field" data-pair-projection="1">fst</a></code>
+<p>Unknown same-spelled field and an import remain raw:</p>
+<code class="Agda inline-ref" id="unknown">p .<a class="Field">fst</a></code>
+<code class="Agda inline-ref" id="import">using ( <a class="Field" data-pair-projection="1">fst</a> )</code>
+<p>Compiler-backed record projection and an ineligible long field:</p>
+<pre class="Agda" id="record"><span class="expr-node" data-projection-head="S" data-projection-argument="𝒮">S 𝒮</span></pre>
+<pre class="Agda" id="record-long"><span class="expr-node" data-projection-head="isSetS" data-projection-argument="𝒮">isSetS 𝒮</span></pre>
+<pre class="Agda" id="record-complex"><span class="expr-node" data-projection-head="S" data-projection-argument="𝒮 ↾ M">S (𝒮 ↾ M)</span></pre>
+<pre class="Agda" id="multi"><span class="expr-node">x = <span class="expr-node">p <a class="Symbol">.</a><a id="field-anchor" class="Field" data-pair-projection="2">snd</a></span></span></pre>
+<div id="results"></div></article></main>
+<script>
+addEventListener('load',async()=>{
+ await document.fonts.ready;
+ const results=[];
+ const check=(name,pass)=>{results.push({name,pass:!!pass});const p=document.createElement('p');p.textContent=(pass?'PASS ':'FAIL ')+name;document.querySelector('#results').append(p);};
+ const by=id=>document.getElementById(id);
+ outcropMathematicalNotation.scan(document.body);
+ check('single-letter postfix is compact',by('pair').querySelector('.pair-projection-notation')?.dataset.mathLabel==='․₁');
+ check('suffix is actually painted',getComputedStyle(by('pair').querySelector('.pair-projection-notation'),'::after').content==='"․₁"');
+ check('suffix spacing is tightened',parseFloat(getComputedStyle(by('pair').querySelector('.pair-projection-notation'),'::after').letterSpacing)<0);
+ check('original source survives copying',by('pair').textContent==='p .fst');
+ check('raw source popup retains field link',by('pair').querySelector('[data-hover-html]')?.dataset.hoverHtml.includes('href="/zh/Base.Prelude.html"'));
+ for(const id of ['long','application','raw','unknown','import','record-long'])check(id+' stays raw',!by(id).querySelector('.source-notation'));
+ check('record receiver is a subscript',!!by('record').querySelector('.record-projection-notation'));
+ const record=by('record').querySelector('.record-projection-notation');
+ const ratio=parseFloat(getComputedStyle(record,'::after').fontSize)/parseFloat(getComputedStyle(record).fontSize);
+ check('subscript font stays at 72 percent',Math.abs(ratio-.72)<.01);
+ check('short compound instance permitted',!!by('record-complex').querySelector('.record-projection-notation'));
+ check('compound subscript has no display spaces',by('record-complex').querySelector('.record-projection-notation').dataset.projectionArgument==='𝒮↾M');
+ check('record source parentheses preserved',by('record-complex').textContent==='S (𝒮 ↾ M)');
+ check('nested compiler expression is respected',!!by('multi').querySelector('.pair-projection-notation'));
+ check('original anchors survive',!!by('multi').querySelector('#field-anchor'));
+ const html=by('pair').innerHTML;outcropMathematicalNotation.scan(by('pair'));check('scan is idempotent',html===by('pair').innerHTML);
+ const popup=document.createElement('div');popup.className='type-value Agda';popup.innerHTML='p .<a class="Field" data-pair-projection="2">snd</a>';by('fixture').append(popup);outcropMathematicalNotation.scan(popup);
+ check('dynamic type popup uses same lens',!!popup.querySelector('.pair-projection-notation'));
+ const failures=results.filter(r=>!r.pass);by('status').textContent=failures.length?'FAIL '+failures.length:'PASS '+results.length;
+ window.projectionResults=results;
+});
+</script></body></html>

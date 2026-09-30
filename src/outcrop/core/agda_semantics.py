@@ -15,6 +15,7 @@ from outcrop.core.html_contract import (
 )
 from outcrop.core.agda_help import annotate_inline_code, annotate_keywords, inline_tokens
 from outcrop.core.agda_type_quality import imprecise_type
+from outcrop.core.projection_notation import projection_attributes, projection_notation, pair_projection_attribute, single_letter
 
 
 def ungrouped_constructor_argument(source):
@@ -75,7 +76,7 @@ def _numeric_notation(node):
 
 
 def _expression_opening(node, depth):
-    notation = ''
+    notation = projection_attributes(node)
     if metadata := _numeric_notation(node):
         kind, value, count = metadata
         notation = (f' data-source-notation="{kind}" '
@@ -88,15 +89,29 @@ def _expression_opening(node, depth):
             f'style="--expr-level:{depth % 6}">')
 
 
-def inline_numeric_expression_index(nodes):
-    """Find unambiguous numeric subterms of complete compiler-traced snippets.
+def _notation_signature(node):
+    if value := _numeric_notation(node):
+        return ('numeric', *value)
+    if value := projection_notation(node):
+        return ('projection', *value, node['projection']['name'], node['projection']['record'])
+    if node.get('kind') == 'application' and node.get('context') != 'pattern':
+        pair = re.fullmatch(r'(\S+)\s+\.(fst|snd)', node.get('source', ''))
+        if pair and single_letter(pair[1]):
+            # Preserve an actual checked application range for inline receiver
+            # boundaries. Rendering still requires the canonical Sigma link.
+            return ('pair', pair[1], pair[2])
+    return None
+
+
+def inline_notation_expression_index(nodes):
+    """Find unambiguous compact subterms of complete compiler-traced snippets.
 
     The prose snippet itself was not typechecked. Reuse only exact source text
     occurring in this module's trace, and only when every occurrence agrees on
-    each numeric subterm's range and type. Never infer Nat from a `suc` spelling.
+    each compact subterm's range, meaning and type. Names alone are not evidence.
     """
     applications = [node for node in nodes if node.get('kind') == 'application']
-    numeric = sorted((node for node in applications if _numeric_notation(node)),
+    numeric = sorted((node for node in applications if _notation_signature(node)),
                      key=lambda node: node['start'])
     starts = [node['start'] for node in numeric]
     evidence = {}
@@ -114,7 +129,7 @@ def inline_numeric_expression_index(nodes):
             start, end = node['start'] - outer['start'], node['end'] - outer['start']
             if source[start:end] != node.get('source'):
                 continue
-            signature = (start, end, *_numeric_notation(node), node['type'])
+            signature = (start, end, *_notation_signature(node), node['type'])
             found.append((signature, {**node, 'start': start, 'end': end}))
         signature = tuple(sorted(item[0] for item in found))
         if source not in evidence:
@@ -125,7 +140,7 @@ def inline_numeric_expression_index(nodes):
             if signature and selected}
 
 
-def inline_numeric_nodes_for_source(source, index):
+def inline_notation_nodes_for_source(source, index):
     """Use the longest matching checked subexpression when prose adds context.
 
     A complete prose expression need not itself occur in executable code, e.g.
@@ -135,8 +150,6 @@ def inline_numeric_nodes_for_source(source, index):
     """
     if source in index:
         return index[source]
-    if 'suc ' not in source and 'zero' not in source:
-        return ()
     matches = {}
     def identifier(character):
         return character.isalnum() or character in "_′″‴⁗'’₀₁₂₃₄₅₆₇₈₉"
@@ -154,8 +167,8 @@ def inline_numeric_nodes_for_source(source, index):
                     if previous is None or len(phrase) > previous[0]:
                         matches[key] = (len(phrase), candidate)
                     elif len(phrase) == previous[0] and previous[1] is not None and (
-                            _numeric_notation(candidate), candidate['type']) != (
-                            _numeric_notation(previous[1]), previous[1]['type']):
+                            _notation_signature(candidate), candidate['type']) != (
+                            _notation_signature(previous[1]), previous[1]['type']):
                         matches[key] = (len(phrase), None)
             start = source.find(phrase, start + 1)
     candidates = [node for _, node in matches.values() if node is not None]
@@ -169,7 +182,7 @@ def inline_numeric_nodes_for_source(source, index):
     return selected
 
 
-def annotate_inline_numeric_expressions(source, nodes):
+def annotate_inline_notation_expressions(source, nodes):
     """Wrap certified inline subterms before lexical Agda links are inserted."""
     if not nodes:
         return htmllib.escape(source)
@@ -189,7 +202,9 @@ def ref_link(href, aspect, label, extra_class="", origin=""):
     cls = (extra_class + (" " + aspect if aspect else "")).strip()
     cls = f' class="{cls}"' if cls else ""
     source = f' data-agda-origin="{htmllib.escape(origin, quote=True)}"' if origin else ""
-    return f'<a href="{href}"{cls}{dt}{source}>{label}</a>'
+    original_module = (origin or href).partition('.html#')[0]
+    pair = pair_projection_attribute(original_module, htmllib.unescape(label))
+    return f'<a href="{href}"{cls}{dt}{source}{pair}>{label}</a>'
 
 
 def index_definitions(code_html, module, name2pos, pos_aspect):
@@ -300,7 +315,7 @@ def semantic_type_index(nodes):
             continue
         signature = node.get("type", "")
         previous = candidates.get(source)
-        if previous and previous.get("type") != signature:
+        if previous and (previous.get("type") != signature or previous.get('projection') != node.get('projection')):
             ambiguous.add(source)
         else:
             candidates[source] = node
@@ -460,8 +475,12 @@ def decorate_type_nodes(type_html, semantic_nodes=None, module=""):
     by_end = {node["end"]: outside_end(units[node["end"] - 1][1])
               for node in nodes}
 
+    metadata_by_key = {module + '#' + str(candidate.get('id')): candidate
+                       for bucket in semantic_index.values() for _, candidate in bucket}
     def type_opening(node, depth):
+        metadata = metadata_by_key.get(node['expressionKey'], {})
         return (f'<span class="type-node" '
+                f'{projection_attributes(metadata)} '
                 f'data-expression-type="{node["expressionKey"]}" '
                 f'data-expr-start="{node["start"]}" '
                 f'data-expr-end="{node["end"]}" '
@@ -815,6 +834,7 @@ class AgdaSemantics:
                     f'<a href="{self.chapter_href(target_mod, "#" + target_pos)}"'
                     f'{type_data}'
                     f'{hover_stop}'
+                    f'{pair_projection_attribute(mod, last)}'
                     f' data-name="{htmllib.escape(target_name, quote=True)}"'
                     f'{class_}>{htmllib.escape(last)}</a>'
                 )
@@ -878,6 +898,8 @@ class AgdaSemantics:
                 return m.group(0)
             rest = re.sub(r' data-(?:type|universe-level)="[^"]*"', '', rest)
             original_href = f"{mod}.html{anchor}"
+            canonical = (canonical_names or {}).get(mod, {}).get(anchor[1:], "")
+            pair = pair_projection_attribute(mod, canonical)
             bridge = ((prelude_reexports or {}).get("by_href", {}).get(original_href)
                       if current_module != self.prelude_module else None)
             if bridge:
@@ -885,14 +907,14 @@ class AgdaSemantics:
                 extra = f' data-name="{htmllib.escape(bridge_name, quote=True)}"'
                 extra += type_reference_attribute(bridge_module, bridge_pos, types_global)
                 return (f'<a {idpart}href="{self.chapter_href(bridge_module, "#" + bridge_pos)}"'
-                        f'{rest}{extra}>')
+                        f'{rest}{extra}{pair}>')
             if mod in rendered:
                 pos = anchor[1:] if anchor else ""
                 extra = type_reference_attribute(mod, pos, types_global)
                 canonical = (canonical_names or {}).get(mod, {}).get(pos, "")
                 if canonical:
                     extra += f' data-name="{htmllib.escape(canonical, quote=True)}"'
-                return f'<a {idpart}href="{self.chapter_href(mod, anchor)}"{rest}{extra}>'
+                return f'<a {idpart}href="{self.chapter_href(mod, anchor)}"{rest}{extra}{pair}>'
             return f'<a{rest}>'                          # not rendered: drop the dead href
         return LINK_RE.sub(repl, body)
 
@@ -1068,7 +1090,9 @@ class AgdaSemantics:
                 if field and 'Field' in field[1].split():
                     # A postfix projection is syntax plus a real field token,
                     # never permission to link the surrounding expression.
-                    return '.' + ref_link(field[0], field[1], htmllib.escape(token[1:]))
+                    forwarded = origins.get(field[0], ())
+                    origin = next(iter(forwarded)) if len(forwarded) == 1 else ''
+                    return '.' + ref_link(field[0], field[1], htmllib.escape(token[1:]), origin=origin)
             if info is None:
                 unique = set(aliases.get(token, ()))
                 if len(unique) == 1:
@@ -1112,7 +1136,7 @@ class AgdaSemantics:
         return resolve
 
     def inline_ref(self, name, internal, name2pos, local_refs, current_module="",
-                   prelude_reexports=None, numeric_nodes=()):
+                   prelude_reexports=None, notation_nodes=()):
         """Render Agda prose, linking declarations but not temporary variables."""
         href_aspect = local_refs.get(name)
         label = htmllib.escape(name)
@@ -1120,7 +1144,7 @@ class AgdaSemantics:
         single_name = (len(tokens) == 1 and tokens[0][:2] == (0, len(name))
                        and not tokens[0][3] and not name.startswith('.'))
         if not single_name:
-            source = annotate_inline_numeric_expressions(name, numeric_nodes)
+            source = annotate_inline_notation_expressions(name, notation_nodes)
             return annotate_inline_code(f'<code class="Agda inline-ref">{source}</code>',
                                         self.inline_reference_resolver(local_refs, current_module,
                                                                        prelude_reexports, name2pos, name))

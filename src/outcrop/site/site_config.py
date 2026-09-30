@@ -143,11 +143,11 @@ class SiteConfig:
         if not isinstance(agda, dict):
             raise ValueError('agda_policy: expected an object')
         for key, value in agda.items():
-            if key in {'forbid_monomorphic_empty', 'hprop_projection'} and type(value) is bool:
+            if key in {'forbid_monomorphic_empty', 'hprop_projection', 'infix_applications', 'fixity_before_definition'} and type(value) is bool:
                 continue
             if key in {'prelude_module', 'empty_family'} and isinstance(value, str):
                 continue
-            if key in {'options', 'bare_open_hubs'} and isinstance(value, list) and all(isinstance(x, str) for x in value):
+            if key in {'options', 'bare_open_hubs', 'postfix_projections'} and isinstance(value, list) and all(isinstance(x, str) and x for x in value):
                 continue
             if key == 'prelude_public_names' and isinstance(value, dict) and all(
                     isinstance(k, str) and isinstance(v, list) and all(isinstance(x, str) for x in v) for k, v in value.items()):

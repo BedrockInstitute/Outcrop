@@ -59,6 +59,17 @@ register it and call the semantic hooks. Keep old patches when adding support
 for another Agda version. The old `BEDROCK_AGDA_*` activation names are not used;
 regenerate evidence when switching compiler identities.
 
+Projection tracing emits separate `projection` records only for proper record
+fields, not projection-like ordinary functions. After argument checking, the
+compiler supplies the resolved field and record names plus `headEnd`,
+`argumentStart` and `argumentEnd` source positions for the principal record
+argument. Parameter insertion and parameters already applied by a module open
+are accounted for; an implicit or already supplied instance has no new visible
+receiver. The normalizer validates these intervals and joins them to a genuine
+typed application range. Metadata alone creates no AST node or type. Prose-only
+cache relocation rebases all these positions, not just the outer range.
+Presentation remains a separate conservative Core policy.
+
 Declaration tracing emits `signature`, `definition-end`, `data-end` and
 `mutual-data-end` records from Agda's abstract declarations. Only signatures
 with source ranges count, not inferred signatures inserted by the compiler.

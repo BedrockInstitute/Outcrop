@@ -131,6 +131,26 @@ project may opt into natural-number help on literal digits through its Site
 configuration. The ordinary Core HTML and
 Markdown mirror remain valid without these browser enhancements.
 
+Record projections have two conservative presentation lenses. A certified
+proper record projection with a **single-letter field name**, such as `S r`,
+may display the record instance as a subscript. Instance expressions must be
+short, single-line and free of nested groups or scripts. Displayed subscripts omit
+whitespace; the source popup and copied code retain it. Long labels and small
+font sizes retain the source form rather than squeeze the subscript.
+Compiler evidence must identify the actual principal record argument, not an
+ordinary argument of an already opened record instance.
+
+Builtin Sigma postfix projections on a **single-letter receiver**, such as
+`p .fst` and `p .snd`, display as `p․₁` and `p․₂`, with a one-dot leader
+and tightened suffix spacing. Multi-letter receivers,
+function applications and complex receivers stay unchanged. A compiler-resolved
+field link is required; names alone never authorize this transformation.
+Each compact suffix opens the original projection token with its linked type
+help and definition inspection. Formal, inline, popup and modal surfaces share
+the same lens. Both lenses retain the original Unicode text, links, source
+offsets and copied Agda. Authors must not write the rendered numeric suffixes
+in source code.
+
 To preview only the first *n* lines of a long Agda fence while preserving the
 complete source and semantic DOM, put a directive immediately before the fence:
 
@@ -152,7 +172,7 @@ To show an original Agda spelling at its first introduction, add
 `{.Agda .raw-notation}` to an inline code span, or put
 `data-outcrop-notation="source"` on a display-code surface or an HTML ancestor. It
 suppresses **all** mathematical source-notation transforms in that subtree
-(universe expressions and natural and `Fin` numerals), but not
+(universe expressions, natural and `Fin` numerals, and projection lenses), but not
 syntax highlighting, links, syntax help, or compiler hover. For example:
 
 ```markdown

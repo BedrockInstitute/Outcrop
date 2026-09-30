@@ -43,6 +43,7 @@ module Box (A : Set) where
 {-# OPTIONS --safe #-}
 module Start where
 open import Seed
+import Projection
 
 result : Marker
 result = identity mark
@@ -108,6 +109,34 @@ interleaved mutual
     later : U
 ```
 ''', encoding='utf-8')
+        (source / 'Projection.agda').write_text('''{-# OPTIONS --safe #-}
+module Projection where
+record R : Set₁ where
+  field
+    S : Set
+    F : S → S
+open R
+idR : R → R
+idR r = r
+plain : (r : R) → S r → S r
+plain r x = F r x
+compound : (r : R) → S (idR r) → S (idR r)
+compound r x = x
+module Opened (r : R) where
+  open R r renaming (S to T; F to G)
+  applied : T → T
+  applied x = G x
+record Other : Set₁ where
+  field S : Set
+open Other
+overloaded : (r : R) → S r → S r
+overloaded r x = x
+record Box (A : Set) : Set where
+  field value : A
+open Box
+parameterized : {A : Set} (b : Box A) → A
+parameterized b = value b
+''', encoding='utf-8')
         environment = {**os.environ, 'GHCRTS': '-A64m -I0 -M8g',
                        'AGDA_DIR': str(root / 'agda-home')}
         def run(*options):
@@ -131,6 +160,12 @@ interleaved mutual
         assert '__DUMMY_TYPE__' not in trace and 'dummyType' not in trace
         expressions = json.loads((root / 'expressions.json').read_text())
         assert expressions['Start'], expressions
+        projection_nodes = expressions['Projection']
+        certified = [node for node in projection_nodes if node.get('projection')]
+        assert any(node['source'] == 'S r' for node in certified), certified
+        assert any(node['source'] == 'S (idR r)' for node in certified), certified
+        assert any(node['source'] == 'value b' for node in certified), certified
+        assert not any(node['source'] == 'G x' for node in certified), certified
         ends = {module: {node['name']: node for node in nodes if node['kind'] == 'definition-end'}
                 for module, nodes in expressions.items()}
         declarations = [(record['kind'], record['path'].rsplit('/', 1)[-1],

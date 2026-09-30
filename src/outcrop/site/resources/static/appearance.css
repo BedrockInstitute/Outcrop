@@ -132,6 +132,14 @@ main th { background: var(--surface-muted); }
   text-underline-offset: .15em; text-decoration-thickness: 1px; }
 .universe-notation::after { content: attr(data-level-math); }
 .fin-notation::after { content: attr(data-math-label); }
+.pair-projection-notation::after { content: attr(data-math-label);
+  font-size: .85em; letter-spacing: -.15em; }
+.pair-projection-notation { margin-inline-start: -.05em;
+  color: var(--code-field, var(--code-fg)); }
+.record-projection-notation::before { content: attr(data-projection-head); }
+.record-projection-notation::after { content: attr(data-projection-argument);
+  font-size: .72em; vertical-align: -.22em; line-height: 0; }
+.record-projection-notation { color: var(--code-field, var(--code-fg)); }
 .nat-suc-notation::before { content: attr(data-math-base); }
 .nat-suc-notation::after { content: attr(data-math-power); font-size: .7em;
   vertical-align: super; line-height: 0; }

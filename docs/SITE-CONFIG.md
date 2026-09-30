@@ -159,6 +159,32 @@ in the consuming project's gate documentation; the framework boundary is in
 [ARCHITECTURE.md](ARCHITECTURE.md). Neither rendering nor lint runs
 Agda automatically. A project's proof gate invokes its selected compiler itself.
 
+### Projection source style
+
+`agda_policy.fixity_before_definition` (default `false`) enables `fixity-order`.
+Fixity declarations must precede their local names' first declarations, including
+type signatures, fields and constructors; adjacency is not required. Formal
+fences form one stream, ignoring prose, comments and strings. The layout-aware
+source check separates module/record and where-local scopes; it does not resolve
+imported names or replace Agda's scope checker.
+
+`agda_policy.infix_applications` (default `false`) enables the
+`infix-application` source check. It rejects underscored operator names in
+prefix application-head positions in formal fences and `{.Agda}` expressions,
+while retaining declarations, sections, import bindings and operator values
+passed to other functions. Implicit-only specialization of a function value is
+allowed. The grouping/token checker requires no compiler or semantic cache;
+it is not a replacement for scope-resolved Agda parsing of arbitrary named
+mixfix syntax, which still needs review.
+
+`agda_policy.postfix_projections` is an optional list of source names (default
+`[]`). For example, `["fst", "snd"]` requires these projections to use postfix
+syntax in formal fences and `{.Agda}` expressions. Higher-order uses must pass a
+lambda, such as `(λ p → p .fst)`. Import bindings, field declarations and
+single-name literary references remain unchanged. The reusable source rule is
+lexical and opt-in; it does not assume that every project uses these API names.
+Rendering independently requires compiler-resolved builtin Sigma field links.
+
 ### Inline-math editorial review
 
 With the default `policies.inline_math_review: true`, LaTeX is restricted to

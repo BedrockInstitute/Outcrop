@@ -112,3 +112,23 @@
 +  Outcrop.traceType "binding" (A.unBind x) t
 @@ -1748,0 +1773 @@
 +        mapM_ (uncurry $ Outcrop.traceType "binding") $ List.zip xs ts
+--- a/src/full/Agda/TypeChecking/Rules/Application.hs
++++ b/src/full/Agda/TypeChecking/Rules/Application.hs
+@@ -276,1 +276,3 @@
+-        Right st@(ACState{acType = t1}) -> fmap (,t1) $ unfoldInlined =<< checkHeadConstraints f st
++        Right st@(ACState{acType = t1}) -> do
++          Outcrop.traceProjection hd (acRanges st)
++          fmap (,t1) $ unfoldInlined =<< checkHeadConstraints f st
+@@ -278,1 +280,3 @@
+-          v <- postponeArgs problem CmpEq exh hd args t0 t $ \ st -> unfoldInlined =<< checkHeadConstraints f st
++          v <- postponeArgs problem CmpEq exh hd args t0 t $ \ st -> do
++            Outcrop.traceProjection hd (acRanges st)
++            unfoldInlined =<< checkHeadConstraints f st
+@@ -462,1 +466,2 @@
+-    checkArguments cmp expandLast hd args t0 t $ \ st@(ACState cas _fun t1 checkedTarget) -> do
++    checkArguments cmp expandLast hd args t0 t $ \ st@(ACState cas _fun t1 checkedTarget) -> do
++      Outcrop.traceProjection hd (acRanges st)
+@@ -1543,2 +1548,3 @@
+           (_,_) <- checkKnownArguments args0 pars tfull
++          Outcrop.tracePrincipalProjection d hd (getRange princArg)
+ 

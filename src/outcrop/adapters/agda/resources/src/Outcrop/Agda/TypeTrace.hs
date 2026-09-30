@@ -8,6 +8,8 @@ module Outcrop.Agda.TypeTrace
   ( traceCheckedType
   , traceType
   , traceDeclaration
+  , traceProjection
+  , tracePrincipalProjection
   , flushPendingTypes
   , flushTypeTrace
   ) where
@@ -30,10 +32,13 @@ import System.IO.Unsafe (unsafePerformIO)
 
 import Agda.Syntax.Internal (Type, Term(Dummy))
 import qualified Agda.Syntax.Abstract as A
+import Agda.Syntax.Abstract.Views (unScope)
+import Agda.Syntax.Common (ProjOrigin(ProjPostfix))
 import qualified Agda.Syntax.Concrete as C
 import Agda.Syntax.Internal.Generic (foldTerm)
 import Agda.Syntax.Position
-import Agda.TypeChecking.Monad (TCM, Closure, buildClosure, enterClosure, asksTC, envCheckingWhere)
+import Agda.TypeChecking.Monad (TCM, Closure, buildClosure, enterClosure, asksTC, envCheckingWhere,
+  isProjection, Projection(..), freeVarsToApply)
 import Agda.TypeChecking.Pretty (prettyTCM)
 import Agda.Utils.FileName (filePath)
 import qualified Agda.Utils.Maybe.Strict as Strict
@@ -128,6 +133,67 @@ traceCheckedType = recordCheckedType
 
 traceType :: HasRange a => String -> a -> Type -> TCM ()
 traceType = recordType
+
+-- Called only after argument checking has succeeded. Inserted arguments retain
+-- Nothing ranges, so the record slot is not confused with the first visible
+-- argument or with a later argument of an already instantiated field.
+traceProjection :: A.Expr -> [Maybe Range] -> TCM ()
+traceProjection head_ ranges = do
+  sink <- liftIO getTraceSink
+  case sink of
+    TraceDisabled -> pure ()
+    _ -> case unScope head_ of
+      A.Def name -> trace name
+      A.Proj ProjPostfix _ -> pure ()
+      A.Proj _ names -> maybe (pure ()) trace (A.getUnambiguous names)
+      _ -> pure ()
+  where
+    trace name = do
+      projection <- isProjection name
+      applied <- freeVarsToApply name
+      case projection of
+        Just p | Just _ <- projProper p
+               , let index = projIndex p - length applied
+               , index > 0 -> case drop (index - 1) ranges of
+          Just range : _ -> tracePrincipalProjection name head_ range
+          _ -> pure ()
+        _ -> pure ()
+
+-- Overloaded projection resolution already knows the principal argument.
+-- Retain source intervals, never pretty-print/reconstruct the argument term.
+tracePrincipalProjection :: A.QName -> A.Expr -> Range -> TCM ()
+tracePrincipalProjection name head_ argument = do
+  sink <- liftIO getTraceSink
+  case sink of
+    TraceDisabled -> pure ()
+    TraceSink handle run -> do
+      projection <- isProjection name
+      case (projection, rangeToIntervalWithFile $ continuous $ getRange head_,
+            rangeToIntervalWithFile $ continuous argument) of
+        (Just p, Just h, Just a)
+          | Just recordName <- projProper p
+          , projIndex p > 0
+          , srcFile (iStart h) == srcFile (iStart a)
+          , posPos (iEnd h) <= posPos (iStart a)
+          , Strict.Just source <- srcFile (iStart h) -> liftIO $ do
+              let path = filePath (rangeFilePath source)
+                  start = posPos (iStart h)
+                  end = posPos (iEnd a)
+                  key = (path, start, end, "projection")
+              hash <- sourceHash path
+              written <- Map.member key <$> readMVar writtenTypes
+              when (not written) $ do
+                let value = object
+                      [ "version" .= (1 :: Int), "run" .= run, "kind" .= ("projection" :: String)
+                      , "path" .= path, "sourceHash" .= hash, "start" .= start, "end" .= end
+                      , "type" .= ("" :: String), "projection" .= prettyShow (projOrig p)
+                      , "record" .= prettyShow recordName
+                      , "headEnd" .= posPos (iEnd h)
+                      , "argumentStart" .= posPos (iStart a)
+                      , "argumentEnd" .= posPos (iEnd a) ]
+                _ <- try @IOException $ LBS.hPutStrLn handle (encode value)
+                modifyMVar_ writtenTypes $ pure . Map.insert key ()
+        _ -> pure ()
 
 -- | Declaration boundaries come from the checked language's abstract syntax,
 -- not from Markdown or a scan for equals signs. Where-local functions are

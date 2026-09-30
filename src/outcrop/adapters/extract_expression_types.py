@@ -19,6 +19,7 @@ import sys
 
 from outcrop.core.agda_type_quality import imprecise_type
 from outcrop.core.agda_semantics import closed_natural_constructor
+from outcrop.core.projection_notation import checked_projection
 
 
 AGDA_FENCE_RE = re.compile(r"(?ms)^```agda[^\n]*\n(.*?)^```[ \t]*$")
@@ -108,7 +109,7 @@ def read_latest_trace(trace_path: Path, known_paths: set[Path]) -> dict[Path, li
                 run = str(record["run"])
                 if record.get("version") != 1:
                     raise ValueError(f"unsupported trace version {record.get('version')!r}")
-                if record.get("kind") not in KIND_PRIORITY.keys() | DECLARATION_KINDS:
+                if record.get("kind") not in KIND_PRIORITY.keys() | DECLARATION_KINDS | {'projection'}:
                     continue
                 if not isinstance(record.get("start"), int) or not isinstance(record.get("end"), int):
                     raise ValueError("start/end must be integers")
@@ -247,6 +248,7 @@ def normalize(source_root: Path, html_dir: Path, trace_path: Path,
         path_records = [record for record in path_records if not DUMMY_TYPE_RE.search(record['type'])]
         compact.extend(path_records)
         by_range: dict[tuple[int, int], dict] = {}
+        projections = {}
         signatures = {record['start'] for record in path_records
                       if record['kind'] == 'signature'
                       and inside_code(record['start'], record['start'] + 1, intervals)}
@@ -254,6 +256,17 @@ def normalize(source_root: Path, html_dir: Path, trace_path: Path,
         mutual_data_ranges = []
         for record in path_records:
             start, end = record["start"], record["end"]
+            if record['kind'] == 'projection':
+                end = include_closing_parentheses(source, start, end)
+                if inside_code(start, end, intervals):
+                    evidence = checked_projection(record, source, end)
+                    if evidence:
+                        key = (start, end)
+                        if key in projections and projections[key] != evidence:
+                            projections[key] = None
+                        else:
+                            projections[key] = evidence
+                continue
             if record['kind'] in DECLARATION_KINDS:
                 # A declaration may cross prose-separated code fences. Only
                 # its endpoints need to lie in code; expression nodes may not.
@@ -333,6 +346,8 @@ def normalize(source_root: Path, html_dir: Path, trace_path: Path,
                 }
                 if record["kind"] == "pattern":
                     node["context"] = "pattern"
+                elif projections.get((start, end)):
+                    node['projection'] = projections[start, end]
                 nodes.append(node)
                 continue
             if target is None:
