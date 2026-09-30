@@ -163,7 +163,9 @@ Agda automatically. A project's proof gate invokes its selected compiler itself.
 
 `agda_policy.fixity_before_definition` (default `false`) enables `fixity-order`.
 Fixity declarations must precede their local names' first declarations, including
-type signatures, fields and constructors; adjacency is not required. Formal
+type signatures and constructors; adjacency is not required. Fixities in a
+record's own namespace are exempt from ordering restrictions. This exemption
+does not extend to surrounding or nested module/local function scopes. Formal
 fences form one stream, ignoring prose, comments and strings. The layout-aware
 source check separates module/record and where-local scopes; it does not resolve
 imported names or replace Agda's scope checker.

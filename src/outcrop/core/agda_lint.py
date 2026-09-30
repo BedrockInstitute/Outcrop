@@ -256,6 +256,7 @@ def fixity_order_findings(text):
 
     Fences and prose do not reset scope. Data constructors and field blocks are
     transparent; record/module bodies and where-local declarations are not.
+    Fixities in the record namespace itself have no ordering restriction.
     Agda remains responsible for resolving imported names and valid fixities.
     """
     lines = agda_lines(text)
@@ -276,6 +277,8 @@ def fixity_order_findings(text):
         scope = tuple(item[1] for item in scopes)
         fixity = re.fullmatch(r'infix[lr]?\s+-?\d+(?:\.\d+)?\s+(.+)', body)
         if fixity:
+            if scopes and scopes[-1][2] == 'record':
+                continue
             for name in fixity[1].split():
                 previous = declarations.get((scope, name))
                 if previous is not None:
@@ -310,12 +313,13 @@ def fixity_order_findings(text):
             if namespace[1] == 'module' and not root_module_seen and indent == 0:
                 root_module_seen = True
             else:
-                pending_namespace = (number, indent)
+                pending_namespace = (number, indent, namespace[1])
         if (pending_namespace is not None and body.endswith('where')) or body == 'where':
             following = next((s for _, s in source[index + 1:] if s.strip()), None)
             if following is not None:
                 scopes.append((len(following) - len(following.lstrip()),
-                               pending_namespace[0] if pending_namespace else number))
+                               pending_namespace[0] if pending_namespace else number,
+                               pending_namespace[2] if pending_namespace else 'where'))
             pending_namespace = None
     return findings
 

@@ -20,7 +20,21 @@ class FixityOrderTests(unittest.TestCase):
     def test_namespaces_and_multiline_record(self):
         self.assertFalse(fixity_order_findings(book('module A where\n  _+_ : T\nmodule B where\n  infix 6 _+_\n  _+_ : T')))
         self.assertFalse(fixity_order_findings(book('_+_ : T\nrecord R\n  : Set where\n  infix 6 _+_\n  field\n    _+_ : T')))
-        self.assertTrue(fixity_order_findings(book('record R\n  : Set where\n  field\n    _+_ : T\n  infix 6 _+_')))
+        self.assertFalse(fixity_order_findings(book('record R\n  : Set where\n  field\n    _+_ : T\n  infix 6 _+_')))
+
+    def test_record_exception_does_not_leak(self):
+        code = ('record R : Set where\n  field\n    _+_ : T\n'
+                '```\nProse\n```agda\n  infix 6 _+_\n'
+                '_*_ : T\ninfix 7 _*_\n'
+                'module M where\n  _+_ : T\n  infix 6 _+_')
+        findings = fixity_order_findings(book(code))
+        self.assertEqual(len(findings), 2)
+        self.assertIn('`_*_`', findings[0][2])
+        self.assertIn('`_+_`', findings[1][2])
+
+    def test_function_in_nested_module_still_checked(self):
+        self.assertTrue(fixity_order_findings(book(
+            'record R : Set where\n  module M where\n    _+_ : T\n    infix 6 _+_')))
 
     def test_data_mutual_private_and_local(self):
         self.assertTrue(fixity_order_findings(book('mutual\n  data D : Set where\n    _+_ : D\ninfix 6 _+_')))
