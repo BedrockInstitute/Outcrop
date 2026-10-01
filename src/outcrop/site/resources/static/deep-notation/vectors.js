@@ -114,23 +114,30 @@ import { config, excluded as skipped, makeBadge } from './source.js';
       if (!node.isConnected || node.closest(skipped) || !node.dataset.vectorItems) return;
       if (node.parentElement.closest('[data-vector-candidate]')) return;
       var items = JSON.parse(node.dataset.vectorItems);
-      // Require actual constructor links as well as the whole term's Vec type.
-      // An unlinked prose spelling or a List constructor cannot earn a badge.
+      // Inline prose may rely on resolved cons identities alone, without a
+      // fabricated whole-expression type. Formal source keeps its stronger gate.
+      var inline = node.dataset.vectorInline === 'true';
       var constructors = Array.from(node.querySelectorAll('a')).filter(a => /^(?:∷|\[\])$/u.test(a.textContent));
-      if (constructors.length !== items.length + 1 || !constructors.every(function (a) {
+      var required = inline ? constructors.filter(a => a.textContent === '∷') : constructors;
+      if (required.length !== items.length + (inline ? 0 : 1) || !required.every(function (a) {
         return a.dataset.type && a.classList.contains('InductiveConstructor') &&
           (config.vectorNotation || []).includes(a.dataset.constructorFamily);
       })) return;
-      var families = new Set(constructors.map(a => a.dataset.constructorFamily));
+      var families = new Set(required.map(a => a.dataset.constructorFamily));
       if (families.size !== 1) return;
-      var checkedFamily = node.dataset.vectorChecked === 'true' ? constructors[0].dataset.constructorFamily : '';
-      if (!resolvedVectorType(node.dataset.vectorType || '', checkedFamily)) return;
+      if (constructors.some(a => a.textContent === '[]' && a.dataset.constructorFamily &&
+          !families.has(a.dataset.constructorFamily))) return;
+      var checkedFamily = node.dataset.vectorChecked === 'true' || inline ? required[0].dataset.constructorFamily : '';
+      if ((!inline || node.dataset.vectorType) && !resolvedVectorType(node.dataset.vectorType || '', checkedFamily)) return;
       var placeholder = document.createComment('vector term notation'), source;
       if (node === scope) {
         source = document.createElement('span');
         while (node.firstChild) source.appendChild(node.firstChild);
         node.appendChild(placeholder);
         for (var attribute of ['data-hover-html', 'role', 'tabindex', 'aria-haspopup', 'aria-label']) node.removeAttribute(attribute);
+        // The persistent code surface is scanned again after DOM mutations.
+        // Its consumed candidate must not wrap the badge a second time.
+        for (var attribute of ['data-vector-candidate', 'data-vector-items', 'data-vector-inline', 'data-vector-checked']) node.removeAttribute(attribute);
       } else { node.replaceWith(placeholder); source = node; }
       placeholder.replaceWith(makeBadge(source, 'vector-term', '[' + items.join(', ') + ']', {typeHtml: node.dataset.vectorType}));
     });

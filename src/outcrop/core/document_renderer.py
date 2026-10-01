@@ -27,7 +27,7 @@ from outcrop.core.definition_endings import render_code_frames
 from outcrop.core.code_preview import render_code_previews
 from outcrop.core.term_registry import TERM_MARK_RE, chapter_heading_term_markers
 from outcrop.core.vocabulary_sections import mark_vocabulary_sections
-from outcrop.core.vector_notation import vector_attributes
+from outcrop.core.vector_notation import vector_attributes, inline_vector_candidates
 
 
 @dataclass
@@ -149,6 +149,12 @@ class MarkdownDocument:
                         return constructor_resolver(token, tokens, index)
                     return original_resolver(token, tokens, index)
                 vector = vector_attributes({'kind': 'application', 'source': match[1], 'type': type_html})
+                if not vector:
+                    for candidate in inline_vector_candidates(match[1]):
+                        if (not match[1][:candidate['start']].replace('(', '').strip()
+                                and not match[1][candidate['end']:].replace(')', '').strip()):
+                            vector = vector_attributes({**candidate, 'vector_inline': False, 'type': type_html})
+                            break
                 rendered = annotate_inline_code(
                     '<code class="Agda inline-ref" data-agda-inline-type="' +
                     htmllib.escape(match[3], quote=True) + '"' + vector + ' data-hover-html="' +

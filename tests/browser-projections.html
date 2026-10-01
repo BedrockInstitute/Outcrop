@@ -56,9 +56,13 @@ addEventListener('load',async()=>{
   ['term-raw',false],['term-pattern',false],['term-tail',false],['term-inline',true],
   ['term-popup',true],['term-nested',true],['term-wrong-constructor',false],
   ['term-checked-plain',true],['term-unchecked-plain',false],['term-list-family',false],
-  ['term-checked-linked-argument',true],['term-checked-arrow',false]];
+  ['term-checked-linked-argument',true],['term-checked-arrow',false],
+  ['term-inline-untyped',true],['term-inline-unlinked',false],
+  ['term-inline-list',false],['term-inline-bare-empty',true],
+  ['term-inline-parens',true],['term-display-parens',true],
+  ['term-singleton',true],['term-inline-singleton',true],['term-display-singleton',true]];
  for(const [id] of termCases){
-  const scope=document.createElement(id==='term-inline'?'code':'pre');scope.id=id;scope.className='Agda';
+  const scope=document.createElement(id.includes('inline')||id.includes('display')?'code':'pre');scope.id=id;scope.className='Agda';
   const node=id==='term-inline'?scope:document.createElement('span');
   node.className+=(id==='term-popup'?' type-node':' expr-node');
   node.dataset.vectorCandidate='true';node.dataset.vectorItems='["a","b"]';node.dataset.vectorType=id==='term-list'?type.replaceAll('Vec','List'):type;
@@ -72,26 +76,47 @@ addEventListener('load',async()=>{
   if(id==='term-checked-arrow'){
    node.dataset.vectorChecked='true';node.dataset.vectorType='Vec A 2 → Vec A 3';
   }
+  if(id.startsWith('term-inline-')||id.startsWith('term-display-')){
+   node.dataset.vectorInline='true';delete node.dataset.vectorType;
+  }
+  if(id==='term-inline-list')node.dataset.vectorType=type.replaceAll('Vec','List');
   const mod=id==='term-wrong-constructor'?'Other':'Example.Vector';
   const family=mod+'.'+(id==='term-list-family'?'List':'Vec');
-  const anchor=text=>'<a class="InductiveConstructor" data-constructor-family="'+family+'"'+(id==='term-unlinked'?'':' data-type="'+mod+'#2"')+'>'+text+'</a>';
+  const anchor=text=>id==='term-inline-bare-empty'&&text==='[]'?'[]':'<a class="InductiveConstructor" data-constructor-family="'+family+'"'+(id.endsWith('unlinked')?'':' data-type="'+mod+'#2"')+'>'+text+'</a>';
   node.innerHTML='<a id="'+id+'-a">a</a> '+anchor('∷')+' b '+anchor('∷')+' '+anchor('[]');
+  if(id.endsWith('singleton')){
+   node.dataset.vectorItems='["a"]';
+   if(node.dataset.vectorType)node.dataset.vectorType=type.replace(' A 2',' A 1');
+   node.innerHTML='<a id="'+id+'-a">a</a> '+anchor('∷')+' '+anchor('[]');
+  }
   if(node!==scope)scope.append(node);
+  if(id.endsWith('parens')){scope.prepend('((');scope.append('))');}
   if(id==='term-tail'){const outer=document.createElement('span');outer.dataset.vectorCandidate='true';node.replaceWith(outer);outer.append('f x ∷ ',node);}
   if(id==='term-nested'){const outer=document.createElement('span');node.replaceWith(outer);outer.append('f (',node,')');}
-  by('fixture').append(scope);
+  if(id.startsWith('term-display-')){
+   const display=document.createElement('div');display.className='single-line-code';
+   display.append(scope);by('fixture').append(display);
+  }else by('fixture').append(scope);
  }
  outcropDeepNotation.scan(document.body);
  for(const [id,expected] of termCases){
   check(id+' bracket eligibility',!!by(id).querySelector('.vector-term-notation')===expected);
-  check(id+' original source retained',by(id).textContent.includes('a ∷ b ∷ []'));
+  check(id+' original source retained',by(id).textContent.includes(id.endsWith('singleton')?'a ∷ []':'a ∷ b ∷ []'));
+  if(id.endsWith('singleton'))check(id+' singleton label',by(id).querySelector('.vector-term-notation')?.dataset.mathLabel==='[a]');
  }
  const term=by('term').querySelector('.vector-term-notation');
  check('bracket notation painted',getComputedStyle(term,'::after').content==='"[a, b]"');
  check('vector term has type and original linked constructors',term.dataset.hoverHtml.includes('data-type="Example.Vector#2"')&&term.dataset.hoverHtml.includes('Vec'));
  check('vector term preserves original anchor once',document.querySelectorAll('#term-a').length===1);
+ for(const id of ['term-inline-parens','term-display-parens']){
+  check(id+' redundant parentheses hidden',by(id).querySelectorAll('.notation-elided-parenthesis').length===4);
+  check(id+' copied parentheses retained',by(id).textContent==='((a ∷ b ∷ []))');
+ }
+ check('inline no invented type',!by('term-inline-untyped').querySelector('.vector-term-notation').dataset.hoverHtml.includes('source-notation-type'));
  const termHTML=by('term').innerHTML;outcropDeepNotation.scan(by('term'));
  check('vector term scan idempotent',termHTML===by('term').innerHTML);
+ const inlineHTML=by('term-inline').innerHTML;outcropDeepNotation.scan(by('term-inline'));
+ check('inline root scan idempotent',inlineHTML===by('term-inline').innerHTML);
  check('single-letter postfix is compact',by('pair').querySelector('.pair-projection-notation')?.dataset.mathLabel==='․₁');
  check('suffix is actually painted',getComputedStyle(by('pair').querySelector('.pair-projection-notation'),'::after').content==='"․₁"');
  check('suffix spacing is tightened',parseFloat(getComputedStyle(by('pair').querySelector('.pair-projection-notation'),'::after').letterSpacing)<0);

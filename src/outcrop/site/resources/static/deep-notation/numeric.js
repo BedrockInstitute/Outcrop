@@ -130,12 +130,13 @@ const natType = '<span class="Agda">ℕ</span>';
     scope.appendChild(badge);
     clearOuterPopup(scope);
   }
-  function elideSuccessorParentheses(scope) {
-    // The compact successor is an atomic displayed term. Preserve the Agda
+  function elideAtomicParentheses(scope) {
+    // Compact successors and bracketed vectors are atomic displayed terms. Preserve the Agda
     // tokens for source copying and offsets; only suppress their paint.
     function neighbor(badge, direction) {
       var node = direction === 'left' ? badge.previousSibling : badge.nextSibling;
-      while (node && node.nodeType === 1 && node.classList.contains('notation-elided-parenthesis'))
+      while (node && ((node.nodeType === 1 && node.classList.contains('notation-elided-parenthesis')) ||
+                     (node.nodeType === Node.TEXT_NODE && !node.data)))
         node = direction === 'left' ? node.previousSibling : node.nextSibling;
       return node;
     }
@@ -163,7 +164,7 @@ const natType = '<span class="Agda">ℕ</span>';
       wrapper.setAttribute('aria-hidden', 'true');
       range.surroundContents(wrapper);
     }
-    scope.querySelectorAll('.nat-suc-notation').forEach(function (badge) {
+    scope.querySelectorAll('.nat-suc-notation, .vector-term-notation').forEach(function (badge) {
       while (true) {
         var left = candidate(neighbor(badge, 'left'), 'left');
         var right = candidate(neighbor(badge, 'right'), 'right');
@@ -173,4 +174,4 @@ const natType = '<span class="Agda">ℕ</span>';
     });
   }
 
-export { naturalLiterals, numericExpressions, inlineFinConstructors, inlineSuccessors, elideSuccessorParentheses };
+export { naturalLiterals, numericExpressions, inlineFinConstructors, inlineSuccessors, elideAtomicParentheses };

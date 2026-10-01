@@ -16,7 +16,7 @@ from outcrop.core.html_contract import (
 from outcrop.core.agda_help import annotate_inline_code, annotate_keywords, inline_tokens
 from outcrop.core.agda_type_quality import imprecise_type
 from outcrop.core.projection_notation import projection_attributes, projection_notation, pair_projection_attribute, single_letter
-from outcrop.core.vector_notation import vector_attributes, vector_items, cons_root
+from outcrop.core.vector_notation import vector_attributes, vector_items, cons_root, inline_vector_candidates
 
 
 def ungrouped_constructor_argument(source):
@@ -187,7 +187,18 @@ def inline_notation_nodes_for_source(source, index):
 
 
 def annotate_inline_notation_expressions(source, nodes):
-    """Wrap certified inline subterms before lexical Agda links are inserted."""
+    """Preserve certified nodes; lexical vector candidates add no AST or type."""
+    ranges = {(node['start'], node['end']): dict(node) for node in nodes}
+    for candidate in inline_vector_candidates(source):
+        key = candidate['start'], candidate['end']
+        if any(left < key[0] < right < key[1] or key[0] < left < key[1] < right
+               for left, right in ranges):
+            continue
+        if key in ranges:
+            ranges[key]['vector_inline'] = True
+        else:
+            ranges[key] = candidate
+    nodes = list(ranges.values())
     if not nodes:
         return htmllib.escape(source)
     offsets = [0]
@@ -197,7 +208,8 @@ def annotate_inline_notation_expressions(source, nodes):
     return wrap_expression_ranges(escaped, nodes,
         {node['start']: offsets[node['start']] for node in nodes},
         {node['end']: offsets[node['end']] for node in nodes},
-        _expression_opening)
+        lambda node, depth: (_expression_opening(node, depth) if 'id' in node else
+                             '<span' + vector_attributes(node) + '>'))
 
 def constructor_family_attribute(module, name, aspect):
     family = name.rpartition('.')[0]

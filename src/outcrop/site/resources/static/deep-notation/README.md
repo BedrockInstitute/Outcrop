@@ -12,7 +12,7 @@ fixtures use `scan(element)` / `window.outcropDeepNotation.scan(element)`.
 | `styles.css` | All compact notation typography, colors, source cues and hidden original source |
 | `source.js` | Common surfaces/opt-out boundary, preserved source DOM, Unicode popup ranges, accessible source buttons |
 | `universe.js` | Level primitives, explicit level-name convention, level parameter marking |
-| `numeric.js` | Natural literal help, natural successors, Fin indices and redundant successor parentheses |
+| `numeric.js` | Natural literal help, natural successors, Fin indices and shared atomic-notation parenthesis elision |
 | `projections.js` | Record subscripts and pair postfixes |
 | `vectors.js` | Configured resolved vector types with single-letter parameters and certified closed vector terms |
 
@@ -39,7 +39,8 @@ same immutable runtime generation as the reader and modal documents.
 Core remains independent of Site. `core/agda_semantics.py` emits certified
 numeric/level attributes; `core/projection_notation.py` validates projection
 evidence from the optional Agda adapter. `core/vector_notation.py` publishes
-source-shape candidates with checked or explicitly authored types; the Site
+source-shape candidates with checked or explicitly authored types, or untyped
+inline candidates without invented AST/type metadata; the Site
 rule still verifies configured linked type/constructor identities. They do not choose CSS, scan browser DOM
 or own popup behavior. Keep this distinction: moving compiler inference into
 this browser registry would lose reliable semantic boundaries.

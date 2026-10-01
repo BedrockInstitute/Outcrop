@@ -6,15 +6,39 @@ from outcrop.core.vector_notation import vector_items, vector_attributes, cons_r
 from outcrop.core.agda_semantics import (
     AgdaSemantics, _expression_opening, inline_notation_expression_index, decorate_type_nodes,
     qualified_name_pattern,
+    annotate_inline_notation_expressions,
 )
 
 
 class VectorNotationTests(unittest.TestCase):
+    def test_inline_candidates_need_no_invented_type_or_ast(self):
+        for source in ('x ∷ y ∷ []', '(x ∷ y ∷ [])', 'f (x ∷ y ∷ [])'):
+            body = annotate_inline_notation_expressions(source, [])
+            self.assertIn('data-vector-inline="true"', body)
+            self.assertIn('data-vector-items=', body)
+            self.assertNotIn('data-vector-type=', body)
+            self.assertNotIn('expr-node', body)
+        body = annotate_inline_notation_expressions('γ = a ∷ []', [])
+        self.assertTrue(body.startswith('γ = <span'))
+        self.assertNotIn('data-vector-items=', annotate_inline_notation_expressions('"x ∷ []"', []))
+        body = annotate_inline_notation_expressions('x ∷ y ∷ []', [self.node('x ∷ y ∷ []')])
+        self.assertEqual(body.count('data-vector-candidate='), 1)
+        self.assertIn('data-vector-checked=', body)
+
+    def test_untyped_inline_and_display_publish_candidate(self):
+        for source in ('`x ∷ y ∷ []`{.Agda}',
+                       '<div class="single-line-code"><code>`(x ∷ y ∷ [])`{.Agda}</code></div>'):
+            result = MarkdownDocument(source).render('en')
+            self.assertIn('data-vector-items=', result.body)
+            self.assertIn('data-vector-inline="true"', result.body)
+            self.assertNotIn('data-vector-type=', result.body)
+
     def node(self, source='a ∷ b ∷ []', **extra):
         return dict(kind='application', source=source, start=0, end=len(source),
                     id=1, type='Vec A 2', **extra)
 
     def test_short_closed_atomic_entries_only(self):
+        self.assertEqual(vector_items('a ∷ []'), ['a'])
         self.assertEqual(vector_items('a ∷ b ∷ c ∷ []'), ['a', 'b', 'c'])
         self.assertEqual(vector_items('𝒮 ∷ x̂ ∷ 2 ∷ []'), ['𝒮', 'x̂', '2'])
         for source in ('[]', 'a ∷ xs', 'a ∷', '(f a) ∷ []', 'f a ∷ []',
@@ -22,6 +46,16 @@ class VectorNotationTests(unittest.TestCase):
                        'a' * 49 + ' ∷ []', 'a ∷ [ b ]', '_ ∷ []'):
             with self.subTest(source=source):
                 self.assertIsNone(vector_items(source))
+
+    def test_singleton_in_prose_syntax_components(self):
+        for source in ('a ∷ []', 'γ = a ∷ []', 'a ∷ [] : Vec A 1',
+                       'λ a → a ∷ []', '(γ = a ∷ [])', 'γ = (a ∷ [])'):
+            body = annotate_inline_notation_expressions(source, [])
+            self.assertEqual(body.count('data-vector-items='), 1, source)
+            self.assertIn('data-vector-items="[&quot;a&quot;]"', body)
+            self.assertNotIn('expr-node', body)
+        for source in ('"γ = a ∷ []"', 'γ = f a ∷ []', 'a ∷ tail', 'γ = a ∷ xs'):
+            self.assertNotIn('data-vector-items=', annotate_inline_notation_expressions(source, []))
 
     def test_only_outer_cons_suppresses_a_suffix(self):
         for source in ('a ∷ xs', '(f a) ∷ b ∷ []', 'a ∷'):
@@ -68,6 +102,17 @@ class VectorNotationTests(unittest.TestCase):
         result = MarkdownDocument('`a ∷ []`{.Agda type="Vec A 1"}').render('en')
         self.assertNotIn('href=', result.body)
         self.assertIn('data-vector-type=', result.body)  # author assertion, not a guessed link
+        result = MarkdownDocument('`((a ∷ []))`{.Agda type="Vec A 1"}', code=code).render('en')
+        self.assertIn('data-vector-items=', result.body)
+        self.assertIn('((a ', result.body)
+
+    def test_resolved_untyped_inline_survives_real_link_pipeline(self):
+        code = CodeContext(rendered={'Example'}, canonical_names={'Example': {'3': 'Vec._∷_'}},
+                           types={'Example': {'3': 'A → Vec A n → Vec A (suc n)'}})
+        source = '<pre class="Agda"><a href="Example.html#3" class="InductiveConstructor">∷</a></pre>\n\n`(x ∷ y ∷ [])`{.Agda}'
+        result = MarkdownDocument(source, code=code).render('en')
+        self.assertIn('data-vector-inline="true"', result.body)
+        self.assertEqual(result.body.count('data-constructor-family="Example.Vec"'), 3)
 
     def test_forwarded_constructor_retains_declaring_datatype(self):
         semantics = AgdaSemantics()

@@ -164,13 +164,22 @@ The same source badge, raw opt-out, copying, hover and modal behavior apply.
 The source remains `Vec A n`; no infix alias is needed. At the first introduction,
 show `Vec A n` with `.raw-notation` alongside an ordinary `{.Agda}` example.
 Short closed vector terms with atomic entries, such as `a ∷ b ∷ c ∷ []`,
-display as `[a, b, c]`. This requires a resolved configured vector type and
-constructor links, plus either a checked application range (never a pattern)
-or an explicit inline assertion such as
-`` `a ∷ b ∷ c ∷ []`{.Agda type="Vec A 3"} ``. Unmarked inline code may reuse
-unambiguous module-local checked evidence, as with natural successors.
-The popup retains the type, original constructors and their semantic targets;
-copying and Markdown mirrors retain the original Agda. The empty vector is
+display as `[a, b, c]`. Formal code requires a resolved configured vector type,
+constructor links and a checked application range (never a pattern).
+Inline code may supply an explicit assertion such as
+`` `a ∷ b ∷ c ∷ []`{.Agda type="Vec A 3"} ``. Unmarked inline and centered
+display code also permit constructor-identity evidence alone: every `∷` must
+resolve to the same configured vector family. The closing `[]` may be unlinked,
+but must not resolve to another family. No whole-expression type or AST is
+invented. Explicit types and any available checked type must remain consistent
+with that family. Parenthesized components inside inline expressions share this rule.
+A singleton `a ∷ []` displays as `[a]`. Inline syntax boundaries (`=`, `:`, `→`)
+also delimit candidates, so `γ = a ∷ []` displays as `γ = [a]`, without
+treating the whole equation as a vector or inferring an AST for it.
+The popup retains any available type, original constructors and their semantic targets;
+copying and Markdown mirrors retain the original Agda. Redundant parentheses
+around a compact vector are hidden visually: `([a, b])` displays as `[a, b]`.
+The original parentheses remain in copied source. The empty vector is
 unchanged. Open tails, compound entries, multiline chains and entries exceeding
 48 displayed characters including separators stay raw; an ineligible cons root
 also keeps its suffixes raw. List constructors and unknown same-spelled types

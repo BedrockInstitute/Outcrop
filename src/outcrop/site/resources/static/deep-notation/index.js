@@ -4,7 +4,7 @@
 import { codeScopes, excluded } from './source.js';
 import * as universe from './universe.js';
 import { naturalLiterals, inlineFinConstructors, inlineSuccessors,
-  numericExpressions, elideSuccessorParentheses } from './numeric.js';
+  numericExpressions, elideAtomicParentheses } from './numeric.js';
 import { recordProjections, pairProjections } from './projections.js';
 import { vectors, vectorTerms } from './vectors.js';
 
@@ -33,7 +33,7 @@ export const rules = [
   { id: 'vector', decorate: vectors },
   { id: 'record-projection', decorate: recordProjections },
   { id: 'pair-projection', decorate: pairProjections },
-  { id: 'successor-parentheses', decorate: elideSuccessorParentheses }
+  { id: 'atomic-parentheses', decorate: elideAtomicParentheses }
 ];
 
 export function scan(scope) {
