@@ -26,7 +26,8 @@ class AssetBundle:
 
     def template(self, template, *, stylesheets=()):
         slots = {'CSS': 'outcrop.css', 'ROUTECSS': 'reading-routes.css',
-                 'ASKCSS': 'ask-ai.css', 'APPEARANCECSS': 'appearance.css'}
+                 'ASKCSS': 'ask-ai.css', 'APPEARANCECSS': 'appearance.css',
+                 'NOTATIONCSS': 'deep-notation/styles.css'}
         for slot, name in slots.items():
             version = hashlib.sha256(self.files.get(name, b'')).hexdigest()[:16]
             template = template.replace('%%' + slot + 'VER%%', version)

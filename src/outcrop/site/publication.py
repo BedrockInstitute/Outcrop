@@ -203,6 +203,7 @@ class Publication:
             "preludeModule": self.config.prelude_module,
             "levelNameConvention": self.config.policies.get('level_name_convention', False),
             "naturalLiteralDefault": self.config.policies.get('natural_literal_default', False) and not is_external,
+            "powerNotation": self.config.power_notation,
             "agentCopy": self.config.agent.get('translations', {}).get(lang, {}),
             "agentResources": self.agent_resources(lang, module),
         }

@@ -1,3 +1,4 @@
+import { sourceLabel as notationSourceLabel } from '../deep-notation/index.js';
 import { hoverIdentity, expressionAncestors, containingExpressionData, gestureIndex, gestureCandidates } from "./code-targets.js";
 /* Outcrop reader: hover. AGPL-3.0-only. */
 import { cfg, compactPointer, modalReadingScroller } from "./document.js";
@@ -236,14 +237,7 @@ import { codePoint, codeSurface } from './code-surface.js';
         if (name.classList.contains("source-notation")) {
           var sourceLabel = document.createElement("div");
           sourceLabel.className = "source-hover-label";
-          var sourceLabels = {
-            universe: {en: "Universe level · Original Agda", zh: "宇宙层级 · 原始 Agda", ja: "宇宙レベル · 元の Agda"},
-            fin: {en: "Finite index · Original Agda", zh: "有限指标 · 原始 Agda", ja: "有限添字 · 元の Agda"},
-            'pair-projection': {en: "Pair projection · Original Agda", zh: "依值对投影 · 原始 Agda", ja: "依存対の射影 · 元の Agda"},
-            'record-projection': {en: "Record projection · Original Agda", zh: "记录投影 · 原始 Agda", ja: "レコードの射影 · 元の Agda"},
-            'nat-suc': {en: "Natural successor · Original Agda", zh: "自然数后继 · 原始 Agda", ja: "自然数の後続 · 元の Agda"}
-          };
-          sourceLabel.textContent = (sourceLabels[name.dataset.sourceKind] || sourceLabels.universe)[cfg.lang] || "Original Agda";
+          sourceLabel.textContent = notationSourceLabel(name.dataset.sourceKind, cfg.lang);
           namePopup.appendChild(sourceLabel);
         }
         namePopup.appendChild(nameValue);

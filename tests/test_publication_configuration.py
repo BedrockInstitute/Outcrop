@@ -40,6 +40,17 @@ class PublicationConfigurationTests(unittest.TestCase):
         self.assertIn('"name":"Agda"', data)
         self.assertNotIn('Cubical', data)
 
+    def test_power_notation_is_validated_and_instance_owned(self):
+        self.assertEqual(self.config().power_notation, [])
+        config = self.config(power_notation=['Example.Environment._^_'])
+        publication = Publication(config, BookCatalog())
+        payload = json.loads(publication.page_config('Example', 'en', 'Example.html',
+                                                    'Example.md', '', '', False, False))
+        self.assertEqual(payload['powerNotation'], ['Example.Environment._^_'])
+        for value in ('_^_', ['_^_'], ['Bad/Module._^_'], [None], ['X._^_', 'X._^_']):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                self.config(power_notation=value)
+
     def test_non_english_only_project_has_no_hidden_english_dependency(self):
         config = self.config(languages=['zh'], descriptions={'zh': '独立教材'})
         publisher = Publication(config, BookCatalog())

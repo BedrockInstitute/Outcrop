@@ -1,15 +1,6 @@
-/* Optional, compiler-aware presentation of numeric notation.
-   The original Agda DOM remains inside each source badge, so source positions,
-   links and copied text do not become a second authored code language. */
-(function () {
-  'use strict';
-  var config = window.outcrop || {};
-  var lens = window.outcropSourceNotation;
-  if (!lens) return;
-  var codeScopes = 'pre.Agda, code.Agda, .Agda.inline-code, .single-line-code > code, .type-value.Agda';
-  var skipped = '.source-notation, [data-universe-raw], [data-source-raw], [data-outcrop-notation="source"], .appearance-preview, .Comment, .String, .Pragma';
-  var natType = '<span class="Agda">ℕ</span>';
-
+/* Natural literals, natural successors and finite indices. */
+import { config, excluded as skipped, makeBadge, unparenthesize } from './source.js';
+const natType = '<span class="Agda">ℕ</span>';
   function precedingSourceLine(element) {
     // Agda highlights a fixity precedence as Number too, but it is syntax,
     // not an ℕ term. Read only the DOM text on this source line: anchors and
@@ -78,92 +69,13 @@
       var label = kind === 'fin' ? value : value + exponent;
       var placeholder = document.createComment('source notation');
       node.replaceWith(placeholder);
-      var badge = lens.makeBadge(node, kind, label, {typeHtml: type});
+      var badge = makeBadge(node, kind, label, {typeHtml: type});
       if (kind === 'nat-suc') {
         badge.dataset.mathBase = value;
         badge.dataset.mathPower = power;
       }
       placeholder.replaceWith(badge);
     });
-  }
-  function pairProjections(scope) {
-    scope.querySelectorAll('a[data-pair-projection]').forEach(function (field) {
-      if (field.closest(skipped)) return;
-      var digit = field.dataset.pairProjection;
-      if (!['1', '2'].includes(digit)) return;
-      // Compact postfix syntax only. Imports, prefix forms from third-party
-      // sources, signatures and same-spelled unrelated fields remain verbatim.
-      var previous = field.previousSibling;
-      var dot = null;
-      if (previous?.nodeType === Node.ELEMENT_NODE && previous.matches('a.Symbol:not([href])')
-          && previous.textContent === '.') dot = previous;
-      else if (previous?.nodeType === Node.TEXT_NODE && previous.data.endsWith('.')) {
-        dot = previous;
-      }
-      if (!dot) return;
-      var expression = field.closest('.expr-node, .type-node') || scope;
-      var before = document.createRange();
-      before.setStart(expression, 0);
-      if (dot.nodeType === Node.TEXT_NODE) before.setEnd(dot, dot.length - 1);
-      else before.setEndBefore(dot);
-      var receiver = before.toString().trim();
-      // A compiler expression gives an exact receiver. Untraced inline text
-      // is deliberately narrower: only a complete single-letter expression
-      // is eligible, not the last letter of a larger function application.
-      if (!/^\p{L}\p{M}*$/u.test(receiver)) return;
-      if (dot.nodeType === Node.TEXT_NODE) dot = dot.splitText(dot.length - 1);
-      var placeholder = document.createComment('pair projection');
-      dot.before(placeholder);
-      var source = document.createElement('span');
-      source.append(dot, field);
-      var label = '․' + (digit === '1' ? '₁' : '₂');
-      var badge = lens.makeBadge(source, 'pair-projection', label);
-      placeholder.replaceWith(badge);
-      // Remove only the painted horizontal separator, preserving source text,
-      // line breaks, compiler offsets and copying. Each suffix is independent.
-      var gap = badge.previousSibling;
-      if (gap?.nodeType === Node.TEXT_NODE && /[ \t]+$/u.test(gap.data)) {
-        var start = gap.data.search(/[ \t]+$/u);
-        var spaces = gap.splitText(start);
-        var hidden = document.createElement('span');
-        hidden.className = 'notation-elided-parenthesis';
-        hidden.setAttribute('aria-hidden', 'true');
-        spaces.replaceWith(hidden); hidden.append(spaces);
-      }
-    });
-  }
-  function recordProjections(scope) {
-    scope.querySelectorAll('[data-projection-head][data-projection-argument]').forEach(function (node) {
-      if (node.closest(skipped)) return;
-      var head = node.dataset.projectionHead, argument = node.dataset.projectionArgument;
-      if (!/^\p{L}\p{M}*$/u.test(head) || !argument || argument.length > 24) return;
-      var compactArgument = argument.replace(/\s+/gu, '');
-      if (node.querySelector('[data-projection-head], .source-notation')) return;
-      var style = getComputedStyle(node), size = parseFloat(style.fontSize);
-      if (!Number.isFinite(size) || size < 14) return;
-      var canvas = document.createElement('canvas'), context = canvas.getContext('2d');
-      if (!context) return;
-      context.font = style.font;
-      var width = context.measureText(compactArgument).width * .72;
-      // Do not squeeze long instance expressions into illegible subscripts.
-      if (width > size * 4.5) return;
-      var placeholder = document.createComment('record projection');
-      node.replaceWith(placeholder);
-      var badge = lens.makeBadge(node, 'record-projection', head + ' (' + argument + ')');
-      badge.dataset.projectionHead = head;
-      badge.dataset.projectionArgument = compactArgument;
-      placeholder.replaceWith(badge);
-    });
-  }
-  function unparenthesize(value) {
-    if (!value.startsWith('(') || !value.endsWith(')')) return value;
-    var depth = 0;
-    for (var index = 0; index < value.length; index++) {
-      if (value[index] === '(') depth++;
-      else if (value[index] === ')' && --depth === 0 && index !== value.length - 1) return value;
-      if (depth < 0) return value;
-    }
-    return depth === 0 ? value.slice(1, -1).trim() : value;
   }
   function finConstructorValue(source) {
     var term = source.trim(), count = 0;
@@ -184,7 +96,7 @@
     if (literalIndex && value >= Number(literalIndex[1])) return;
     var source = document.createElement('span');
     while (scope.firstChild) source.appendChild(scope.firstChild);
-    var badge = lens.makeBadge(source, 'fin', String(value), {typeHtml: scope.dataset.hoverHtml});
+    var badge = makeBadge(source, 'fin', String(value), {typeHtml: scope.dataset.hoverHtml});
     scope.appendChild(badge);
     clearOuterPopup(scope);
   }
@@ -211,7 +123,7 @@
     }) : '⁺'.repeat(count);
     var source = document.createElement('span');
     while (scope.firstChild) source.appendChild(scope.firstChild);
-    var badge = lens.makeBadge(source, 'nat-suc', term + exponent,
+    var badge = makeBadge(source, 'nat-suc', term + exponent,
                                {typeHtml: scope.dataset.hoverHtml});
     badge.dataset.mathBase = term;
     badge.dataset.mathPower = count > 2 ? '+' + count : '+'.repeat(count);
@@ -260,37 +172,5 @@
       }
     });
   }
-  function decorate(scope) {
-    if (!scope || scope.closest(skipped)) return;
-    naturalLiterals(scope);
-    inlineFinConstructors(scope);
-    inlineSuccessors(scope);
-    numericExpressions(scope);
-    recordProjections(scope);
-    pairProjections(scope);
-    elideSuccessorParentheses(scope);
-  }
-  function scan(scope) {
-    if (!scope || scope.nodeType !== Node.ELEMENT_NODE || scope.closest(skipped)) return;
-    var parent = scope.closest(codeScopes);
-    if (parent) decorate(parent);
-    scope.querySelectorAll(codeScopes).forEach(function (node) {
-      if (!node.parentElement.closest(codeScopes)) decorate(node);
-    });
-  }
-  window.outcropMathematicalNotation = {scan: scan};
-  document.addEventListener('DOMContentLoaded', function () {
-    scan(document.body);
-    new MutationObserver(function (records) {
-      var scopes = new Set();
-      records.forEach(function (record) {
-        if (record.type === 'characterData') scopes.add(record.target.parentElement);
-        else record.addedNodes.forEach(function (node) {
-          if (node.nodeType === Node.ELEMENT_NODE) scopes.add(node);
-          else if (node.nodeType === Node.TEXT_NODE && node.parentElement) scopes.add(node.parentElement);
-        });
-      });
-      scopes.forEach(scan);
-    }).observe(document.body, {childList: true, subtree: true, characterData: true});
-  });
-})();
+
+export { naturalLiterals, numericExpressions, inlineFinConstructors, inlineSuccessors, elideSuccessorParentheses };

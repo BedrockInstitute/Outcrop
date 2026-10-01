@@ -1,9 +1,5 @@
-/* A presentation-only lens for known Agda universe operations. Original tokens,
-   links, anchors and Unicode offsets remain in the DOM; the mathematical label
-   is CSS-generated. The existing hover/modal engine displays the original code. */
-(function () {
-  "use strict";
-  var config = window.outcrop || {};
+/* Universe levels: certified operations and explicit naming convention. */
+import { config, excluded, makeBadge } from './source.js';
   var levelModules = new Set([config.preludeModule, 'Agda.Primitive',
     'Cubical.Core.Primitives', 'Cubical.Foundations.Prelude'].filter(Boolean));
   function levelLibraryLink(link) {
@@ -14,8 +10,6 @@
     } catch (_) { return false; }
   }
   var operations = {"ℓ-zero": "zero", "lzero": "zero", "ℓ-suc": "suc", "lsuc": "suc", "ℓ-max": "max", "⊔": "join"};
-  var containers = "pre.Agda, code.Agda, .Agda.inline-code, .single-line-code > code, .type-value.Agda";
-  var excluded = ".source-notation, [data-universe-raw], [data-source-raw], [data-outcrop-notation='source'], .appearance-preview, .Comment, .String, .Pragma, script, style, template";
 
   // Parse only this tiny, closed grammar, never infer a level from arbitrary ⊔/0/⁺.
   function parse(tokens, start, known, argument, levelAtom, atomOnly) {
@@ -55,8 +49,12 @@
   function format(node) {
     if (node.op === "atom") return node.text;
     if (node.op === "max") return node.args.map(format).join(" ⊔ ");
-    var child = node.args[0], value = format(child);
-    return (child.op === "max" ? "(" + value + ")" : value) + "⁺";
+    var child = node, count = 0;
+    while (child.op === "suc") { count++; child = child.args[0]; }
+    var value = format(child);
+    var suffix = count <= 2 ? "⁺".repeat(count)
+      : "⁺" + String(count).replace(/[0-9]/g, digit => "⁰¹²³⁴⁵⁶⁷⁸⁹"[Number(digit)]);
+    return (child.op === "max" ? "(" + value + ")" : value) + suffix;
   }
   function tokenize(text) {
     var result = [], pattern = /[^\s(){};]+|[(){};]/gu, match;
@@ -167,41 +165,6 @@
       range.surroundContents(span);
     });
   }
-  function sourceMarkup(fragment, kind) {
-    var holder = document.createElement("span"); holder.setAttribute(kind === 'universe' ? "data-universe-raw" : "data-source-raw", "");
-    holder.appendChild(fragment.cloneNode(true));
-    var moduleName = (window.outcrop || {}).chapter || (window.outcrop || {}).module || "";
-    holder.querySelectorAll("[id]").forEach(function (node) { node.removeAttribute("id"); });
-    holder.querySelectorAll(".expr-node").forEach(function (node) {
-      node.classList.replace("expr-node", "type-node");
-      if (moduleName && node.dataset.exprId) node.dataset.expressionType = moduleName + "#" + node.dataset.exprId;
-    });
-    // Rebase *all* structural ranges to the extracted fragment's Unicode text.
-    holder.querySelectorAll(".type-node").forEach(function (node) {
-      var before = document.createRange(); before.setStart(holder, 0); before.setEndBefore(node);
-      var start = Array.from(before.toString()).length;
-      node.dataset.exprStart = String(start); node.dataset.exprEnd = String(start + Array.from(node.textContent).length);
-      node.classList.remove("expr-active", "type-active");
-    });
-    holder.querySelectorAll(".occ, .name-active").forEach(function (node) { node.classList.remove("occ", "name-active"); });
-    holder.querySelectorAll(".universe-parameter").forEach(function (node) { node.classList.remove("universe-parameter"); });
-    return holder.outerHTML;
-  }
-  function makeBadge(source, kind, label, options) {
-    options = options || {};
-    var element = document.createElement("span"); element.className = kind + "-notation source-notation";
-    element.dataset.sourceKind = kind;
-    element.dataset.mathLabel = label;
-    if (kind === 'universe') element.dataset.levelMath = label;
-    element.dataset.hoverHtml = (options.typeHtml ? '<span class="source-notation-type Agda">' + options.typeHtml + '</span>' : '') + sourceMarkup(source, kind);
-    element.setAttribute("role", "button"); element.setAttribute("tabindex", "0");
-    element.setAttribute("aria-haspopup", "dialog"); element.setAttribute("aria-expanded", "false");
-    var copy = {zh: "{label}。展开原始 Agda 代码", ja: "{label}。元の Agda コードを表示", en: "{label}. Show original Agda code"};
-    element.setAttribute("aria-label", (copy[document.documentElement.lang] || copy.en).replace("{label}", label));
-    var original = document.createElement("span"); original.className = "universe-source";
-    original.setAttribute("aria-hidden", "true"); original.setAttribute("inert", "");
-    original.appendChild(source); element.appendChild(original); return element;
-  }
   function badge(source, label) { return makeBadge(source, 'universe', label); }
   function decorate(scope) {
     if (scope.closest(excluded)) return;
@@ -275,32 +238,9 @@
       var source = range.extractContents(); range.insertNode(badge(source, match.label));
     });
   }
-  function scan(scope) {
-    if (!scope || scope.nodeType !== Node.ELEMENT_NODE) return;
-    markCertifiedLevels(scope);
-    markConventionalLevels(scope);
-    if (scope.closest(excluded)) return;
-    var parent = scope.closest(containers);
-    if (parent) decorate(parent);
-    scope.querySelectorAll(containers).forEach(function (node) {
-      if (!node.parentElement.closest(containers)) decorate(node);
-    });
-  }
-  window.outcropUniverseLevels = {scan: scan};
-  window.outcropSourceNotation = {makeBadge: makeBadge};
-  document.addEventListener("DOMContentLoaded", function () {
-    collectPageLevels();
-    scan(document.body);
-    new MutationObserver(function (records) {
-      var scopes = new Set();
-      records.forEach(function (record) {
-        if (record.type === "characterData") scopes.add(record.target.parentElement);
-        else record.addedNodes.forEach(function (node) {
-          if (node.nodeType === Node.ELEMENT_NODE) scopes.add(node);
-          else if (node.nodeType === Node.TEXT_NODE && node.parentElement) scopes.add(node.parentElement);
-        });
-      });
-      scopes.forEach(scan);
-    }).observe(document.body, {childList: true, subtree: true, characterData: true});
-  });
-})();
+
+export function prepare(scope) {
+  markCertifiedLevels(scope);
+  markConventionalLevels(scope);
+}
+export { collectPageLevels as initialize, decorate };

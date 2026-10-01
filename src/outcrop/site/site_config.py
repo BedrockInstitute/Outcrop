@@ -173,6 +173,12 @@ class SiteConfig:
             if type(value) is not bool:
                 raise ValueError(f'policies.{field}: expected a boolean')
         module_id = re.compile(r'^[^./\\\s<>"\x00]+(?:\.[^./\\\s<>"\x00]+)*$')
+        self.power_notation = values.get('power_notation', [])
+        if (not isinstance(self.power_notation, list) or
+                any(not isinstance(name, str) or '.' not in name or
+                    not module_id.fullmatch(name) for name in self.power_notation) or
+                len(set(self.power_notation)) != len(self.power_notation)):
+            raise ValueError('power_notation: expected unique qualified declaration names')
         for field in ('prelude_module', 'landing_module'):
             value = getattr(self, field)
             if value and not module_id.fullmatch(value):

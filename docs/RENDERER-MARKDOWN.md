@@ -151,6 +151,16 @@ the same lens. Both lenses retain the original Unicode text, links, source
 offsets and copied Agda. Authors must not write the rendered numeric suffixes
 in source code.
 
+Sites may configure `power_notation` with qualified declarations such as
+`Example.Environment._^_`. Their resolved `A ^ n` applications display as a
+base with a superscript exponent only when both operands are single Unicode
+letters, optionally with combining marks. Primes, digit suffixes, numerals,
+multi-letter identifiers and compound operands remain unchanged. A matching
+spelling without a resolved declaration identity is insufficient. Formal code
+requires an existing expression subtree; untraced inline/type text permits
+only whole, unambiguous delimited components, not fragments of applications.
+The same source badge, raw opt-out, copying, hover and modal behavior apply.
+
 To preview only the first *n* lines of a long Agda fence while preserving the
 complete source and semantic DOM, put a directive immediately before the fence:
 

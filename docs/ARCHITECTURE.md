@@ -78,6 +78,15 @@ the same entry and features as ordinary pages, not a reduced reader.
 
 ## Interaction contracts
 
+All compact Agda presentation is composed by
+`static/deep-notation/index.js`. Its directory groups the ordered rules,
+localized source labels, shared source-preserving badge and stylesheet. One
+scanner/observer handles every code surface and dynamic popup; individual
+families do not install listeners. See that directory's README for the complete
+maintenance map and the separate Core semantic producers. `outcrop.js` invokes
+the entry once, and hover consumes its label API rather than defining a second
+kind registry. The stylesheet has its own content version.
+
 Formal, inline and single-line code, signature/source popups, dynamically added
 content and modal mirrors share semantic behavior. Unicode offsets refer to code
 points. Compiler-backed AST nesting, infix/mixfix names and definition links stay

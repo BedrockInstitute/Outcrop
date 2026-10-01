@@ -1,4 +1,5 @@
 import { writePreference } from './reader/preferences.js';
+import { initialize as initDeepNotation } from './deep-notation/index.js';
 import './reading-routes.js';
 /* Reader composition only. Each feature owns its state and event handlers.
  * Code inspection is adapted from the 1lab (AGPL-3.0); see NOTICE. */
@@ -22,6 +23,7 @@ import { initCodeCopy } from './reader/code-copy.js';
 import { initPunctuationWrap } from './reader/punctuation-wrap.js';
 
 function start() {
+  initDeepNotation();
   try { writePreference('lang', cfg.lang); } catch (_) {}
   renderMath();
   initPunctuationWrap();

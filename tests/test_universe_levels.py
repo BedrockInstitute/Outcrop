@@ -14,7 +14,7 @@ class UniverseLevelTests(unittest.TestCase):
     def render(self, values, certify=True):
         if not shutil.which('node'):
             self.skipTest('Node is required for the universe notation parser')
-        source = (RESOURCES / 'static/universe-levels.js').read_text()
+        source = (RESOURCES / 'static/deep-notation/universe.js').read_text()
         core = source[source.index('  var operations'):source.index('  function textMap')]
         script = core + '\nconsole.log(JSON.stringify(' + json.dumps(values, ensure_ascii=False) + '''.map(text => {
           const tokens = tokenize(text), result = parse(tokens, 0, () => CERTIFY, false);
@@ -29,6 +29,18 @@ class UniverseLevelTests(unittest.TestCase):
             'ℓ-suc ℓ-zero', 'ℓ-max ℓ-zero ℓ-zero', '(ℓ-max α β)',
         ]), ['0 ⊔ ℓ⁺', '(ℓ₁ ⊔ ℓ₂)⁺', 'ℓ⁺⁺', 'ℓ₁ ⊔ ℓ₂ ⊔ ℓ₃', '0⁺', '0 ⊔ 0', 'α ⊔ β'])
 
+    def test_successor_runs_use_superscript_counts_from_three(self):
+        def successors(base, count):
+            return 'ℓ-suc (' * count + base + ')' * count
+        self.assertEqual(self.render([
+            successors('ℓ', n) for n in [1, 2, 3, 4, 12]
+        ]), ['ℓ⁺', 'ℓ⁺⁺', 'ℓ⁺³', 'ℓ⁺⁴', 'ℓ⁺¹²'])
+        self.assertEqual(self.render([
+            successors('ℓ-max ℓ₁ ℓ₂', 3),
+            'ℓ-max (' + successors('ℓ₁', 3) + ') (' + successors('ℓ₂', 4) + ')',
+            successors('ℓ-zero', 3),
+        ]), ['(ℓ₁ ⊔ ℓ₂)⁺³', 'ℓ₁⁺³ ⊔ ℓ₂⁺⁴', '0⁺³'])
+
     def test_incomplete_or_ordinary_syntax_is_not_a_level(self):
         inputs = ['0 ⊔ ℓ⁺', 'ℓ-max ℓ', 'ℓ-suc', 'ℓ', '(ℓ-max ℓ₁ ℓ₂',
                   'ℓ-suc (A → B)', 'ℓ-max ℓ₁ ℓ₂ trailing', 'ℓ-maximal ℓ₁ ℓ₂']
@@ -42,7 +54,7 @@ class UniverseLevelTests(unittest.TestCase):
         self.assertIn('.submodule-fold > .submodule-fold-content > :last-child { margin-bottom: 0; }', css)
 
     def test_level_font_is_self_hosted_and_not_enlarged(self):
-        css = (RESOURCES / 'static/appearance.css').read_text()
+        css = (RESOURCES / 'static/deep-notation/styles.css').read_text()
         self.assertIn('font: 400 1em/1.15 "Bedrock Universe Levels"', css)
         self.assertNotIn('Cambria Math', css)
         self.assertIn('font-synthesis: none', css)
@@ -51,7 +63,7 @@ class UniverseLevelTests(unittest.TestCase):
         self.assertLess(font.stat().st_size, 40000)
 
     def test_conventional_level_suffixes_and_identifier_boundaries(self):
-        source = (RESOURCES / 'static/universe-levels.js').read_text()
+        source = (RESOURCES / 'static/deep-notation/universe.js').read_text()
         core = source[source.index('  function levelNamePattern'):source.index('  function markConventionalLevels')]
         values = ["ℓ ℓ' ℓ′ ℓ″ ℓ‴ ℓ⁗ ℓ1 ℓ₁₂ ℓ² ℓ₁′ ℓ'₂", 'ℓ-max ℓ-suc ℓ-zero fooℓ ℓfoo ℓ₁x']
         script = core + '\nconsole.log(JSON.stringify(' + json.dumps(values, ensure_ascii=False) + '.map(s => Array.from(s.matchAll(levelNamePattern()), m => m[0]))));'

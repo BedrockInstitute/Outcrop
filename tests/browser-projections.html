@@ -2,11 +2,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Projection notation regression</title>
 <link rel="stylesheet" href="/static/outcrop.css">
-<link rel="stylesheet" href="/static/appearance.css">
-<script>window.outcrop={lang:'en',chapter:'ProjectionFixture',storageNamespace:'projection-fixture'};</script>
+<link rel="stylesheet" href="/static/appearance.css"><link rel="stylesheet" href="/static/deep-notation/styles.css">
+<script>window.outcrop={lang:'en',chapter:'ProjectionFixture',storageNamespace:'projection-fixture',powerNotation:['Example.Environment._^_']};</script>
 <script src="/static/appearance.js"></script>
-<script defer src="/static/universe-levels.js"></script>
-<script defer src="/static/mathematical-notation.js"></script>
 <script type="module" src="/static/outcrop.js"></script>
 </head><body><header id="site-header"><button id="theme-toggle">Appearance</button></header><h1 id="status">RUNNING</h1><main id="main-content"><article id="fixture">
 <p>Single-letter receiver, long receiver, function application, and raw opt-out:</p>
@@ -24,12 +22,35 @@
 <pre class="Agda" id="multi"><span class="expr-node">x = <span class="expr-node">p <a class="Symbol">.</a><a id="field-anchor" class="Field" data-pair-projection="2">snd</a></span></span></pre>
 <div id="results"></div></article></main>
 <script>
+const powerCases = [
+ ['power','A ^ n',true], ['power-greek','𝒮 ^ ℓ',true], ['power-mark','x̂ ^ n',true],
+ ['power-type','γ : S ^ n',true], ['power-arrow','S ^ n → S',true],
+ ['power-paren','(S ^ n)',true], ['power-long','Set ^ n',false],
+ ['power-digit','A ^ 2',false], ['power-prime','A ^ n′',false],
+ ['power-index','A ^ n₁',false], ['power-app','f A ^ n',false],
+ ['power-right-app','A ^ f n',false], ['power-chain','A ^ n ^ m',false],
+ ['power-compound','A ^ (suc n)',false], ['power-unknown','A ^ n',false],
+ ['power-raw','A ^ n',false], ['power-pattern','A ^ n = Vec A n',false],
+ ['power-formal','A ^ n',true], ['power-popup','A ^ n',true],
+ ['power-untraced','A ^ n',false]
+];
+for (const [id,source] of powerCases) {
+ const element=document.createElement(['power-pattern','power-formal','power-untraced'].includes(id)?'pre':'code');
+ element.id=id;element.className=id==='power-popup'?'type-value Agda':'Agda';
+ if(id==='power-raw')element.dataset.outcropNotation='source';
+ const module=id==='power-unknown'?'Other':'Example.Environment';
+ element.innerHTML=source.replaceAll('^','<a href="Example.Environment.html#1" data-type="'+module+'#1" data-name="_^_">^</a>');
+ if(id==='power-formal')element.innerHTML='<span class="expr-node">'+element.innerHTML+'</span>';
+ if(id==='power-untraced')element.innerHTML='<span>'+element.innerHTML+'</span>';
+ if(id==='power-type')element.innerHTML=element.innerHTML.replace('S ', '<a id="power-base">S</a> ').replace(/n$/, '<a id="power-exponent">n</a>');
+ document.querySelector('#fixture').append(element);
+}
 addEventListener('load',async()=>{
  await document.fonts.ready;
  const results=[];
  const check=(name,pass)=>{results.push({name,pass:!!pass});const p=document.createElement('p');p.textContent=(pass?'PASS ':'FAIL ')+name;document.querySelector('#results').append(p);};
  const by=id=>document.getElementById(id);
- outcropMathematicalNotation.scan(document.body);
+ outcropDeepNotation.scan(document.body);
  check('single-letter postfix is compact',by('pair').querySelector('.pair-projection-notation')?.dataset.mathLabel==='․₁');
  check('suffix is actually painted',getComputedStyle(by('pair').querySelector('.pair-projection-notation'),'::after').content==='"․₁"');
  check('suffix spacing is tightened',parseFloat(getComputedStyle(by('pair').querySelector('.pair-projection-notation'),'::after').letterSpacing)<0);
@@ -45,9 +66,20 @@ addEventListener('load',async()=>{
  check('record source parentheses preserved',by('record-complex').textContent==='S (𝒮 ↾ M)');
  check('nested compiler expression is respected',!!by('multi').querySelector('.pair-projection-notation'));
  check('original anchors survive',!!by('multi').querySelector('#field-anchor'));
- const html=by('pair').innerHTML;outcropMathematicalNotation.scan(by('pair'));check('scan is idempotent',html===by('pair').innerHTML);
- const popup=document.createElement('div');popup.className='type-value Agda';popup.innerHTML='p .<a class="Field" data-pair-projection="2">snd</a>';by('fixture').append(popup);outcropMathematicalNotation.scan(popup);
+ const html=by('pair').innerHTML;outcropDeepNotation.scan(by('pair'));check('scan is idempotent',html===by('pair').innerHTML);
+ const popup=document.createElement('div');popup.className='type-value Agda';popup.innerHTML='p .<a class="Field" data-pair-projection="2">snd</a>';by('fixture').append(popup);outcropDeepNotation.scan(popup);
  check('dynamic type popup uses same lens',!!popup.querySelector('.pair-projection-notation'));
+ for(const [id,source,expected] of powerCases){
+  check(id+' eligibility',!!by(id).querySelector('.power-notation')===expected);
+  check(id+' source unchanged',by(id).textContent===source);
+ }
+ const power=by('power').querySelector('.power-notation');
+ check('power exponent painted',getComputedStyle(power,'::after').content==='"n"');
+ check('power exponent is raised',getComputedStyle(power,'::after').verticalAlign==='super');
+ check('power popup has original linked code',power.dataset.hoverHtml.includes('data-name="_^_"'));
+ const powerHTML=by('power').innerHTML;outcropDeepNotation.scan(by('power'));
+ check('power scan idempotent',by('power').innerHTML===powerHTML);
+ check('partial power preserves unique anchors',document.querySelectorAll('#power-base').length===1&&document.querySelectorAll('#power-exponent').length===1&&!!by('power-type').querySelector('.universe-source #power-exponent'));
  const failures=results.filter(r=>!r.pass);by('status').textContent=failures.length?'FAIL '+failures.length:'PASS '+results.length;
  window.projectionResults=results;
 });

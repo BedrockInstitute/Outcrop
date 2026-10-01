@@ -93,6 +93,7 @@ not a sandbox for executing untrusted authors' documents.
 | `policies.formal_setup`, `policies.trilingual` | Explicit booleans, both strict by default |
 | `policies.level_name_convention` | Boolean, default false: opt into the book-wide convention that `ℓ` and supported suffixes are level parameters |
 | `policies.natural_literal_default` | Boolean, default false: attach natural-number type help to bare numeric literals in Agda surfaces when that is the project's authoring convention |
+| `power_notation` | Optional unique list of qualified declaration names, default `[]`: render linked infix `^` applications as powers only when both operands are single Unicode letters (combining marks allowed) |
 | `agda_policy` | Required options, bare-open hubs, prelude public-name data, empty-family and projection conventions |
 | `variable_legacy` | Optional versioned exact legacy inline-variable allowances |
 | `policies.inline_math_review` | Boolean, strict by default: permits figures, standalone displays and standardized figure-reference paragraphs; other inline LaTeX needs explicit human approval |
