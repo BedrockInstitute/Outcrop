@@ -40,16 +40,16 @@ class PublicationConfigurationTests(unittest.TestCase):
         self.assertIn('"name":"Agda"', data)
         self.assertNotIn('Cubical', data)
 
-    def test_power_notation_is_validated_and_instance_owned(self):
-        self.assertEqual(self.config().power_notation, [])
-        config = self.config(power_notation=['Example.Environment._^_'])
+    def test_vector_notation_is_validated_and_instance_owned(self):
+        self.assertEqual(self.config().vector_notation, [])
+        config = self.config(vector_notation=['Example.Vector.Vec'])
         publication = Publication(config, BookCatalog())
         payload = json.loads(publication.page_config('Example', 'en', 'Example.html',
                                                     'Example.md', '', '', False, False))
-        self.assertEqual(payload['powerNotation'], ['Example.Environment._^_'])
-        for value in ('_^_', ['_^_'], ['Bad/Module._^_'], [None], ['X._^_', 'X._^_']):
+        self.assertEqual(payload['vectorNotation'], ['Example.Vector.Vec'])
+        for value in ('Vec', ['Vec'], ['Bad/Module.Vec'], [None], ['X.Vec', 'X.Vec']):
             with self.subTest(value=value), self.assertRaises(ValueError):
-                self.config(power_notation=value)
+                self.config(vector_notation=value)
 
     def test_non_english_only_project_has_no_hidden_english_dependency(self):
         config = self.config(languages=['zh'], descriptions={'zh': '独立教材'})

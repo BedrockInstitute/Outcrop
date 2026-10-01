@@ -27,6 +27,7 @@ from outcrop.core.definition_endings import render_code_frames
 from outcrop.core.code_preview import render_code_previews
 from outcrop.core.term_registry import TERM_MARK_RE, chapter_heading_term_markers
 from outcrop.core.vocabulary_sections import mark_vocabulary_sections
+from outcrop.core.vector_notation import vector_attributes
 
 
 @dataclass
@@ -144,10 +145,13 @@ class MarkdownDocument:
                 def typed_resolver(token, tokens, index):
                     if family in ('ℕ', 'Nat', 'Fin') and token in ('zero', 'suc'):
                         return constructor_resolver(token, tokens, index)
+                    if family in ('Vec', 'List') and token in ('[]', '∷', '_∷_'):
+                        return constructor_resolver(token, tokens, index)
                     return original_resolver(token, tokens, index)
+                vector = vector_attributes({'kind': 'application', 'source': match[1], 'type': type_html})
                 rendered = annotate_inline_code(
                     '<code class="Agda inline-ref" data-agda-inline-type="' +
-                    htmllib.escape(match[3], quote=True) + '" data-hover-html="' +
+                    htmllib.escape(match[3], quote=True) + '"' + vector + ' data-hover-html="' +
                     htmllib.escape(type_html, quote=True) + '" role="button" tabindex="0" '
                     'aria-haspopup="dialog" aria-label="' +
                     htmllib.escape(match[1] + ' : ' + match[3], quote=True) + '">' +

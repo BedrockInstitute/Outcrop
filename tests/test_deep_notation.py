@@ -25,7 +25,7 @@ class DeepNotationTests(unittest.TestCase):
 
     def test_styles_and_nested_runtime_are_published_together(self):
         bundle = AssetBundle(STATIC)
-        for name in ('index', 'source', 'universe', 'numeric', 'projections', 'powers'):
+        for name in ('index', 'source', 'universe', 'numeric', 'projections', 'vectors'):
             self.assertIn(f'deep-notation/{name}.js', bundle.files)
         css = bundle.files['deep-notation/styles.css'].decode()
         self.assertIn('../fonts/BedrockUniverseLevels-Regular.woff2', css)

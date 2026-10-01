@@ -94,7 +94,8 @@ library import itself keeps its original library link.
 When imported declarations share a spelling (for example the `zero`
 constructors of `ℕ` and `Fin`), mark the intended type on the complete inline
 expression: `` `zero`{.Agda type="Fin 3"} `` or `` `zero`{.Agda type="ℕ"} ``.
-The typed marker selects `Nat.zero`/`Nat.suc` or `Fin.zero`/`Fin.suc` only when
+The typed marker selects `Nat.zero`/`Nat.suc`, `Fin.zero`/`Fin.suc`, or the
+`Vec`/`List` families' `[]` and `_∷_` only when
 the optional compiler index contains a unique declaration. Configured
 introductory vocabulary forwarding still applies. Without a type marker,
 ordinary `{.Agda}` reference inference continues for compatibility. An
@@ -151,15 +152,36 @@ the same lens. Both lenses retain the original Unicode text, links, source
 offsets and copied Agda. Authors must not write the rendered numeric suffixes
 in source code.
 
-Sites may configure `power_notation` with qualified declarations such as
-`Example.Environment._^_`. Their resolved `A ^ n` applications display as a
-base with a superscript exponent only when both operands are single Unicode
+Sites may configure `vector_notation` with qualified vector-type declarations,
+including their teaching reexports. Resolved `Vec A n` applications display as
+a base with a superscript exponent only when both parameters are single Unicode
 letters, optionally with combining marks. Primes, digit suffixes, numerals,
 multi-letter identifiers and compound operands remain unchanged. A matching
 spelling without a resolved declaration identity is insufficient. Formal code
 requires an existing expression subtree; untraced inline/type text permits
 only whole, unambiguous delimited components, not fragments of applications.
 The same source badge, raw opt-out, copying, hover and modal behavior apply.
+The source remains `Vec A n`; no infix alias is needed. At the first introduction,
+show `Vec A n` with `.raw-notation` alongside an ordinary `{.Agda}` example.
+Short closed vector terms with atomic entries, such as `a ∷ b ∷ c ∷ []`,
+display as `[a, b, c]`. This requires a resolved configured vector type and
+constructor links, plus either a checked application range (never a pattern)
+or an explicit inline assertion such as
+`` `a ∷ b ∷ c ∷ []`{.Agda type="Vec A 3"} ``. Unmarked inline code may reuse
+unambiguous module-local checked evidence, as with natural successors.
+The popup retains the type, original constructors and their semantic targets;
+copying and Markdown mirrors retain the original Agda. The empty vector is
+unchanged. Open tails, compound entries, multiline chains and entries exceeding
+48 displayed characters including separators stay raw; an ineligible cons root
+also keeps its suffixes raw. List constructors and unknown same-spelled types
+are not vectors. Typed `Vec`/`List` spans resolve overloaded `[]` and `∷` only
+when the compiler declaration index uniquely identifies the matching family.
+Constructor datatype identity is retained through vocabulary forwarding. When
+a checked application's pretty-printed type has no links, this identity and
+its complete type application together certify the vector; bare prose cannot
+use this fallback.
+Introduce the term notation with adjacent `.raw-notation` and normal examples,
+just as for vector types.
 
 To preview only the first *n* lines of a long Agda fence while preserving the
 complete source and semantic DOM, put a directive immediately before the fence:

@@ -16,6 +16,7 @@ from outcrop.core.html_contract import (
 from outcrop.core.agda_help import annotate_inline_code, annotate_keywords, inline_tokens
 from outcrop.core.agda_type_quality import imprecise_type
 from outcrop.core.projection_notation import projection_attributes, projection_notation, pair_projection_attribute, single_letter
+from outcrop.core.vector_notation import vector_attributes, vector_items, cons_root
 
 
 def ungrouped_constructor_argument(source):
@@ -76,7 +77,7 @@ def _numeric_notation(node):
 
 
 def _expression_opening(node, depth):
-    notation = projection_attributes(node)
+    notation = projection_attributes(node) + vector_attributes(node)
     if metadata := _numeric_notation(node):
         kind, value, count = metadata
         notation = (f' data-source-notation="{kind}" '
@@ -90,6 +91,9 @@ def _expression_opening(node, depth):
 
 
 def _notation_signature(node):
+    if node.get('kind') == 'application' and cons_root(node.get('source', '')):
+        return ('vector-term', node.get('context', ''),
+                *(vector_items(node.get('source', '')) or ()))
     if value := _numeric_notation(node):
         return ('numeric', *value)
     if value := projection_notation(node):
@@ -195,7 +199,14 @@ def annotate_inline_notation_expressions(source, nodes):
         {node['end']: offsets[node['end']] for node in nodes},
         _expression_opening)
 
-def ref_link(href, aspect, label, extra_class="", origin=""):
+def constructor_family_attribute(module, name, aspect):
+    family = name.rpartition('.')[0]
+    if family and 'InductiveConstructor' in aspect.split():
+        return ' data-constructor-family="' + htmllib.escape(module + '.' + family, quote=True) + '"'
+    return ''
+
+
+def ref_link(href, aspect, label, extra_class="", origin="", constructor=""):
     """An inline-ref anchor; hover data only when the href has a position."""
     mod, _, pos = href.rpartition(".html#")
     dt = f' data-type="{mod}#{pos}"' if mod and pos.isdigit() else ""
@@ -204,7 +215,7 @@ def ref_link(href, aspect, label, extra_class="", origin=""):
     source = f' data-agda-origin="{htmllib.escape(origin, quote=True)}"' if origin else ""
     original_module = (origin or href).partition('.html#')[0]
     pair = pair_projection_attribute(original_module, htmllib.unescape(label))
-    return f'<a href="{href}"{cls}{dt}{source}{pair}>{label}</a>'
+    return f'<a href="{href}"{cls}{dt}{source}{pair}{constructor}>{label}</a>'
 
 
 def index_definitions(code_html, module, name2pos, pos_aspect):
@@ -480,7 +491,7 @@ def decorate_type_nodes(type_html, semantic_nodes=None, module=""):
     def type_opening(node, depth):
         metadata = metadata_by_key.get(node['expressionKey'], {})
         return (f'<span class="type-node" '
-                f'{projection_attributes(metadata)} '
+                f'{projection_attributes(metadata)}{vector_attributes(metadata)} '
                 f'data-expression-type="{node["expressionKey"]}" '
                 f'data-expr-start="{node["start"]}" '
                 f'data-expr-end="{node["end"]}" '
@@ -835,6 +846,7 @@ class AgdaSemantics:
                     f'{type_data}'
                     f'{hover_stop}'
                     f'{pair_projection_attribute(mod, last)}'
+                    f'{constructor_family_attribute(mod, q.removeprefix(mod + "."), (pos_aspect or {}).get(mod, {}).get(pos, ""))}'
                     f' data-name="{htmllib.escape(target_name, quote=True)}"'
                     f'{class_}>{htmllib.escape(last)}</a>'
                 )
@@ -900,6 +912,14 @@ class AgdaSemantics:
             original_href = f"{mod}.html{anchor}"
             canonical = (canonical_names or {}).get(mod, {}).get(anchor[1:], "")
             pair = pair_projection_attribute(mod, canonical)
+            # Preserve the constructor's declaring datatype through vocabulary
+            # forwarding. This is declaration identity, not a spelling guess.
+            origin_match = re.search(r' data-agda-origin="([^"#]+)\.html#([^\"]+)"', rest)
+            owner_mod, owner_pos = (origin_match.groups() if origin_match else (mod, anchor[1:]))
+            owner_name = (canonical_names or {}).get(owner_mod, {}).get(owner_pos, '')
+            if 'data-constructor-family=' not in rest:
+                owner_aspect = CLASS_RE.search(rest)
+                pair += constructor_family_attribute(owner_mod, owner_name, owner_aspect.group(1) if owner_aspect else '')
             bridge = ((prelude_reexports or {}).get("by_href", {}).get(original_href)
                       if current_module != self.prelude_module else None)
             if bridge:
@@ -1106,19 +1126,20 @@ class AgdaSemantics:
 
 
     def typed_constructor_resolver(self, type_name, name2pos, prelude_reexports=None):
-        """Resolve overloaded Nat/Fin constructors by an authored type witness.
+        """Resolve overloaded Nat/Fin/Vec/List constructors by a type witness.
 
         Only a unique compiler-indexed declaration earns a link.  The type is
         supplied by the document, but a same-spelling vocabulary entry alone
         is never enough to guess which constructor it means.
         """
         head = type_name.strip().split(maxsplit=1)[0] if type_name.strip() else ''
-        family = {'ℕ': 'Nat', 'Nat': 'Nat', 'Fin': 'Fin'}.get(head)
+        family = {'ℕ': 'Nat', 'Nat': 'Nat', 'Fin': 'Fin', 'Vec': 'Vec', 'List': 'List'}.get(head)
         targets = {}
         if family:
             for module, names in name2pos.items():
-                for token in ('zero', 'suc'):
-                    position = names.get(f'{family}.{token}')
+                tokens = {'[]': '[]', '∷': '_∷_', '_∷_': '_∷_'} if family in ('Vec', 'List') else {'zero': 'zero', 'suc': 'suc'}
+                for token, declaration in tokens.items():
+                    position = names.get(f'{family}.{declaration}')
                     if position is not None:
                         targets.setdefault(token, []).append(f'{module}.html#{position}')
 
@@ -1132,7 +1153,9 @@ class AgdaSemantics:
                 href, aspect = f'{bridge[0]}.html#{bridge[1]}', bridge[2]
             else:
                 href, aspect = original, 'InductiveConstructor'
-            return ref_link(href, aspect, htmllib.escape(token), origin=original if bridge else '')
+            owner_module = original.partition('.html#')[0]
+            return ref_link(href, aspect, htmllib.escape(token), origin=original if bridge else '',
+                            constructor=constructor_family_attribute(owner_module, family + '.' + token, aspect))
         return resolve
 
     def inline_ref(self, name, internal, name2pos, local_refs, current_module="",

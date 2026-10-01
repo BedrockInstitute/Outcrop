@@ -14,11 +14,12 @@ fixtures use `scan(element)` / `window.outcropDeepNotation.scan(element)`.
 | `universe.js` | Level primitives, explicit level-name convention, level parameter marking |
 | `numeric.js` | Natural literal help, natural successors, Fin indices and redundant successor parentheses |
 | `projections.js` | Record subscripts and pair postfixes |
-| `powers.js` | Configured resolved infix powers with single-letter operands |
+| `vectors.js` | Configured resolved vector types with single-letter parameters and certified closed vector terms |
 
 Keep rules small and without independent listeners/observers. Register them in
-`rules` in `index.js`, preserving its order: universe recognition precedes numeric
-notation, powers and projections; redundant parentheses are hidden last. The
+`rules` in `index.js`, preserving its order: closed vector terms preserve their
+whole source before child rewrites; universe recognition precedes numeric
+notation, vector types and projections; redundant parentheses are hidden last. The
 universe preparation pass also styles certified/conventional parameters outside
 code. Raw opt-out disables compact rewriting, not this existing parameter font
 convention. Do not add a second scanner or globals for individual rule families.
@@ -37,7 +38,9 @@ same immutable runtime generation as the reader and modal documents.
 
 Core remains independent of Site. `core/agda_semantics.py` emits certified
 numeric/level attributes; `core/projection_notation.py` validates projection
-evidence from the optional Agda adapter. They do not choose CSS, scan browser DOM
+evidence from the optional Agda adapter. `core/vector_notation.py` publishes
+source-shape candidates with checked or explicitly authored types; the Site
+rule still verifies configured linked type/constructor identities. They do not choose CSS, scan browser DOM
 or own popup behavior. Keep this distinction: moving compiler inference into
 this browser registry would lose reliable semantic boundaries.
 
