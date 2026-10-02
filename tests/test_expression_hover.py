@@ -685,6 +685,18 @@ console.log(JSON.stringify(
         self.assertIn('data-notation-value="2"', rendered)
         self.assertNotIn('data-source-notation="nat-suc"', rendered)
 
+    def test_closed_naturals_are_certified_independently_of_parent(self):
+        for expression, value in [('zero', '0'), ('suc zero', '1'), ('suc (suc zero)', '2')]:
+            block = f'<pre class="Agda"><a id="10">{expression}</a></pre>'
+            node = {'id': 1, 'start': 10, 'end': 10 + len(expression),
+                    'kind': 'application', 'source': expression, 'type': 'ℕ'}
+            rendered = annotate_expression_nodes(block, [node])
+            self.assertIn('data-source-notation="nat"', rendered)
+            self.assertIn(f'data-notation-value="{value}"', rendered)
+            for override in ({'context': 'pattern'}, {'type': 'Unknown'}, {'kind': 'binding'}):
+                self.assertNotIn('data-source-notation="nat"',
+                                 annotate_expression_nodes(block, [{**node, **override}]))
+
     def test_short_hover_type_keeps_its_space_on_one_line(self):
         css = (RESOURCES / 'static/outcrop.css').read_text()
         javascript = source('hover')

@@ -11,15 +11,20 @@ fixtures use `scan(element)` / `window.outcropDeepNotation.scan(element)`.
 | `index.js` | Enable/remove/reorder rules; source-popup titles |
 | `styles.css` | All compact notation typography, colors, source cues and hidden original source |
 | `source.js` | Common surfaces/opt-out boundary, preserved source DOM, Unicode popup ranges, accessible source buttons |
+| `presentation.js` | Pure presentation trees: text, sequences, grouping, superscripts, subscripts and inherited style; one DOM painter |
+| `composition.js` | Source-coordinate ranges, lexical application boundaries, child presentation reads and source-preserving range moves; no datatype knowledge |
 | `universe.js` | Level primitives, explicit level-name convention, level parameter marking |
-| `numeric.js` | Natural literal help, natural successors, Fin indices and shared atomic-notation parenthesis elision |
+| `numeric.js` | Natural literal help, certified/explicit/resolved-builtin natural expressions, Fin indices and shared atomic-notation parenthesis elision |
 | `projections.js` | Record subscripts and pair postfixes |
-| `vectors.js` | Configured resolved vector types with single-letter parameters and certified closed vector terms |
+| `vectors.js` | Configured resolved vector types with single-letter bases and compact natural indices, and certified closed vector terms |
 
 Keep rules small and without independent listeners/observers. Register them in
-`rules` in `index.js`, preserving its order: closed vector terms preserve their
-whole source before child rewrites; universe recognition precedes numeric
-notation, vector types and projections; redundant parentheses are hidden last. The
+`rules` in `index.js`, preserving its child-before-parent order: universe and
+numeric rules publish child presentations before vector types consume
+them; projections then run before bottom-up vector terms. Nested vectors inside
+elements compose independently, while a cons-tail subtree remains a suffix
+barrier. Redundant parentheses are hidden last. Original-source popups unwrap
+presentation layers centrally, not in each rule. The
 universe preparation pass also styles certified/conventional parameters outside
 code. Raw opt-out disables compact rewriting, not this existing parameter font
 convention. Do not add a second scanner or globals for individual rule families.
@@ -51,6 +56,33 @@ not compact mathematical rewrites and retain their existing owners.
 Consecutive successors use `⁺` once, `⁺⁺` twice and a superscript count from
 three onward (`⁺³`, `⁺⁴`, `⁺¹²`) for both natural numbers and universe levels.
 Universe joins retain their grouping, for example `(ℓ₁ ⊔ ℓ₂)⁺³`.
+## Composition contract
+
+1. Each recognizer certifies only its own mathematical operation. Numeric
+   evidence is independent of the surrounding datatype; a vector recognizer
+   never parses `zero`/`suc` or imports the numeric owner.
+2. Recognizers produce trees from `presentation.js`, not flattened display
+   strings or custom `::before`/`::after` layouts. `superscript(A, successor(n, 3))`
+   retains both levels. `plain` supplies a readable label, not the painted tree.
+   All existing notation families use the same painter and CSS primitives.
+3. `makeBadge` stores the tree and atomicity alongside unchanged source DOM.
+   Its generated glyph spans use CSS content and contain no text nodes, so
+   source offsets and copying are independent of nesting depth.
+4. Children run before consuming parents. `composition.presentation` reads
+   child trees by source range; vector exponents/entries and record indices
+   consume those trees without understanding the child's syntax. A parent's
+   visual eligibility bounds are independent of a child's meaning. Rejecting
+   a parent does not suppress an eligible child.
+5. `wrapRange` moves complete source nodes and rejects partial compiler wrappers.
+   Source popups centrally unwrap nested badges and rebase Unicode ranges.
+   No per-family clone, copy handler, hover listener or observer is needed.
+
+New notation should add a recognizer, tree construction, registry entry and
+eligibility/composition tests. Add a CSS primitive only for a genuinely new
+layout operation, not for every combination of existing scripts/styles. Test
+composition both when the parent renders and when it stays raw, plus original
+text/IDs, repeat scans, raw opt-out and popup/modal behavior. Do not add
+parent-specific numeric fallbacks or flatten child trees into labels.
 
 ## Regression entry points
 

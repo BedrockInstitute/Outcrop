@@ -37,15 +37,26 @@ class VectorNotationTests(unittest.TestCase):
         return dict(kind='application', source=source, start=0, end=len(source),
                     id=1, type='Vec A 2', **extra)
 
-    def test_short_closed_atomic_entries_only(self):
+    def test_short_closed_entries(self):
         self.assertEqual(vector_items('a ∷ []'), ['a'])
         self.assertEqual(vector_items('a ∷ b ∷ c ∷ []'), ['a', 'b', 'c'])
         self.assertEqual(vector_items('𝒮 ∷ x̂ ∷ 2 ∷ []'), ['𝒮', 'x̂', '2'])
-        for source in ('[]', 'a ∷ xs', 'a ∷', '(f a) ∷ []', 'f a ∷ []',
+        self.assertEqual(vector_items('[] ∷ []'), ['[]'])
+        for source in ('[]', 'a ∷ xs', 'a ∷', 'f a ∷ []',
                        'a ∷ (b ∷ [])', 'a ∷\n b ∷ []', 'a ∷ [] trailing',
                        'a' * 49 + ' ∷ []', 'a ∷ [ b ]', '_ ∷ []'):
             with self.subTest(source=source):
                 self.assertIsNone(vector_items(source))
+
+    def test_grouped_elements_and_nested_vectors(self):
+        for item in ('(suc n)', '(p .fst)', '(p .fst .snd)', '(a ∷ b ∷ [])', '(f a)'):
+            self.assertEqual(vector_items(item + ' ∷ []'), [item])
+        self.assertEqual(vector_items('(a ∷ []) ∷ (b ∷ []) ∷ []'), ['(a ∷ [])', '(b ∷ [])'])
+        for source in ('(a ∷ [] ∷ []', '(a) (b) ∷ []', '(a] ∷ []', '() ∷ []'):
+            self.assertIsNone(vector_items(source))
+        body = annotate_inline_notation_expressions('(a ∷ []) ∷ (b ∷ []) ∷ []', [])
+        self.assertEqual(body.count('data-vector-items='), 3)
+        self.assertNotIn('expr-node', body)
 
     def test_singleton_in_prose_syntax_components(self):
         for source in ('a ∷ []', 'γ = a ∷ []', 'a ∷ [] : Vec A 1',

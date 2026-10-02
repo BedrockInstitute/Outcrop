@@ -1,5 +1,14 @@
 /* Resolved vector type applications with single-letter parameters. */
-import { config, excluded as skipped, makeBadge } from './source.js';
+import { config, excluded as skipped, makeBadge, unparenthesize } from './source.js';
+import { applicationAt, presentation, sourceOffset, wrapRange } from './composition.js';
+import { text, sequence, superscript } from './presentation.js';
+
+  // Read exactly two syntactic arguments, retaining their source offsets.
+  // This is a display boundary, never a fabricated Agda AST.
+  function vectorApplication(text, offset, head) {
+    const match = applicationAt(text, offset, head, 2);
+    return match && /^[ \t]*(?:$|[→)])/u.test(text.slice(match.end)) ? match : null;
+  }
   function vectors(scope) {
     var declarations = config.vectorNotation || [];
     if (!declarations.length) return;
@@ -9,12 +18,15 @@ import { config, excluded as skipped, makeBadge } from './source.js';
       if (!declarations.includes(module + '.' + operator.dataset.name)) return;
       // Prefer the exact existing semantic subtree. No new AST/type is inferred.
       var container = operator.parentElement;
-      var head = operator.textContent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      var application = head + '[ \\t]+(\\p{L}\\p{M}*)[ \\t]+(\\p{L}\\p{M}*)';
-      var pattern = new RegExp('^\\s*' + application + '\\s*$', 'u');
-      while (container !== scope && !pattern.test(container.textContent)) container = container.parentElement;
-      var match = pattern.exec(container.textContent);
-      var start = 0, end = container.textContent.length;
+      var match;
+      while (true) {
+        var offset = sourceOffset(container, operator);
+        match = vectorApplication(container.textContent, offset, operator.textContent);
+        if (match && !container.textContent.slice(0, offset).trim() &&
+            !container.textContent.slice(match.end).trim()) break;
+        if (container === scope) { match = null; break; }
+        container = container.parentElement;
+      }
       if (!match) {
         // Untraced inline/type text: require an entire delimited type component,
         // not a fragment of a larger application or a three-argument call.
@@ -22,55 +34,20 @@ import { config, excluded as skipped, makeBadge } from './source.js';
         // declaration's pattern merely because its left-hand side looks alike.
         if (scope.matches('pre.Agda')) return;
         container = scope;
-        var before = document.createRange();
-        before.setStart(container, 0); before.setEndBefore(operator);
-        var offset = before.toString().length;
-        var candidates = container.textContent.matchAll(new RegExp('(?:^|[:→(])[ \\t]*' + application + '(?=[ \\t]*(?:$|[→)]))', 'gu'));
-        for (var candidate of candidates) {
-          var applicationAt = candidate.index + candidate[0].indexOf(operator.textContent);
-          if (applicationAt !== offset) continue;
-          match = candidate;
-          start = applicationAt;
-          end = candidate.index + candidate[0].length;
-          break;
-        }
+        var offset = sourceOffset(container, operator);
+        if (!/(?:^|[:→(])[ \t]*$/u.test(container.textContent.slice(0, offset))) return;
+        match = vectorApplication(container.textContent, offset, operator.textContent);
         if (!match) return;
       } else if (scope.matches('pre.Agda') &&
                  (container === scope || !container.matches('.expr-node, .type-node'))) return;
-      var source, placeholder = document.createComment('vector notation');
-      if (start === 0 && end === container.textContent.length && container !== scope) {
-        container.replaceWith(placeholder); source = container;
-      } else if (start === 0 && end === container.textContent.length) {
-        source = document.createElement('span');
-        while (container.firstChild) source.appendChild(container.firstChild);
-        container.appendChild(placeholder);
-      } else {
-        var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-        var range = document.createRange(), cursor = 0, text, begun = false;
-        while ((text = walker.nextNode())) {
-          var next = cursor + text.length;
-          if (!begun && start < next) { range.setStart(text, start - cursor); begun = true; }
-          if (begun && end <= next) { range.setEnd(text, end - cursor); break; }
-          cursor = next;
-        }
-        if (!begun || !text) return;
-        // Include whole boundary elements rather than cloning partial anchors
-        // (which would duplicate IDs and detach their semantic identity).
-        var first = range.startContainer, last = range.endContainer;
-        if (range.startOffset === 0) {
-          while (first.parentNode !== container && first === first.parentNode.firstChild) first = first.parentNode;
-          range.setStartBefore(first);
-        }
-        if (range.endOffset === last.textContent.length) {
-          while (last.parentNode !== container && last === last.parentNode.lastChild) last = last.parentNode;
-          range.setEndAfter(last);
-        }
-        source = document.createElement('span'); source.append(range.extractContents());
-        range.insertNode(placeholder);
-      }
-      var badge = makeBadge(source, 'vector', match[1] + '^' + match[2]);
-      badge.dataset.mathBase = match[1]; badge.dataset.mathPower = match[2];
-      placeholder.replaceWith(badge);
+      if (!/^\p{L}\p{M}*$/u.test(match.args[0].text)) return;
+      var exponent = presentation(container, match.args[1].start, match.args[1].end);
+      // A visual bound, not knowledge of any child notation's syntax or type.
+      if (!/^(?:\p{L}\p{M}*|[0-9]+)$/u.test(match.args[1].text) &&
+          !(exponent.atomic && /^(?:\p{L}\p{M}*[⁺⁰¹²³⁴⁵⁶⁷⁸⁹]*|[0-9]+)$/u.test(exponent.text))) return;
+      wrapRange(container, match.start, match.end, 'vector',
+        match.args[0].text + '^' + exponent.text,
+        {atomic: true, model: superscript(text(match.args[0].text), exponent.model)});
     });
   }
 
@@ -110,14 +87,33 @@ import { config, excluded as skipped, makeBadge } from './source.js';
     if (!(config.vectorNotation || []).length) return;
     var candidates = Array.from(scope.querySelectorAll('[data-vector-candidate]'));
     if (scope.matches('[data-vector-candidate]')) candidates.unshift(scope);
-    candidates.forEach(function (node) {
+    function itemRanges(node) {
+      var cursor = 0;
+      return JSON.parse(node.dataset.vectorItems || '[]').map(item => {
+        var start = node.textContent.indexOf(item, cursor), end = start + item.length;
+        cursor = end;
+        return {start, end};
+      });
+    }
+    candidates.reverse().forEach(function (node) {
       if (!node.isConnected || node.closest(skipped) || !node.dataset.vectorItems) return;
-      if (node.parentElement.closest('[data-vector-candidate]')) return;
+      var parent = node.parentElement.closest('[data-vector-candidate]');
+      if (parent) {
+        var offset = sourceOffset(parent, node);
+        // Elements may contain vectors; tails of the same chain may not become
+        // separate brackets. Pattern/ineligible parents remain suffix barriers.
+        if (!itemRanges(parent).some(r => r.start <= offset && offset + node.textContent.length <= r.end)) return;
+      }
       var items = JSON.parse(node.dataset.vectorItems);
+      var ranges = itemRanges(node);
       // Inline prose may rely on resolved cons identities alone, without a
       // fabricated whole-expression type. Formal source keeps its stronger gate.
       var inline = node.dataset.vectorInline === 'true';
-      var constructors = Array.from(node.querySelectorAll('a')).filter(a => /^(?:∷|\[\])$/u.test(a.textContent));
+      var constructors = Array.from(node.querySelectorAll('a')).filter(a => {
+        if (!/^(?:∷|\[\])$/u.test(a.textContent)) return false;
+        var offset = sourceOffset(node, a);
+        return !ranges.some(r => r.start <= offset && offset < r.end);
+      });
       var required = inline ? constructors.filter(a => a.textContent === '∷') : constructors;
       if (required.length !== items.length + (inline ? 0 : 1) || !required.every(function (a) {
         return a.dataset.type && a.classList.contains('InductiveConstructor') &&
@@ -129,6 +125,19 @@ import { config, excluded as skipped, makeBadge } from './source.js';
           !families.has(a.dataset.constructorFamily))) return;
       var checkedFamily = node.dataset.vectorChecked === 'true' || inline ? required[0].dataset.constructorFamily : '';
       if ((!inline || node.dataset.vectorType) && !resolvedVectorType(node.dataset.vectorType || '', checkedFamily)) return;
+      // Entry syntax was certified by the producer; reuse child presentation
+      // without teaching vector notation about any child datatype.
+      var displayedItems = ranges.map(function (range) {
+        var {start, end} = range;
+        var original = node.textContent.slice(start, end), inner = unparenthesize(original);
+        // A comma-bearing element must retain grouping inside comma-separated
+        // brackets (e.g. a Sigma pair is one element, not two).
+        while (inner !== original && !inner.includes(',')) {
+          start += original.indexOf(inner); end = start + inner.length;
+          original = inner; inner = unparenthesize(original);
+        }
+        return presentation(node, start, end);
+      });
       var placeholder = document.createComment('vector term notation'), source;
       if (node === scope) {
         source = document.createElement('span');
@@ -139,7 +148,11 @@ import { config, excluded as skipped, makeBadge } from './source.js';
         // Its consumed candidate must not wrap the badge a second time.
         for (var attribute of ['data-vector-candidate', 'data-vector-items', 'data-vector-inline', 'data-vector-checked']) node.removeAttribute(attribute);
       } else { node.replaceWith(placeholder); source = node; }
-      placeholder.replaceWith(makeBadge(source, 'vector-term', '[' + items.join(', ') + ']', {typeHtml: node.dataset.vectorType}));
+      var parts = [text('[')];
+      displayedItems.forEach((item, index) => { if (index) parts.push(text(', ')); parts.push(item.model); });
+      parts.push(text(']'));
+      placeholder.replaceWith(makeBadge(source, 'vector-term', '[' + displayedItems.map(item => item.text).join(', ') + ']',
+        {typeHtml: node.dataset.vectorType, atomic: true, model: sequence(parts)}));
     });
   }
 

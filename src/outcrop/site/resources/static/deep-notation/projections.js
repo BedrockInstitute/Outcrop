@@ -1,5 +1,7 @@
 /* Certified record subscripts and single-letter pair suffixes. */
 import { excluded as skipped, makeBadge } from './source.js';
+import { text, subscript, mapText } from './presentation.js';
+import { presentation, sourceOffset } from './composition.js';
   function pairProjections(scope) {
     scope.querySelectorAll('a[data-pair-projection]').forEach(function (field) {
       if (field.closest(skipped)) return;
@@ -21,10 +23,18 @@ import { excluded as skipped, makeBadge } from './source.js';
       if (dot.nodeType === Node.TEXT_NODE) before.setEnd(dot, dot.length - 1);
       else before.setEndBefore(dot);
       var receiver = before.toString().trim();
+      if (receiver.includes('(')) receiver = receiver.slice(receiver.lastIndexOf('(') + 1).trim();
       // A compiler expression gives an exact receiver. Untraced inline text
       // is deliberately narrower: only a complete single-letter expression
       // is eligible, not the last letter of a larger function application.
-      if (!/^\p{L}\p{M}*$/u.test(receiver)) return;
+      if (!/^\p{L}\p{M}*(?:\s*\.\s*(?:fst|snd))*$/u.test(receiver)) return;
+      var chain = receiver.match(/\.\s*(?:fst|snd)/gu) || [];
+      var prefix = before.toString(), receiverStart = prefix.lastIndexOf(receiver);
+      var certified = Array.from(expression.querySelectorAll('.pair-projection-notation')).filter(badge => {
+        var start = sourceOffset(expression, badge);
+        return start >= receiverStart && start + badge.textContent.length <= prefix.length;
+      });
+      if (certified.length !== chain.length) return;
       if (dot.nodeType === Node.TEXT_NODE) dot = dot.splitText(dot.length - 1);
       var placeholder = document.createComment('pair projection');
       dot.before(placeholder);
@@ -51,8 +61,10 @@ import { excluded as skipped, makeBadge } from './source.js';
       if (node.closest(skipped)) return;
       var head = node.dataset.projectionHead, argument = node.dataset.projectionArgument;
       if (!/^\p{L}\p{M}*$/u.test(head) || !argument || argument.length > 24) return;
-      var compactArgument = argument.replace(/\s+/gu, '');
-      if (node.querySelector('[data-projection-head], .source-notation')) return;
+      var start = node.textContent.lastIndexOf(argument);
+      if (start < 0 || node.querySelector('[data-projection-head]')) return;
+      var shown = presentation(node, start, start + argument.length);
+      var compactArgument = shown.text.replace(/\s+/gu, '');
       var style = getComputedStyle(node), size = parseFloat(style.fontSize);
       if (!Number.isFinite(size) || size < 14) return;
       var canvas = document.createElement('canvas'), context = canvas.getContext('2d');
@@ -63,9 +75,8 @@ import { excluded as skipped, makeBadge } from './source.js';
       if (width > size * 4.5) return;
       var placeholder = document.createComment('record projection');
       node.replaceWith(placeholder);
-      var badge = makeBadge(node, 'record-projection', head + ' (' + argument + ')');
-      badge.dataset.projectionHead = head;
-      badge.dataset.projectionArgument = compactArgument;
+      var badge = makeBadge(node, 'record-projection', head + ' (' + argument + ')',
+        {atomic: true, model: subscript(text(head), mapText(shown.model, value => value.replace(/\s+/gu, '')))});
       placeholder.replaceWith(badge);
     });
   }

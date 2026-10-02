@@ -1,6 +1,63 @@
 /* Natural literals, natural successors and finite indices. */
 import { config, excluded as skipped, makeBadge, unparenthesize } from './source.js';
+import { applicationAt, sourceOffset, wrapRange } from './composition.js';
+import { text, successor, plain } from './presentation.js';
 const natType = '<span class="Agda">ℕ</span>';
+// Shared display algebra; callers, not spelling, certify the natural type.
+export function successorNotation(base, count) {
+  var power = count > 2 ? '+' + count : '+'.repeat(count);
+  var model = successor(text(base), count);
+  return {base, power, model, label: plain(model)};
+}
+export function naturalNotation(source) {
+  function ungroup(text) {
+    let previous;
+    do { previous = text; text = unparenthesize(text.trim()); } while (previous !== text);
+    return text;
+  }
+  var term = ungroup(source), count = 0;
+  while (/^suc\s+/u.test(term)) {
+    term = ungroup(term.replace(/^suc\s+/u, '')); count++;
+  }
+  if (term === 'zero' || /^(?:0|[1-9][0-9]*)$/u.test(term)) {
+    var value = (term === 'zero' ? 0n : BigInt(term)) + BigInt(count);
+    return {base: String(value), power: '', label: String(value), model: text(value)};
+  }
+  if (!/^[\p{L}\p{M}_][\p{L}\p{M}\p{N}_′″‴⁗'’₀-₉]*$/u.test(term) || term === 'suc') return null;
+  return successorNotation(term, count);
+}
+
+// Canonical builtin constructors carry a complete, unambiguous Nat signature.
+// Unlike overloaded spelling, that identity justifies a display-only application
+// in prose/type surfaces, independently of any parent (Vec, Fin, Formula, ...).
+// Formal code retains compiler-certified ranges and never rewrites patterns.
+export function naturalConstructors(scope) {
+  if (scope.matches('pre.Agda')) return;
+  const source = scope.textContent;
+  const anchors = Array.from(scope.querySelectorAll('a')).map(node => ({
+    node, start: sourceOffset(scope, node), text: node.textContent
+  }));
+  for (const item of anchors) {
+    if (item.node.closest(skipped) || !/^(zero|suc)$/u.test(item.text)) continue;
+    let end = item.start + item.text.length;
+    if (item.text === 'suc') {
+      if (!/(?:^|[:→=(])[ \t]*$/u.test(source.slice(0, item.start))) continue;
+      const application = applicationAt(source, item.start, item.text, 1);
+      if (!application || !/^[ \t]*(?:$|[):→=])/u.test(source.slice(application.end))) continue;
+      end = application.end;
+    }
+    const original = source.slice(item.start, end), notation = naturalNotation(original);
+    if (!notation) continue;
+    const names = original.match(/\b(?:suc|zero)\b/gu) || [];
+    const constructors = anchors.filter(a => a.start >= item.start && a.start < end && /^(zero|suc)$/u.test(a.text));
+    if (names.length !== constructors.length || !constructors.every(a =>
+      a.node.dataset.type && a.node.classList.contains('InductiveConstructor') &&
+      a.node.dataset.constructorFamily === 'Agda.Builtin.Nat.Nat')) continue;
+    const kind = notation.power ? 'nat-suc' : 'nat';
+    wrapRange(scope, item.start, end, kind, notation.label,
+      {typeHtml: natType, atomic: true, model: notation.model});
+  }
+}
   function precedingSourceLine(element) {
     // Agda highlights a fixity precedence as Number too, but it is syntax,
     // not an ℕ term. Read only the DOM text on this source line: anchors and
@@ -58,22 +115,15 @@ const natType = '<span class="Agda">ℕ</span>';
       var kind = node.dataset.sourceNotation;
       var value = node.dataset.notationValue;
       var type = node.dataset.notationType;
-      if (!value || !type || !['fin', 'nat-suc'].includes(kind)) return;
+      if (!value || !type || !['fin', 'nat', 'nat-suc'].includes(kind)) return;
       var count = Number(node.dataset.notationCount);
       if (kind === 'nat-suc' && (!Number.isSafeInteger(count) || count < 1)) return;
-      var power = count > 2 ? '+' + count : '+'.repeat(count);
-      var superscript = '⁰¹²³⁴⁵⁶⁷⁸⁹';
-      var exponent = count > 2 ? '⁺' + String(count).replace(/[0-9]/g, function (digit) {
-        return superscript[Number(digit)];
-      }) : '⁺'.repeat(count);
-      var label = kind === 'fin' ? value : value + exponent;
+      var notation = successorNotation(value, count);
+      var label = kind === 'nat-suc' ? notation.label : value;
       var placeholder = document.createComment('source notation');
       node.replaceWith(placeholder);
-      var badge = makeBadge(node, kind, label, {typeHtml: type});
-      if (kind === 'nat-suc') {
-        badge.dataset.mathBase = value;
-        badge.dataset.mathPower = power;
-      }
+      var badge = makeBadge(node, kind, label, {typeHtml: type, atomic: true,
+        model: kind === 'nat-suc' ? notation.model : text(value)});
       placeholder.replaceWith(badge);
     });
   }
@@ -96,7 +146,7 @@ const natType = '<span class="Agda">ℕ</span>';
     if (literalIndex && value >= Number(literalIndex[1])) return;
     var source = document.createElement('span');
     while (scope.firstChild) source.appendChild(scope.firstChild);
-    var badge = makeBadge(source, 'fin', String(value), {typeHtml: scope.dataset.hoverHtml});
+    var badge = makeBadge(source, 'fin', String(value), {typeHtml: scope.dataset.hoverHtml, atomic: true});
     scope.appendChild(badge);
     clearOuterPopup(scope);
   }
@@ -110,23 +160,12 @@ const natType = '<span class="Agda">ℕ</span>';
   function inlineSuccessors(scope) {
     if (!scope.matches('code.Agda[data-agda-inline-type]') || scope.querySelector('.source-notation')) return;
     if (!/^(?:ℕ|Nat)$/u.test(scope.dataset.agdaInlineType.trim())) return;
-    var term = scope.textContent.trim(), count = 0;
-    while (/^suc\s+/u.test(term)) {
-      term = unparenthesize(term.replace(/^suc\s+/u, '').trim());
-      count++;
-    }
-    if (!count || !/^[\p{L}\p{M}_][\p{L}\p{M}\p{N}_′″‴⁗'’₀-₉]*$/u.test(term)
-        || term === 'zero' || term === 'suc') return;
-    var superscript = '⁰¹²³⁴⁵⁶⁷⁸⁹';
-    var exponent = count > 2 ? '⁺' + String(count).replace(/[0-9]/g, function (digit) {
-      return superscript[Number(digit)];
-    }) : '⁺'.repeat(count);
+    var notation = naturalNotation(scope.textContent);
+    if (!notation || !/\b(?:zero|suc)\b/u.test(scope.textContent)) return;
     var source = document.createElement('span');
     while (scope.firstChild) source.appendChild(scope.firstChild);
-    var badge = makeBadge(source, 'nat-suc', term + exponent,
-                               {typeHtml: scope.dataset.hoverHtml});
-    badge.dataset.mathBase = term;
-    badge.dataset.mathPower = count > 2 ? '+' + count : '+'.repeat(count);
+    var badge = makeBadge(source, notation.power ? 'nat-suc' : 'nat', notation.label,
+                               {typeHtml: scope.dataset.hoverHtml, atomic: true, model: notation.model});
     scope.appendChild(badge);
     clearOuterPopup(scope);
   }
@@ -164,7 +203,8 @@ const natType = '<span class="Agda">ℕ</span>';
       wrapper.setAttribute('aria-hidden', 'true');
       range.surroundContents(wrapper);
     }
-    scope.querySelectorAll('.nat-suc-notation, .vector-term-notation').forEach(function (badge) {
+    scope.querySelectorAll('.source-notation[data-notation-atomic="true"]').forEach(function (badge) {
+      if (badge.parentElement.closest('.source-notation')) return;
       while (true) {
         var left = candidate(neighbor(badge, 'left'), 'left');
         var right = candidate(neighbor(badge, 'right'), 'right');

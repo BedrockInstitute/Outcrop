@@ -5,7 +5,7 @@
 }
 /* All type-certified levels share quiet mathematical lettering. Only a
    rewritten expression has a subtle dotted source-reveal cue; no box or fill. */
-.universe-notation, .universe-parameter, .Agda .universe-parameter, a.universe-parameter {
+.universe-notation, .notation-style-universe, .universe-parameter, .Agda .universe-parameter, a.universe-parameter {
   color: color-mix(in srgb, var(--code-fg) 72%, var(--code-bg));
   font: 400 1em/1.15 "Bedrock Universe Levels", "JuliaMono", monospace;
   font-synthesis: none;
@@ -15,22 +15,21 @@
   margin: 0; padding: 0; border: 0; background: none; cursor: help; white-space: nowrap;
   text-decoration: underline dotted color-mix(in srgb, var(--code-fg) 28%, transparent);
   text-underline-offset: .15em; text-decoration-thickness: 1px; }
-.universe-notation::after { content: attr(data-level-math); }
-.fin-notation::after { content: attr(data-math-label); }
-.vector-term-notation::after { content: attr(data-math-label); }
-.pair-projection-notation::after { content: attr(data-math-label);
-  font-size: .85em; letter-spacing: -.15em; }
+/* One layout vocabulary for every rule, including nested scripts. Generated
+   glyphs do not enter textContent, source offsets or the copy payload. */
+.notation-view { display: inline; pointer-events: none; }
+.notation-text::before { content: attr(data-notation-text); }
+.notation-index { font-size: .7em; line-height: 0; }
+.notation-super { vertical-align: super; }
+.notation-sub { font-size: .72em; vertical-align: -.22em; }
+.notation-style-pair-projection { font-size: .85em; letter-spacing: -.15em; }
 .pair-projection-notation { margin-inline-start: -.05em;
   color: var(--code-field, var(--code-fg)); }
-.record-projection-notation::before { content: attr(data-projection-head); }
-.record-projection-notation::after { content: attr(data-projection-argument);
-  font-size: .72em; vertical-align: -.22em; line-height: 0; }
 .record-projection-notation { color: var(--code-field, var(--code-fg)); }
-.nat-suc-notation::before, .vector-notation::before { content: attr(data-math-base); }
-.nat-suc-notation::after, .vector-notation::after { content: attr(data-math-power); font-size: .7em;
-  vertical-align: super; line-height: 0; }
-.fin-notation, .nat-suc-notation { color: color-mix(in srgb, var(--code-fg) 78%, var(--code-bg)); }
+.notation-style-fin, .notation-style-nat, .notation-style-nat-suc { color: color-mix(in srgb, var(--code-fg) 78%, var(--code-bg)); }
+.notation-style-pair-projection, .notation-style-record-projection { color: var(--code-field, var(--code-fg)); }
 .source-notation:is(:hover, .info-active) { color: var(--code-fg); text-decoration-color: currentColor; }
+.source-notation:is(:hover, .info-active) .notation-style { color: inherit; }
 .source-notation:focus-visible { outline: 2px solid var(--fg-alt); outline-offset: 3px; }
 /* Source text is retained for Unicode offsets, copying and existing anchors.
    A clipped, positioned box keeps anchor destinations at the visible notation. */

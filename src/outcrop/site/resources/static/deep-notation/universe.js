@@ -1,5 +1,7 @@
 /* Universe levels: certified operations and explicit naming convention. */
-import { config, excluded, makeBadge } from './source.js';
+import { config, excluded } from './source.js';
+import { text, sequence, group, successor, plain } from './presentation.js';
+import { wrapRange } from './composition.js';
   var levelModules = new Set([config.preludeModule, 'Agda.Primitive',
     'Cubical.Core.Primitives', 'Cubical.Foundations.Prelude'].filter(Boolean));
   function levelLibraryLink(link) {
@@ -12,7 +14,7 @@ import { config, excluded, makeBadge } from './source.js';
   var operations = {"ℓ-zero": "zero", "lzero": "zero", "ℓ-suc": "suc", "lsuc": "suc", "ℓ-max": "max", "⊔": "join"};
 
   // Parse only this tiny, closed grammar, never infer a level from arbitrary ⊔/0/⁺.
-  function parse(tokens, start, known, argument, levelAtom, atomOnly) {
+  export function parse(tokens, start, known, argument, levelAtom, atomOnly) {
     var node = parseAtom(tokens, start, known, argument, levelAtom);
     if (!node || atomOnly) return node;
     while (tokens[node.end] && tokens[node.end].text === "⊔" && known(node.end)) {
@@ -46,17 +48,15 @@ import { config, excluded, makeBadge } from './source.js';
       return {op: "atom", text: name, start: start, end: start + 1, changed: false};
     return null;
   }
-  function format(node) {
-    if (node.op === "atom") return node.text;
-    if (node.op === "max") return node.args.map(format).join(" ⊔ ");
+  export function model(node) {
+    if (node.op === "atom") return text(node.text);
+    if (node.op === "max") return sequence([model(node.args[0]), text(' ⊔ '), model(node.args[1])]);
     var child = node, count = 0;
     while (child.op === "suc") { count++; child = child.args[0]; }
-    var value = format(child);
-    var suffix = count <= 2 ? "⁺".repeat(count)
-      : "⁺" + String(count).replace(/[0-9]/g, digit => "⁰¹²³⁴⁵⁶⁷⁸⁹"[Number(digit)]);
-    return (child.op === "max" ? "(" + value + ")" : value) + suffix;
+    var value = model(child);
+    return successor(child.op === 'max' ? group(value) : value, count);
   }
-  function tokenize(text) {
+  export function tokenize(text) {
     var result = [], pattern = /[^\s(){};]+|[(){};]/gu, match;
     while ((match = pattern.exec(text))) result.push({text: match[0], start: match.index, end: pattern.lastIndex});
     return result;
@@ -165,7 +165,6 @@ import { config, excluded, makeBadge } from './source.js';
       range.surroundContents(span);
     });
   }
-  function badge(source, label) { return makeBadge(source, 'universe', label); }
   function decorate(scope) {
     if (scope.closest(excluded)) return;
     markParameters(scope);
@@ -199,43 +198,11 @@ import { config, excluded, makeBadge } from './source.js';
           || tokens[expression.end] && /^(?:;|:|to)$/.test(tokens[expression.end].text)) continue;
       // Source layout is significant; never collapse a multi-line expression.
       if (map.text.slice(begin, end).includes("\n")) continue;
-      matches.push({start: begin, end: end, label: format(expression)}); i = expression.end - 1;
+      matches.push({start: begin, end: end, model: model(expression)}); i = expression.end - 1;
     }
     // Work backwards so earlier source offsets and nodes remain valid.
     matches.reverse().forEach(function (match) {
-      var start = map.nodes.find(function (entry) { return match.start >= entry.start && match.start < entry.end; });
-      var end = map.nodes.find(function (entry) { return match.end > entry.start && match.end <= entry.end; });
-      if (!start || !end || !start.node.isConnected || !end.node.isConnected) return;
-      var range = document.createRange();
-      range.setStart(start.node, match.start - start.start); range.setEnd(end.node, match.end - end.start);
-      var boundary = range.commonAncestorContainer;
-      if (boundary.nodeType === Node.TEXT_NODE) boundary = boundary.parentNode;
-      if (range.toString() === boundary.textContent) boundary = boundary.parentNode;
-      // Lift exact endpoints out of complete token/AST wrappers. This avoids
-      // splitting anchors and preserves complete compiler nodes where possible.
-      var startNode = range.startContainer, startOffset = range.startOffset;
-      while (startOffset === 0 && startNode !== scope && startNode.parentNode !== scope && startNode.parentNode !== boundary && !startNode.previousSibling) {
-        startNode = startNode.parentNode; startOffset = 0;
-      }
-      if (startOffset === 0 && startNode !== scope) range.setStartBefore(startNode);
-      var endNode = range.endContainer, endOffset = range.endOffset;
-      while (endNode !== scope && endNode.parentNode !== scope && endNode.parentNode !== boundary && !endNode.nextSibling
-          && endOffset === (endNode.nodeType === Node.TEXT_NODE ? endNode.length : endNode.childNodes.length)) {
-        endNode = endNode.parentNode; endOffset = endNode.childNodes.length;
-      }
-      if (endNode !== scope && endOffset === (endNode.nodeType === Node.TEXT_NODE ? endNode.length : endNode.childNodes.length)) range.setEndAfter(endNode);
-      // Never partially extract a compiler range: partial wrappers would create
-      // duplicate AST identities. Keep the outer parentheses if necessary.
-      var fragment = range.cloneContents();
-      var partial = Array.from(fragment.querySelectorAll(".expr-node, .type-node")).some(function (node) {
-        var key = node.dataset.exprId || node.dataset.expressionType;
-        var original = Array.from(scope.querySelectorAll(".expr-node, .type-node")).find(function (candidate) {
-          return (candidate.dataset.exprId || candidate.dataset.expressionType) === key;
-        });
-        return original && node.textContent !== original.textContent;
-      });
-      if (partial) return;
-      var source = range.extractContents(); range.insertNode(badge(source, match.label));
+      wrapRange(scope, match.start, match.end, 'universe', plain(match.model), {model: match.model});
     });
   }
 

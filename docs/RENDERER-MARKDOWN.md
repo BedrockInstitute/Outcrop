@@ -111,8 +111,9 @@ When the type has the form `Fin n` and the expression is a closed `zero`/`suc`
 chain, Site displays its numeric value while the hover retains both the original
 expression and the marked type. Likewise, an open successor such as
 `` `suc (suc n)`{.Agda type="ℕ"} `` gets the compact superscript from
-this explicit type assertion when compiler evidence is unavailable. An unmarked
-inline constructor link is not proof of the whole expression's type. Pair either with
+this explicit type assertion when compiler evidence is unavailable. Canonical
+builtin Nat constructor identities also certify a syntactically complete natural
+constructor chain; arbitrary same-spelled links do not. Pair either with
 `` `suc zero`{.Agda .raw-notation type="Fin 3"} `` when introducing the original
 constructor spelling. Do not use this attribute for a type not justified by the
 surrounding mathematics; a compiler-resolved code block remains authoritative.
@@ -122,12 +123,25 @@ copied Agda. A compiler-certified `Fin` constructor value or an explicitly
 type-marked inline `Fin` constructor may display as a numeral while retaining
 its source and type in the shared hover;
 an open natural successor may display with a superscript successor count. Inline
-successors require either an explicit type marker for the whole expression or
+successors require an explicit type marker for the whole expression,
+canonical builtin Nat constructor identities, or
 matching, unambiguous module-local compiler evidence for that expression or a
 contained subexpression. Thus a checked `suc n : ℕ` can also display inside
 `` `Formula K (suc n)`{.Agda} `` while the source remains intact. Fenced Agda
 expressions require compiler-certified `ℕ` or `Fin` semantics. A same-spelled `Fin.suc` or an
-unresolved token alone never licenses a natural-successor display. A
+unresolved token alone never licenses a natural-successor display. Resolved
+builtin Nat constructor applications are recognized independently of their
+parent: `Fin (suc n)`, `Formula K (suc n)` and `f (suc n)` use the same child
+presentation as `Vec A (suc n)`. A closed natural constructor chain displays
+its numeral. Formal code still requires checked expression ranges and excludes
+patterns; lexical inline display candidates are not published as inferred ASTs.
+Parent notation consumes a child's presentation rather than reparsing its
+mathematical syntax. Presentations retain a structured tree of text, sequences,
+upper/lower scripts and style, so nested scripts inherit the child's layout
+instead of turning it into plain label text. This shared mechanism covers all
+notation families, not just vector indices. If a parent is ineligible, eligible children still render.
+Raw opt-out covers the entire subtree; source popups and copying remain raw.
+A
 project may opt into natural-number help on literal digits through its Site
 configuration. The ordinary Core HTML and
 Markdown mirror remain valid without these browser enhancements.
@@ -146,6 +160,9 @@ Builtin Sigma postfix projections on a **single-letter receiver**, such as
 and tightened suffix spacing. Multi-letter receivers,
 function applications and complex receivers stay unchanged. A compiler-resolved
 field link is required; names alone never authorize this transformation.
+Chains beginning at a single-letter receiver also compact: `p .fst .snd`
+displays as `p․₁․₂`. Each step requires a certified Sigma projection; an
+unknown field stops the chain. Grouped chains may occur inside vector elements.
 Each compact suffix opens the original projection token with its linked type
 help and definition inspection. Formal, inline, popup and modal surfaces share
 the same lens. Both lenses retain the original Unicode text, links, source
@@ -154,16 +171,21 @@ in source code.
 
 Sites may configure `vector_notation` with qualified vector-type declarations,
 including their teaching reexports. Resolved `Vec A n` applications display as
-a base with a superscript exponent only when both parameters are single Unicode
-letters, optionally with combining marks. Primes, digit suffixes, numerals,
-multi-letter identifiers and compound operands remain unchanged. A matching
+a base with a superscript exponent when the base and variable index are single Unicode
+letters, optionally with combining marks. Natural-number indices also compose
+with this lens: numeral lengths remain numerals, and resolved builtin natural
+constructors use the shared numeric notation (`zero` becomes `0`, `suc n`
+becomes `n⁺`, three successors become `n⁺³`), including inside the raised
+exponent. Every constructor must resolve to builtin Nat, not Fin or an unknown
+same-spelled name. No AST or type record is invented. Primes, digit suffixes,
+multi-letter identifiers and other compound operands remain unchanged. A matching
 spelling without a resolved declaration identity is insufficient. Formal code
 requires an existing expression subtree; untraced inline/type text permits
 only whole, unambiguous delimited components, not fragments of applications.
 The same source badge, raw opt-out, copying, hover and modal behavior apply.
 The source remains `Vec A n`; no infix alias is needed. At the first introduction,
 show `Vec A n` with `.raw-notation` alongside an ordinary `{.Agda}` example.
-Short closed vector terms with atomic entries, such as `a ∷ b ∷ c ∷ []`,
+Short closed vector terms with atomic or parenthesized entries, such as `a ∷ b ∷ c ∷ []`,
 display as `[a, b, c]`. Formal code requires a resolved configured vector type,
 constructor links and a checked application range (never a pattern).
 Inline code may supply an explicit assertion such as
@@ -180,7 +202,11 @@ The popup retains any available type, original constructors and their semantic t
 copying and Markdown mirrors retain the original Agda. Redundant parentheses
 around a compact vector are hidden visually: `([a, b])` displays as `[a, b]`.
 The original parentheses remain in copied source. The empty vector is
-unchanged. Open tails, compound entries, multiline chains and entries exceeding
+unchanged. Grouped entries compose their existing notation: `(suc n) ∷ []`
+can display as `[n⁺]`, `(p .fst .snd) ∷ []` as `[p․₁․₂]`, and nested
+vectors as `[[a, b], [c, d]]`. Each nested vector independently requires
+resolved vector constructors; cons tails are not separate vector elements.
+Open tails, ungrouped compound entries, multiline chains and entries exceeding
 48 displayed characters including separators stay raw; an ineligible cons root
 also keeps its suffixes raw. List constructors and unknown same-spelled types
 are not vectors. Typed `Vec`/`List` spans resolve overloaded `[]` and `∷` only

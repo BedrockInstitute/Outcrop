@@ -4,13 +4,14 @@
 import { codeScopes, excluded } from './source.js';
 import * as universe from './universe.js';
 import { naturalLiterals, inlineFinConstructors, inlineSuccessors,
-  numericExpressions, elideAtomicParentheses } from './numeric.js';
+  numericExpressions, naturalConstructors, elideAtomicParentheses } from './numeric.js';
 import { recordProjections, pairProjections } from './projections.js';
 import { vectors, vectorTerms } from './vectors.js';
 
 export const sourceLabels = {
             universe: {en: "Universe level · Original Agda", zh: "宇宙层级 · 原始 Agda", ja: "宇宙レベル · 元の Agda"},
             fin: {en: "Finite index · Original Agda", zh: "有限指标 · 原始 Agda", ja: "有限添字 · 元の Agda"},
+            nat: {en: "Natural number · Original Agda", zh: "自然数 · 原始 Agda", ja: "自然数 · 元の Agda"},
             'pair-projection': {en: "Pair projection · Original Agda", zh: "依值对投影 · 原始 Agda", ja: "依存対の射影 · 元の Agda"},
             'record-projection': {en: "Record projection · Original Agda", zh: "记录投影 · 原始 Agda", ja: "レコードの射影 · 元の Agda"},
             'nat-suc': {en: "Natural successor · Original Agda", zh: "自然数后继 · 原始 Agda", ja: "自然数の後続 · 元の Agda"},
@@ -21,18 +22,20 @@ export function sourceLabel(kind, language) {
   return (sourceLabels[kind] || sourceLabels.universe)[language] || "Original Agda";
 }
 
-// Ordering is intentional: preserve whole vector terms, certify levels and numeric expressions,
-// then compact vector types/projections, finally hide redundant successor parentheses.
+// Children publish presentation first; parents consume it through composition.js.
+// Source preservation does not depend on display order: source.js unwraps all
+// presentation layers when making an original-code popup.
 export const rules = [
-  { id: 'vector-term', decorate: vectorTerms },
   { id: 'universe', decorate: universe.decorate },
   { id: 'natural-literals', decorate: naturalLiterals },
   { id: 'inline-fin', decorate: inlineFinConstructors },
   { id: 'inline-successors', decorate: inlineSuccessors },
   { id: 'numeric-expressions', decorate: numericExpressions },
+  { id: 'natural-constructors', decorate: naturalConstructors },
   { id: 'vector', decorate: vectors },
   { id: 'record-projection', decorate: recordProjections },
   { id: 'pair-projection', decorate: pairProjections },
+  { id: 'vector-term', decorate: vectorTerms },
   { id: 'atomic-parentheses', decorate: elideAtomicParentheses }
 ];
 

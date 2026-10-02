@@ -26,22 +26,36 @@ const vectorCases = [
  ['vector','Vec A n',true], ['vector-greek','Vec 𝒮 ℓ',true], ['vector-mark','Vec x̂ n',true],
  ['vector-type','γ : Vec S n',true], ['vector-arrow','Vec S n → S',true],
  ['vector-paren','(Vec S n)',true], ['vector-long','Vec Carrier n',false],
- ['vector-digit','Vec A 2',false], ['vector-prime','Vec A n′',false],
+ ['vector-digit','Vec A 2',true], ['vector-prime','Vec A n′',false],
  ['vector-index','Vec A n₁',false], ['vector-app','f Vec A n',false],
  ['vector-right-app','Vec A f n',false], ['vector-chain','Vec A n m',false],
  ['vector-compound','Vec A (suc n)',false], ['vector-unknown','Vec A n',false],
  ['vector-raw','Vec A n',false], ['vector-pattern','data Vec A n where',false],
  ['vector-formal','Vec A n',true], ['vector-popup','Vec A n',true],
  ['vector-untraced','Vec A n',false], ['vector-partial','Vec A',false],
- ['vector-import','using ( Vec )',false], ['vector-qualified','V.Vec A n',true]
+ ['vector-import','using ( Vec )',false], ['vector-qualified','V.Vec A n',true],
+ ['vector-natural-zero','Vec A zero',true],
+ ['vector-natural-one','Vec A (suc zero)',true],
+ ['vector-natural-suc','a ∷ v : Vec A (suc n)',true],
+ ['vector-natural-two','Vec A (suc (suc n))',true],
+ ['vector-natural-three','Vec A (suc (suc (suc n)))',true],
+ ['vector-natural-formal','Vec A (suc n)',true],
+ ['vector-natural-popup','Vec A (suc n)',true],
+ ['vector-natural-raw','Vec A (suc n)',false],
+ ['vector-natural-fin','Vec A (suc n)',false],
+ ['vector-natural-long','Vec A (suc length)',false]
 ];
 for (const [id,source] of vectorCases) {
- const element=document.createElement(['vector-pattern','vector-formal','vector-untraced'].includes(id)?'pre':'code');
- element.id=id;element.className=id==='vector-popup'?'type-value Agda':'Agda';
- if(id==='vector-raw')element.dataset.outcropNotation='source';
+ const element=document.createElement(['vector-pattern','vector-formal','vector-untraced','vector-natural-formal'].includes(id)?'pre':'code');
+ element.id=id;element.className=id.endsWith('popup')?'type-value Agda':'Agda';
+ if(id.endsWith('raw'))element.dataset.outcropNotation='source';
  const module=id==='vector-unknown'?'Other':'Example.Vector';
  element.innerHTML=source.replace(/(?:V\.)?Vec/g,name=>'<a href="Example.Vector.html#1" data-type="'+module+'#1" data-name="Vec">'+name+'</a>');
- if(id==='vector-formal')element.innerHTML='<span class="expr-node">'+element.innerHTML+'</span>';
+ if(id.startsWith('vector-natural-'))element.innerHTML=element.innerHTML.replace(/\b(suc|zero)\b/g,name=>
+  '<a class="InductiveConstructor" data-type="Nat#1" data-constructor-family="'+(id.endsWith('fin')?'Cubical.Data.FinData.Base.Fin':'Agda.Builtin.Nat.Nat')+'">'+name+'</a>');
+ if(id.endsWith('formal'))element.innerHTML='<span class="expr-node">'+element.innerHTML+'</span>';
+ if(id==='vector-natural-formal')element.innerHTML=element.innerHTML.replace(/(<a class="InductiveConstructor"[^>]*>suc<\/a> n)/,
+  '<span class="expr-node" data-source-notation="nat-suc" data-notation-value="n" data-notation-count="1" data-notation-type="ℕ">$1</span>');
  if(id==='vector-untraced')element.innerHTML='<span>'+element.innerHTML+'</span>';
  if(id==='vector-type')element.innerHTML=element.innerHTML.replace('S ', '<a id="vector-base">S</a> ').replace(/n$/, '<a id="vector-exponent">n</a>');
  document.querySelector('#fixture').append(element);
@@ -51,6 +65,94 @@ addEventListener('load',async()=>{
  const results=[];
  const check=(name,pass)=>{results.push({name,pass:!!pass});const p=document.createElement('p');p.textContent=(pass?'PASS ':'FAIL ')+name;document.querySelector('#results').append(p);};
  const by=id=>document.getElementById(id);
+ const painted=node=>Array.from(node.querySelectorAll('.notation-text')).map(e=>JSON.parse(getComputedStyle(e,'::before').content)).join('');
+ const view=badge=>badge.querySelector(':scope > .notation-view');
+ const scriptIndex=badge=>view(badge).querySelector('.notation-index');
+ const cons=word=>'<a class="InductiveConstructor" data-type="Example.Vector#2" data-constructor-family="Example.Vector.Vec">'+word+'</a>';
+ const field=(name,known=true)=>'.<a class="Field" '+(known?'data-pair-projection="'+(name==='fst'?'1':'2')+'"':'')+' href="/zh/Base.Prelude.html">'+name+'</a>';
+ const vectorNode=items=>{
+  const node=document.createElement('span');node.dataset.vectorCandidate='true';node.dataset.vectorInline='true';
+  for(const item of items){node.append('(');if(typeof item==='string'){const span=document.createElement('span');span.innerHTML=item;node.append(span);}else node.append(item);node.append(') ');const span=document.createElement('span');span.innerHTML=cons('∷');node.append(span,' ');}
+  const end=document.createElement('span');end.innerHTML=cons('[]');node.append(end);
+  node.dataset.vectorItems=JSON.stringify(items.map(item=>'('+(typeof item==='string'?new DOMParser().parseFromString(item,'text/html').body.textContent:item.textContent)+')'));
+  return node;
+ };
+ const compoundCases=[
+  ['successor',[ '<a class="InductiveConstructor" data-type="Nat#1" data-constructor-family="Agda.Builtin.Nat.Nat">suc</a> n' ],'[n⁺]'],
+  ['projection',['p '+field('fst')],'[p․₁]'],
+  ['chain',['p '+field('fst')+' '+field('snd')],'[p․₁․₂]'],
+  ['repeated',['p '+field('fst'),'q '+field('fst')+' '+field('snd')],'[p․₁, q․₁․₂]'],
+  ['nested',[vectorNode(['a','b']),vectorNode(['c','d'])],'[[a, b], [c, d]]'],
+  ['deep',[vectorNode([vectorNode(['a'])])],'[[[a]]]']
+ ];
+ for(const [name,items,label] of compoundCases){
+  const code=document.createElement('code');code.className='Agda';code.id='compound-'+name;code.append(vectorNode(items));by('fixture').append(code);
+  const original=code.textContent;outcropDeepNotation.scan(code);
+  const badge=code.querySelector('.vector-term-notation');
+  check(name+' compound vector label',badge?.dataset.mathLabel===label);
+  check(name+' compound source retained',code.textContent===original);
+  check(name+' compound popup is raw',badge&&!badge.dataset.hoverHtml.includes('notation-view'));
+  const snapshot=code.innerHTML;outcropDeepNotation.scan(code);check(name+' compound scan idempotent',snapshot===code.innerHTML);
+ }
+ for(const [name,source,count] of [
+  ['chain','p '+field('fst')+' '+field('snd')+' '+field('fst'),3],
+  ['broken','p '+field('fst',false)+' '+field('snd'),0],
+  ['stopped','p '+field('fst')+' '+field('snd',false)+' '+field('fst'),1],
+  ['long','pair '+field('fst')+' '+field('snd'),0]]){
+  const code=document.createElement('code');code.className='Agda';code.innerHTML=source;by('fixture').append(code);
+  const original=code.textContent;outcropDeepNotation.scan(code);
+  check(name+' projection chain evidence',code.querySelectorAll('.pair-projection-notation').length===count);
+  check(name+' projection chain source',code.textContent===original);
+ }
+ for(const surface of ['formal','popup','raw']){
+  const code=document.createElement(surface==='formal'?'pre':'code');code.className=surface==='popup'?'type-value Agda':'Agda';
+  const node=vectorNode([vectorNode(['p '+field('fst')+' '+field('snd')])]);
+  if(surface==='formal')for(const part of [node,...node.querySelectorAll('[data-vector-candidate]')]){
+   delete part.dataset.vectorInline;part.dataset.vectorChecked='true';part.dataset.vectorType='Vec A 1';part.className='expr-node';
+  }
+  if(surface==='raw')code.dataset.outcropNotation='source';
+  code.append(node);by('fixture').append(code);const original=code.textContent;outcropDeepNotation.scan(code);
+  check(surface+' nested chain vector',(code.querySelector('.vector-term-notation')?.dataset.mathLabel??null)===(surface==='raw'?null:'[[p․₁․₂]]'));
+  check(surface+' nested original code',code.textContent===original);
+ }
+ const mixed=document.createElement('code');mixed.className='Agda';
+ const list=vectorNode(['a']);for(const a of list.querySelectorAll('a'))a.dataset.constructorFamily='Other.List';
+ mixed.append(vectorNode([list]));by('fixture').append(mixed);outcropDeepNotation.scan(mixed);
+ check('nested List is not converted to Vec',mixed.querySelector('.vector-term-notation')?.dataset.mathLabel==='[(a) ∷ []]');
+ const naturalCases=[
+  ['natural-alone','suc n','n⁺'], ['natural-zero','zero','0'],
+  ['natural-fin-index','Fin (suc n)','n⁺'], ['natural-fin-zero','Fin zero','0'],
+  ['natural-formula','Formula K (suc (suc n))','n⁺⁺'],
+  ['natural-function','f (suc (suc (suc n)))','n⁺³'],
+  ['natural-ineligible-parent','Vec Carrier (suc n)','n⁺'],
+  ['natural-grouped','f (suc ((suc n)))','n⁺⁺'],
+  ['natural-unicode','𝒮 (suc n)','n⁺'], ['natural-popup','T (suc n)','n⁺'],
+  ['natural-closed','suc (suc zero)','2'], ['natural-long','suc length','length⁺'],
+  ['natural-raw','Fin (suc n)',null], ['natural-fin-constructor','suc n',null],
+  ['natural-unlinked','suc n',null], ['natural-formal-unchecked','suc n',null],
+  ['natural-explicit','suc (suc zero)','2']
+ ];
+ for(const [id,source,label] of naturalCases){
+  const element=document.createElement(id==='natural-formal-unchecked'?'pre':'code');
+  element.id=id;element.className=id==='natural-popup'?'type-value Agda':'Agda';
+  if(id==='natural-raw')element.dataset.outcropNotation='source';
+  if(id==='natural-explicit')element.dataset.agdaInlineType='ℕ';
+  element.innerHTML=source.replace(/\b(suc|zero)\b/g,name=>
+   '<a class="InductiveConstructor"'+(id==='natural-unlinked'?'':' data-type="Nat#1"')+
+   ' data-constructor-family="'+(id==='natural-fin-constructor'?'Example.Fin':'Agda.Builtin.Nat.Nat')+'">'+name+'</a>');
+  by('fixture').append(element);outcropDeepNotation.scan(element);
+  check(id+' independent numeric presentation',(element.querySelector('.source-notation')?.dataset.mathLabel??null)===label);
+  check(id+' source unchanged',element.textContent===source);
+  const before=element.innerHTML;outcropDeepNotation.scan(element);
+  check(id+' stable scan',before===element.innerHTML);
+ }
+ const naturalVector=document.createElement('code');naturalVector.className='Agda';
+ naturalVector.dataset.vectorCandidate='true';naturalVector.dataset.vectorInline='true';naturalVector.dataset.vectorItems='["zero"]';
+ naturalVector.innerHTML='<a class="InductiveConstructor" data-type="Nat#1" data-constructor-family="Agda.Builtin.Nat.Nat">zero</a> '+
+  '<a class="InductiveConstructor" data-type="Example.Vector#2" data-constructor-family="Example.Vector.Vec">∷</a> []';
+ by('fixture').append(naturalVector);outcropDeepNotation.scan(naturalVector);
+ check('vector entries consume independent child presentation',naturalVector.querySelector('.vector-term-notation')?.dataset.mathLabel==='[0]');
+ check('vector numeric entry source retained',naturalVector.textContent==='zero ∷ []');
  const type='<a data-type="Example.Vector#1" data-name="Vec">Vec</a> A 2';
  const termCases=[['term',true],['term-list',false],['term-unlinked',false],
   ['term-raw',false],['term-pattern',false],['term-tail',false],['term-inline',true],
@@ -105,7 +207,7 @@ addEventListener('load',async()=>{
   if(id.endsWith('singleton'))check(id+' singleton label',by(id).querySelector('.vector-term-notation')?.dataset.mathLabel==='[a]');
  }
  const term=by('term').querySelector('.vector-term-notation');
- check('bracket notation painted',getComputedStyle(term,'::after').content==='"[a, b]"');
+ check('bracket notation painted',painted(view(term))==='[a, b]');
  check('vector term has type and original linked constructors',term.dataset.hoverHtml.includes('data-type="Example.Vector#2"')&&term.dataset.hoverHtml.includes('Vec'));
  check('vector term preserves original anchor once',document.querySelectorAll('#term-a').length===1);
  for(const id of ['term-inline-parens','term-display-parens']){
@@ -118,17 +220,17 @@ addEventListener('load',async()=>{
  const inlineHTML=by('term-inline').innerHTML;outcropDeepNotation.scan(by('term-inline'));
  check('inline root scan idempotent',inlineHTML===by('term-inline').innerHTML);
  check('single-letter postfix is compact',by('pair').querySelector('.pair-projection-notation')?.dataset.mathLabel==='․₁');
- check('suffix is actually painted',getComputedStyle(by('pair').querySelector('.pair-projection-notation'),'::after').content==='"․₁"');
- check('suffix spacing is tightened',parseFloat(getComputedStyle(by('pair').querySelector('.pair-projection-notation'),'::after').letterSpacing)<0);
+ check('suffix is actually painted',painted(view(by('pair').querySelector('.pair-projection-notation')))==='․₁');
+ check('suffix spacing is tightened',parseFloat(getComputedStyle(by('pair').querySelector('.notation-style-pair-projection')).letterSpacing)<0);
  check('original source survives copying',by('pair').textContent==='p .fst');
  check('raw source popup retains field link',by('pair').querySelector('[data-hover-html]')?.dataset.hoverHtml.includes('href="/zh/Base.Prelude.html"'));
  for(const id of ['long','application','raw','unknown','import','record-long'])check(id+' stays raw',!by(id).querySelector('.source-notation'));
  check('record receiver is a subscript',!!by('record').querySelector('.record-projection-notation'));
  const record=by('record').querySelector('.record-projection-notation');
- const ratio=parseFloat(getComputedStyle(record,'::after').fontSize)/parseFloat(getComputedStyle(record).fontSize);
+ const ratio=parseFloat(getComputedStyle(scriptIndex(record)).fontSize)/parseFloat(getComputedStyle(record).fontSize);
  check('subscript font stays at 72 percent',Math.abs(ratio-.72)<.01);
  check('short compound instance permitted',!!by('record-complex').querySelector('.record-projection-notation'));
- check('compound subscript has no display spaces',by('record-complex').querySelector('.record-projection-notation').dataset.projectionArgument==='𝒮↾M');
+ check('compound subscript has no display spaces',painted(scriptIndex(by('record-complex').querySelector('.record-projection-notation')))==='𝒮↾M');
  check('record source parentheses preserved',by('record-complex').textContent==='S (𝒮 ↾ M)');
  check('nested compiler expression is respected',!!by('multi').querySelector('.pair-projection-notation'));
  check('original anchors survive',!!by('multi').querySelector('#field-anchor'));
@@ -140,8 +242,24 @@ addEventListener('load',async()=>{
   check(id+' source unchanged',by(id).textContent===source);
  }
  const vector=by('vector').querySelector('.vector-notation');
- check('vector exponent painted',getComputedStyle(vector,'::after').content==='"n"');
- check('vector exponent is raised',getComputedStyle(vector,'::after').verticalAlign==='super');
+ check('vector exponent painted',painted(scriptIndex(vector))==='n');
+ check('vector exponent is raised',getComputedStyle(scriptIndex(vector)).verticalAlign==='super');
+ for(const [id,label] of [['zero','0'],['one','1'],['suc','n⁺'],['two','n⁺⁺'],['three','n⁺³'],['formal','n⁺'],['popup','n⁺']]){
+  const badge=by('vector-natural-'+id).querySelector('.vector-notation');
+  check(id+' natural exponent',badge?.dataset.mathLabel==='A^'+label);
+  const ordinary=label.replace(/[⁺⁰¹²³⁴⁵⁶⁷⁸⁹]/gu,c=>'+0123456789'['⁺⁰¹²³⁴⁵⁶⁷⁸⁹'.indexOf(c)]);
+  check(id+' painted natural exponent',badge&&painted(scriptIndex(badge))===ordinary);
+  if(label.startsWith('n'))check(id+' nested exponent retained',badge&&scriptIndex(badge).querySelector('.notation-index.notation-super'));
+  check(id+' raw source popup',badge&&!badge.dataset.hoverHtml.includes('class="nat-suc-notation'));
+  const scope=by('vector-natural-'+id), before=scope.innerHTML;
+  outcropDeepNotation.scan(scope);
+  check(id+' repeated scan stable',scope.innerHTML===before);
+  if(badge){
+   const popup=document.createElement('code');popup.className='Agda';popup.innerHTML=badge.dataset.hoverHtml;
+   by('fixture').append(popup);outcropDeepNotation.scan(popup);
+   check(id+' source popup stays raw',!popup.querySelector('.source-notation')&&popup.textContent===scope.textContent.slice(scope.textContent.indexOf('Vec')));
+  }
+ }
  check('vector popup has original linked code',vector.dataset.hoverHtml.includes('data-name="Vec"'));
  const vectorHTML=by('vector').innerHTML;outcropDeepNotation.scan(by('vector'));
  check('vector scan idempotent',by('vector').innerHTML===vectorHTML);

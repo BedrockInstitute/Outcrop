@@ -14,13 +14,15 @@ class UniverseLevelTests(unittest.TestCase):
     def render(self, values, certify=True):
         if not shutil.which('node'):
             self.skipTest('Node is required for the universe notation parser')
-        source = (RESOURCES / 'static/deep-notation/universe.js').read_text()
-        core = source[source.index('  var operations'):source.index('  function textMap')]
+        directory = RESOURCES / 'static/deep-notation'
+        core = ('globalThis.window = {};\n'
+                f'const {{parse, tokenize, model}} = await import({json.dumps((directory / "universe.js").as_uri())});\n'
+                f'const {{plain}} = await import({json.dumps((directory / "presentation.js").as_uri())});\n')
         script = core + '\nconsole.log(JSON.stringify(' + json.dumps(values, ensure_ascii=False) + '''.map(text => {
           const tokens = tokenize(text), result = parse(tokens, 0, () => CERTIFY, false);
-          return result && result.end === tokens.length ? format(result) : null;
+          return result && result.end === tokens.length ? plain(model(result)) : null;
         })));'''.replace('CERTIFY', 'true' if certify else 'false')
-        return json.loads(subprocess.check_output(['node', '-e', script], text=True))
+        return json.loads(subprocess.check_output(['node', '--input-type=module', '-e', script], text=True))
 
     def test_recursive_precedence_without_algebraic_simplification(self):
         self.assertEqual(self.render([

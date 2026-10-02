@@ -1,10 +1,20 @@
 /* Shared source-preserving presentation primitives. */
+import { paint, styled, text } from './presentation.js';
 export const config = window.outcrop || {};
 export const codeScopes = 'pre.Agda, code.Agda, .Agda.inline-code, .single-line-code > code, .type-value.Agda';
 export const excluded = ".source-notation, [data-universe-raw], [data-source-raw], [data-outcrop-notation='source'], .appearance-preview, .Comment, .String, .Pragma, script, style, template";
   function sourceMarkup(fragment, kind) {
     var holder = document.createElement("span"); holder.setAttribute(kind === 'universe' ? "data-universe-raw" : "data-source-raw", "");
     holder.appendChild(fragment.cloneNode(true));
+    // A parent notation may consume an already decorated child (e.g. a natural
+    // successor in a vector exponent). Its source popup must still be raw Agda.
+    holder.querySelectorAll('.source-notation').forEach(function (badge) {
+      var original = badge.querySelector(':scope > .universe-source');
+      if (original) badge.replaceWith(...original.childNodes);
+    });
+    holder.querySelectorAll('.notation-elided-parenthesis').forEach(function (node) {
+      node.classList.remove('notation-elided-parenthesis'); node.removeAttribute('aria-hidden');
+    });
     var moduleName = (window.outcrop || {}).chapter || (window.outcrop || {}).module || "";
     holder.querySelectorAll("[id]").forEach(function (node) { node.removeAttribute("id"); });
     holder.querySelectorAll(".expr-node").forEach(function (node) {
@@ -27,7 +37,7 @@ export const excluded = ".source-notation, [data-universe-raw], [data-source-raw
     var element = document.createElement("span"); element.className = kind + "-notation source-notation";
     element.dataset.sourceKind = kind;
     element.dataset.mathLabel = label;
-    if (kind === 'universe') element.dataset.levelMath = label;
+    element.dataset.notationAtomic = String(!!options.atomic);
     element.dataset.hoverHtml = (options.typeHtml ? '<span class="source-notation-type Agda">' + options.typeHtml + '</span>' : '') + sourceMarkup(source, kind);
     element.setAttribute("role", "button"); element.setAttribute("tabindex", "0");
     element.setAttribute("aria-haspopup", "dialog"); element.setAttribute("aria-expanded", "false");
@@ -35,7 +45,13 @@ export const excluded = ".source-notation, [data-universe-raw], [data-source-raw
     element.setAttribute("aria-label", (copy[document.documentElement.lang] || copy.en).replace("{label}", label));
     var original = document.createElement("span"); original.className = "universe-source";
     original.setAttribute("aria-hidden", "true"); original.setAttribute("inert", "");
-    original.appendChild(source); element.appendChild(original); return element;
+    original.appendChild(source); element.appendChild(original);
+    const model = styled(kind, options.model || text(label));
+    element.dataset.notationModel = JSON.stringify(model);
+    const view = document.createElement('span'); view.className = 'notation-view';
+    view.setAttribute('aria-hidden', 'true'); view.setAttribute('inert', '');
+    view.append(paint(model, document)); element.append(view);
+    return element;
   }
   function unparenthesize(value) {
     if (!value.startsWith('(') || !value.endsWith(')')) return value;

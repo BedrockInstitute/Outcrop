@@ -41,15 +41,41 @@ def cons_root(source):
 
 
 def vector_items(source):
-    """Only short, single-line chains of atomic entries; never evaluate a term."""
+    """Short closed chains; grouped entries retain their exact source syntax."""
     if '\n' in source or '\r' in source:
         return None
-    parts = [part.strip() for part in source.strip().split('∷')]
+    parts, stack, start = [], [], 0
+    for index, char in enumerate(source):
+        if char in '({[':
+            stack.append(char)
+        elif char in ')}]':
+            if not stack or stack.pop() != {')': '(', '}': '{', ']': '['}[char]:
+                return None
+        elif char == '∷' and not stack:
+            if not (index and source[index - 1].isspace() and
+                    index + 1 < len(source) and source[index + 1].isspace()):
+                return None
+            parts.append(source[start:index].strip())
+            start = index + 1
+        elif char in '\";':
+            return None
+    if stack:
+        return None
+    parts.append(source[start:].strip())
     if len(parts) < 2 or parts[-1] != '[]':
         return None
     items = parts[:-1]
     # Compound entries retain their grouping and ordinary AST rendering.
     def atom(item):
+        if item == '[]':
+            return True
+        if item.startswith('(') and item.endswith(')'):
+            depth = 0
+            for index, char in enumerate(item):
+                depth += (char == '(') - (char == ')')
+                if depth == 0 and index != len(item) - 1:
+                    return False
+            return bool(item[1:-1].strip())
         if item.isascii() and item.isdigit():
             return True
         return bool(item and item[0].isalpha() and all(

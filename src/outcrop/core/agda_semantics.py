@@ -63,12 +63,14 @@ def _nat_successor(source):
 
 def _numeric_notation(node):
     """A notation badge requires an application and its compiler-certified type."""
-    if node.get('kind') != 'application':
+    if node.get('kind') != 'application' or node.get('context') == 'pattern':
         return None
     rendered_type = htmllib.unescape(re.sub(r'<[^>]+>', '', node.get('type', '')))
     number = closed_natural_constructor(node.get('source', ''))
     if rendered_type.startswith('Fin ') and number is not None:
         return 'fin', str(number), 0
+    if rendered_type == 'ℕ' and number is not None:
+        return 'nat', str(number), 0
     if rendered_type == 'ℕ' and number is None:
         successor = _nat_successor(node.get('source', ''))
         if successor is not None:
@@ -99,7 +101,7 @@ def _notation_signature(node):
     if value := projection_notation(node):
         return ('projection', *value, node['projection']['name'], node['projection']['record'])
     if node.get('kind') == 'application' and node.get('context') != 'pattern':
-        pair = re.fullmatch(r'(\S+)\s+\.(fst|snd)', node.get('source', ''))
+        pair = re.fullmatch(r'(\S+)((?:\s+\.(?:fst|snd))+)', node.get('source', ''))
         if pair and single_letter(pair[1]):
             # Preserve an actual checked application range for inline receiver
             # boundaries. Rendering still requires the canonical Sigma link.

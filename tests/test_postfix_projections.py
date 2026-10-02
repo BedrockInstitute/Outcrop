@@ -2,7 +2,7 @@
 import unittest
 from outcrop.core.agda_lint import AgdaPolicy, lint_text, postfix_projection_findings
 from outcrop.core.projection_notation import pair_projection_attribute
-from outcrop.core.agda_semantics import AgdaSemantics, ref_link
+from outcrop.core.agda_semantics import AgdaSemantics, ref_link, inline_notation_expression_index
 
 
 class PostfixTests(unittest.TestCase):
@@ -57,6 +57,13 @@ fst-related = thing'''))
 
     def test_unknown_inline_field_not_marked(self):
         self.assertNotIn('data-pair-projection', ref_link('Other.html#5','Field','fst'))
+
+    def test_checked_chain_retains_exact_inline_boundary(self):
+        source = 'p .fst .snd'
+        node = dict(id=1, kind='application', source=source, start=0, end=len(source), type='A')
+        self.assertIn(source, inline_notation_expression_index([node]))
+        long = {**node, 'source': 'pair .fst .snd', 'end': 14}
+        self.assertNotIn(long['source'], inline_notation_expression_index([long]))
 
 
 if __name__ == '__main__':
