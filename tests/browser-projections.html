@@ -264,6 +264,39 @@ addEventListener('load',async()=>{
  const vectorHTML=by('vector').innerHTML;outcropDeepNotation.scan(by('vector'));
  check('vector scan idempotent',by('vector').innerHTML===vectorHTML);
  check('partial vector preserves unique anchors',document.querySelectorAll('#vector-base').length===1&&document.querySelectorAll('#vector-exponent').length===1&&!!by('vector-type').querySelector('.universe-source #vector-exponent'));
+ // Source roles survive rewriting, nested composition and live palette changes.
+ const colors=document.createElement('div');by('fixture').append(colors);
+ colors.innerHTML=`<code class="Agda" id="color-vector"><a class="Datatype" data-type="Example.Vector#1" data-name="Vec">Vec</a> <a class="Bound">A</a> (<a class="InductiveConstructor" data-type="Nat#1" data-constructor-family="Agda.Builtin.Nat.Nat">suc</a> <a class="Bound">n</a>)</code>
+ <pre class="Agda" id="color-record"><span class="expr-node" data-projection-head="S" data-projection-argument="𝒮 ↾ M"><a class="Field">S</a> (<a class="Bound">𝒮</a> <a class="Function">↾</a> <a class="Bound">M</a>)</span></pre>
+ <code class="Agda" id="color-fin" data-agda-inline-type="Fin 3"><a class="InductiveConstructor">suc</a> <a class="InductiveConstructor">zero</a></code>
+ <code class="Agda" id="color-level"><a class="Primitive" href="Agda.Primitive.html#1">lsuc</a> <a class="Bound" data-universe-level="true">ℓ</a></code>
+ <code class="Agda inline-ref" id="color-fallback" data-agda-inline-type="ℕ"><a href="#raw-constructor">suc</a> n</code>`;
+ outcropDeepNotation.scan(colors);
+ const snapshot=colors.innerHTML;
+ const root=document.documentElement, oldMode=root.dataset.appearanceMode, oldPalette=root.dataset.codePalette;
+ const pairs=[['color-vector','A','Bound','A'],['color-vector','n','Bound','n'],['color-vector','+','InductiveConstructor','suc'],
+  ['color-record','S','Field','S'],['color-record','𝒮','Bound','𝒮'],['color-record','↾','Function','↾'],
+  ['color-fin','1','InductiveConstructor','suc'],['color-level','+','Primitive','lsuc'],['color-level','ℓ','Bound','ℓ'],
+  ['pair','․₁','Field','fst'],['compound-successor','+','InductiveConstructor','suc'],
+  ['compound-chain','․₂','Field','snd'],['compound-nested','[','InductiveConstructor','∷'],
+  ['color-fallback','+','','suc']];
+ for(const theme of ['light','dark'])for(const palette of ['default','github','solarized','catppuccin','gruvbox']){
+  outcropAppearance.inherit(theme,{light:palette,dark:palette});
+  for(const [id,glyph,role,word] of pairs){
+   const scope=by(id), actual=Array.from(scope.querySelectorAll('.notation-view .notation-text')).find(n=>n.dataset.notationText===glyph);
+   const original=Array.from(scope.querySelectorAll('.universe-source a'+(role?'.'+role:''))).find(n=>n.textContent===word);
+   check(theme+'/'+palette+' '+id+' '+glyph+' inherits source color',actual&&original&&getComputedStyle(actual).color===getComputedStyle(original).color);
+  }
+  colors.querySelectorAll('.source-notation').forEach(n=>n.classList.add('info-active'));
+  for(const [id,glyph,role,word] of pairs){
+   const scope=by(id), actual=Array.from(scope.querySelectorAll('.notation-view .notation-text')).find(n=>n.dataset.notationText===glyph);
+   const original=Array.from(scope.querySelectorAll('.universe-source a'+(role?'.'+role:''))).find(n=>n.textContent===word);
+   check(theme+'/'+palette+' '+id+' '+glyph+' active color stable',actual&&original&&getComputedStyle(actual).color===getComputedStyle(original).color);
+  }
+  colors.querySelectorAll('.source-notation').forEach(n=>n.classList.remove('info-active'));
+ }
+ outcropAppearance.inherit(oldMode,{light:oldPalette,dark:oldPalette});
+ check('color scan preserves source and is idempotent',snapshot===colors.innerHTML);
  const failures=results.filter(r=>!r.pass);by('status').textContent=failures.length?'FAIL '+failures.length:'PASS '+results.length;
  window.projectionResults=results;
 });

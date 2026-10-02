@@ -2,7 +2,13 @@
 import { config, excluded as skipped, makeBadge, unparenthesize } from './source.js';
 import { applicationAt, sourceOffset, wrapRange } from './composition.js';
 import { text, successor, plain } from './presentation.js';
+import {colorAt} from './colors.js';
 const natType = '<span class="Agda">ℕ</span>';
+// Recognized numeric syntax supplies the source correspondence; the shared
+// painter retains highlighting roles through parents, themes and palettes.
+function coloredNumeric(source, model) {
+  return coloredNumericRange(source, 0, source.textContent.length, model);
+}
 // Shared display algebra; callers, not spelling, certify the natural type.
 export function successorNotation(base, count) {
   var power = count > 2 ? '+' + count : '+'.repeat(count);
@@ -55,8 +61,15 @@ export function naturalConstructors(scope) {
       a.node.dataset.constructorFamily === 'Agda.Builtin.Nat.Nat')) continue;
     const kind = notation.power ? 'nat-suc' : 'nat';
     wrapRange(scope, item.start, end, kind, notation.label,
-      {typeHtml: natType, atomic: true, model: notation.model});
+      {typeHtml: natType, atomic: true, model: coloredNumericRange(scope, item.start, end, notation.model)});
   }
+}
+function coloredNumericRange(scope, start, end, model) {
+  const source = scope.textContent.slice(start, end);
+  if (model.form === 'script') return {...model,
+    base: colorAt(scope, start + source.lastIndexOf(model.base.value), model.base),
+    index: colorAt(scope, start + source.indexOf('suc'), model.index)};
+  return colorAt(scope, start + source.search(/[^\s()]/u), model);
 }
   function precedingSourceLine(element) {
     // Agda highlights a fixity precedence as Number too, but it is syntax,
@@ -120,10 +133,11 @@ export function naturalConstructors(scope) {
       if (kind === 'nat-suc' && (!Number.isSafeInteger(count) || count < 1)) return;
       var notation = successorNotation(value, count);
       var label = kind === 'nat-suc' ? notation.label : value;
+      var model = coloredNumeric(node, kind === 'nat-suc' ? notation.model : text(value));
       var placeholder = document.createComment('source notation');
       node.replaceWith(placeholder);
       var badge = makeBadge(node, kind, label, {typeHtml: type, atomic: true,
-        model: kind === 'nat-suc' ? notation.model : text(value)});
+        model});
       placeholder.replaceWith(badge);
     });
   }
@@ -144,9 +158,11 @@ export function naturalConstructors(scope) {
     if (value === null) return;
     var literalIndex = /^Fin\s+([0-9]+)$/u.exec(type);
     if (literalIndex && value >= Number(literalIndex[1])) return;
+    var model = coloredNumeric(scope, text(value));
     var source = document.createElement('span');
     while (scope.firstChild) source.appendChild(scope.firstChild);
-    var badge = makeBadge(source, 'fin', String(value), {typeHtml: scope.dataset.hoverHtml, atomic: true});
+    var badge = makeBadge(source, 'fin', String(value), {typeHtml: scope.dataset.hoverHtml, atomic: true,
+      model});
     scope.appendChild(badge);
     clearOuterPopup(scope);
   }
@@ -162,10 +178,11 @@ export function naturalConstructors(scope) {
     if (!/^(?:ℕ|Nat)$/u.test(scope.dataset.agdaInlineType.trim())) return;
     var notation = naturalNotation(scope.textContent);
     if (!notation || !/\b(?:zero|suc)\b/u.test(scope.textContent)) return;
+    var model = coloredNumeric(scope, notation.model);
     var source = document.createElement('span');
     while (scope.firstChild) source.appendChild(scope.firstChild);
     var badge = makeBadge(source, notation.power ? 'nat-suc' : 'nat', notation.label,
-                               {typeHtml: scope.dataset.hoverHtml, atomic: true, model: notation.model});
+                               {typeHtml: scope.dataset.hoverHtml, atomic: true, model});
     scope.appendChild(badge);
     clearOuterPopup(scope);
   }

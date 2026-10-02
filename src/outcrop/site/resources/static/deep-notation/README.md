@@ -12,6 +12,7 @@ fixtures use `scan(element)` / `window.outcropDeepNotation.scan(element)`.
 | `styles.css` | All compact notation typography, colors, source cues and hidden original source |
 | `source.js` | Common surfaces/opt-out boundary, preserved source DOM, Unicode popup ranges, accessible source buttons |
 | `presentation.js` | Pure presentation trees: text, sequences, grouping, superscripts, subscripts and inherited style; one DOM painter |
+| `colors.js` | Source highlighting roles carried into presentation trees, without copying interactive attributes or freezing palette colors |
 | `composition.js` | Source-coordinate ranges, lexical application boundaries, child presentation reads and source-preserving range moves; no datatype knowledge |
 | `universe.js` | Level primitives, explicit level-name convention, level parameter marking |
 | `numeric.js` | Natural literal help, certified/explicit/resolved-builtin natural expressions, Fin indices and shared atomic-notation parenthesis elision |
@@ -76,6 +77,13 @@ Universe joins retain their grouping, for example `(ℓ₁ ⊔ ℓ₂)⁺³`.
 5. `wrapRange` moves complete source nodes and rejects partial compiler wrappers.
    Source popups centrally unwrap nested badges and rebase Unicode ranges.
    No per-family clone, copy handler, hover listener or observer is needed.
+6. Color follows source tokens, not notation families: unchanged operands retain
+   their own highlighting; replacement glyphs inherit the operation they replace
+   (successor marks from `suc`, finite digits from constructors, bracket punctuation
+   from vector constructors, projection suffixes from fields). `tone` nodes retain
+   these roles through nesting and reuse ordinary Agda palette selectors. Do not
+   flatten a whole expression to one color, sample fixed RGB values, or override
+   glyph colors on hover. Universe parameters retain their existing source style.
 
 New notation should add a recognizer, tree construction, registry entry and
 eligibility/composition tests. Add a CSS primitive only for a genuinely new

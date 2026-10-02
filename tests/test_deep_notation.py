@@ -51,7 +51,7 @@ if (successorNotation('n', 12).label !== 'n⁺¹²') process.exit(1);
 
     def test_styles_and_nested_runtime_are_published_together(self):
         bundle = AssetBundle(STATIC)
-        for name in ('index', 'source', 'composition', 'presentation', 'universe', 'numeric', 'projections', 'vectors'):
+        for name in ('index', 'source', 'composition', 'presentation', 'colors', 'universe', 'numeric', 'projections', 'vectors'):
             self.assertIn(f'deep-notation/{name}.js', bundle.files)
         css = bundle.files['deep-notation/styles.css'].decode()
         self.assertIn('../fonts/BedrockUniverseLevels-Regular.woff2', css)
@@ -63,7 +63,7 @@ if (successorNotation('n', 12).label !== 'n⁺¹²') process.exit(1);
     def test_structured_layout_retains_nested_scripts_and_source_free_paint(self):
         module = (STATIC / 'deep-notation/presentation.js').as_uri()
         script = f"""
-import {{text, sequence, superscript, subscript, group, successor, styled, plain, paint, mapText}} from {json.dumps(module)};
+import {{text, sequence, superscript, subscript, group, successor, styled, toned, plain, paint, mapText}} from {json.dumps(module)};
 const model = superscript(text('A'), successor(text('n'), 3));
 if (model.index.form !== 'script' || plain(model) !== 'A^n⁺³') process.exit(1);
 const sub = subscript(text('S'), group(sequence([text('𝒮 '),text('↾ M')])));
@@ -78,5 +78,9 @@ function verify(node) {{
 }}
 verify(dom);
 if (JSON.stringify(dom).indexOf('notation-super') < 0) process.exit(4);
+const colored = toned(['Field'], subscript(text('S'), toned(['Bound'], text('𝒮 '))));
+const mapped = mapText(colored, s => s.trim());
+if (plain(mapped) !== 'S_𝒮' || mapped.classes[0] !== 'Field' || mapped.body.index.classes[0] !== 'Bound') process.exit(5);
+verify(paint(mapped, document));
 """
         subprocess.run(['node', '--input-type=module', '-e', script], check=True)

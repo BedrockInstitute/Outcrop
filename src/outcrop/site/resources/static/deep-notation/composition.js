@@ -3,6 +3,7 @@
  * This module reads source/presentation, not types or mathematical spellings. */
 import { codeScopes, makeBadge, unparenthesize } from './source.js';
 import { sequence, text as literal } from './presentation.js';
+import {sourcePresentation} from './colors.js';
 
 export function sourceOffset(container, node) {
   const range = document.createRange();
@@ -71,9 +72,9 @@ export function presentation(container, start = 0, end = container.textContent.l
   let cursor = 0;
   const parts = [];
   for (const part of replacements) {
-    parts.push(literal(source.slice(cursor, part.start)), part.model); cursor = part.end;
+    parts.push(sourcePresentation(container, start + cursor, start + part.start), part.model); cursor = part.end;
   }
-  parts.push(literal(source.slice(cursor)));
+  parts.push(sourcePresentation(container, start + cursor, end));
   return {text, model: atomic ? only.model : sequence(parts), changed: replacements.length > 0, atomic};
 }
 

@@ -6,9 +6,11 @@
 /* All type-certified levels share quiet mathematical lettering. Only a
    rewritten expression has a subtle dotted source-reveal cue; no box or fill. */
 .universe-notation, .notation-style-universe, .universe-parameter, .Agda .universe-parameter, a.universe-parameter {
-  color: color-mix(in srgb, var(--code-fg) 72%, var(--code-bg));
   font: 400 1em/1.15 "Bedrock Universe Levels", "JuliaMono", monospace;
   font-synthesis: none;
+}
+.universe-parameter, .Agda .universe-parameter, a.universe-parameter {
+  color: color-mix(in srgb, var(--code-fg) 72%, var(--code-bg));
 }
 .universe-parameter .universe-parameter { font-size: 1em; }
 .source-notation { position: relative; display: inline-block; vertical-align: baseline;
@@ -23,13 +25,8 @@
 .notation-super { vertical-align: super; }
 .notation-sub { font-size: .72em; vertical-align: -.22em; }
 .notation-style-pair-projection { font-size: .85em; letter-spacing: -.15em; }
-.pair-projection-notation { margin-inline-start: -.05em;
-  color: var(--code-field, var(--code-fg)); }
-.record-projection-notation { color: var(--code-field, var(--code-fg)); }
-.notation-style-fin, .notation-style-nat, .notation-style-nat-suc { color: color-mix(in srgb, var(--code-fg) 78%, var(--code-bg)); }
-.notation-style-pair-projection, .notation-style-record-projection { color: var(--code-field, var(--code-fg)); }
-.source-notation:is(:hover, .info-active) { color: var(--code-fg); text-decoration-color: currentColor; }
-.source-notation:is(:hover, .info-active) .notation-style { color: inherit; }
+.pair-projection-notation { margin-inline-start: -.05em; }
+.source-notation:is(:hover, .info-active) { text-decoration-color: currentColor; }
 .source-notation:focus-visible { outline: 2px solid var(--fg-alt); outline-offset: 3px; }
 /* Source text is retained for Unicode offsets, copying and existing anchors.
    A clipped, positioned box keeps anchor destinations at the visible notation. */

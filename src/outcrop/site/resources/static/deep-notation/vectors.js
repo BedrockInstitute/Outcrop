@@ -2,6 +2,7 @@
 import { config, excluded as skipped, makeBadge, unparenthesize } from './source.js';
 import { applicationAt, presentation, sourceOffset, wrapRange } from './composition.js';
 import { text, sequence, superscript } from './presentation.js';
+import {colorAt} from './colors.js';
 
   // Read exactly two syntactic arguments, retaining their source offsets.
   // This is a display boundary, never a fabricated Agda AST.
@@ -47,7 +48,7 @@ import { text, sequence, superscript } from './presentation.js';
           !(exponent.atomic && /^(?:\p{L}\p{M}*[⁺⁰¹²³⁴⁵⁶⁷⁸⁹]*|[0-9]+)$/u.test(exponent.text))) return;
       wrapRange(container, match.start, match.end, 'vector',
         match.args[0].text + '^' + exponent.text,
-        {atomic: true, model: superscript(text(match.args[0].text), exponent.model)});
+        {atomic: true, model: superscript(presentation(container, match.args[0].start, match.args[0].end).model, exponent.model)});
     });
   }
 
@@ -138,6 +139,10 @@ import { text, sequence, superscript } from './presentation.js';
         }
         return presentation(node, start, end);
       });
+      var punctuation = value => colorAt(required[0], 0, text(value));
+      var parts = [punctuation('[')];
+      displayedItems.forEach((item, index) => { if (index) parts.push(punctuation(', ')); parts.push(item.model); });
+      parts.push(punctuation(']'));
       var placeholder = document.createComment('vector term notation'), source;
       if (node === scope) {
         source = document.createElement('span');
@@ -148,9 +153,6 @@ import { text, sequence, superscript } from './presentation.js';
         // Its consumed candidate must not wrap the badge a second time.
         for (var attribute of ['data-vector-candidate', 'data-vector-items', 'data-vector-inline', 'data-vector-checked']) node.removeAttribute(attribute);
       } else { node.replaceWith(placeholder); source = node; }
-      var parts = [text('[')];
-      displayedItems.forEach((item, index) => { if (index) parts.push(text(', ')); parts.push(item.model); });
-      parts.push(text(']'));
       placeholder.replaceWith(makeBadge(source, 'vector-term', '[' + displayedItems.map(item => item.text).join(', ') + ']',
         {typeHtml: node.dataset.vectorType, atomic: true, model: sequence(parts)}));
     });

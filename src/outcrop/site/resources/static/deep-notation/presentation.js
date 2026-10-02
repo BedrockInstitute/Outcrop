@@ -6,6 +6,7 @@ export const superscript = (base, index) => ({form: 'script', position: 'super',
 export const subscript = (base, index) => ({form: 'script', position: 'sub', base, index});
 export const group = body => sequence([text('('), body, text(')')]);
 export const styled = (name, body) => ({form: 'style', name, body});
+export const toned = (classes, body) => ({form: 'tone', classes, body});
 export const successor = (base, count) => count
   ? superscript(base, text(count > 2 ? '+' + count : '+'.repeat(count))) : base;
 
@@ -13,13 +14,14 @@ export function mapText(model, transform) {
   if (model.form === 'text') return text(transform(model.value));
   if (model.form === 'sequence') return sequence(model.parts.map(part => mapText(part, transform)));
   if (model.form === 'style') return styled(model.name, mapText(model.body, transform));
+  if (model.form === 'tone') return toned(model.classes, mapText(model.body, transform));
   return {...model, base: mapText(model.base, transform), index: mapText(model.index, transform)};
 }
 
 export function plain(model) {
   if (model.form === 'text') return model.value;
   if (model.form === 'sequence') return model.parts.map(plain).join('');
-  if (model.form === 'style') return plain(model.body);
+  if (model.form === 'style' || model.form === 'tone') return plain(model.body);
   if (model.form === 'script') {
     const index = plain(model.index), digits = model.position === 'super' ? '⁰¹²³⁴⁵⁶⁷⁸⁹⁺' : '₀₁₂₃₄₅₆₇₈₉₊';
     const suffix = /^[0-9+]+$/u.test(index)
@@ -39,6 +41,8 @@ export function paint(model, document) {
   else if (model.form === 'sequence') model.parts.forEach(part => node.append(paint(part, document)));
   else if (model.form === 'style') {
     node.classList.add('notation-style-' + model.name); node.append(paint(model.body, document));
+  } else if (model.form === 'tone') {
+    model.classes.forEach(name => node.classList.add(name)); node.append(paint(model.body, document));
   } else if (model.form === 'script') {
     node.append(paint(model.base, document));
     const index = document.createElement('span'); index.className = 'notation-index notation-' + model.position;

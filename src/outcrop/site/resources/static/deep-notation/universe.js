@@ -2,6 +2,7 @@
 import { config, excluded } from './source.js';
 import { text, sequence, group, successor, plain } from './presentation.js';
 import { wrapRange } from './composition.js';
+import {colorAt} from './colors.js';
   var levelModules = new Set([config.preludeModule, 'Agda.Primitive',
     'Cubical.Core.Primitives', 'Cubical.Foundations.Prelude'].filter(Boolean));
   function levelLibraryLink(link) {
@@ -20,7 +21,7 @@ import { wrapRange } from './composition.js';
     while (tokens[node.end] && tokens[node.end].text === "⊔" && known(node.end)) {
       var right = parse(tokens, node.end + 1, known, argument, levelAtom, true);
       if (!right) break;
-      node = {op: "max", args: [node, right], start: start, end: right.end, changed: true};
+      node = {op: "max", origin: node.end, args: [node, right], start: start, end: right.end, changed: true};
     }
     return node;
   }
@@ -31,30 +32,31 @@ import { wrapRange } from './composition.js';
     if (name === "(") {
       var inner = parse(tokens, start + 1, known, argument, levelAtom);
       if (!inner || !tokens[inner.end] || tokens[inner.end].text !== ")") return null;
-      return {op: inner.op, args: inner.args, text: inner.text, start: start, end: inner.end + 1, changed: inner.changed};
+      return {op: inner.op, origin: inner.origin, args: inner.args, text: inner.text, start: start, end: inner.end + 1, changed: inner.changed};
     }
     var operation = Object.prototype.hasOwnProperty.call(operations, name) && known(start) && operations[name];
-    if (operation === "zero") return {op: "atom", text: "0", start: start, end: start + 1, changed: true};
+    if (operation === "zero") return {op: "atom", origin: start, text: "0", start: start, end: start + 1, changed: true};
     if (operation && operation !== "join") {
       var first = parse(tokens, start + 1, known, true, levelAtom, true);
       if (!first) return null;
       var second = operation === "max" ? parse(tokens, first.end, known, true, levelAtom, true) : null;
       if (operation === "max" && !second) return null;
-      return {op: operation, args: second ? [first, second] : [first], start: start,
+      return {op: operation, origin: start, args: second ? [first, second] : [first], start: start,
         end: second ? second.end : first.end, changed: true};
     }
     if ((argument || levelAtom && levelAtom(start)) && !Object.prototype.hasOwnProperty.call(operations, name)
         && /^(?:[\p{L}\p{M}][\p{L}\p{M}\p{N}′″‴⁗'’₀-₉.-]*|_)$/u.test(name))
-      return {op: "atom", text: name, start: start, end: start + 1, changed: false};
+      return {op: "atom", origin: start, text: name, start: start, end: start + 1, changed: false};
     return null;
   }
-  export function model(node) {
-    if (node.op === "atom") return text(node.text);
-    if (node.op === "max") return sequence([model(node.args[0]), text(' ⊔ '), model(node.args[1])]);
+  export function model(node, tone = (_node, value) => value) {
+    if (node.op === "atom") return tone(node, text(node.text));
+    if (node.op === "max") return sequence([model(node.args[0], tone), tone(node, text(' ⊔ ')), model(node.args[1], tone)]);
     var child = node, count = 0;
     while (child.op === "suc") { count++; child = child.args[0]; }
-    var value = model(child);
-    return successor(child.op === 'max' ? group(value) : value, count);
+    var value = model(child, tone);
+    var result = successor(child.op === 'max' ? group(value) : value, count);
+    return {...result, index: tone(node, result.index)};
   }
   export function tokenize(text) {
     var result = [], pattern = /[^\s(){};]+|[(){};]/gu, match;
@@ -198,7 +200,8 @@ import { wrapRange } from './composition.js';
           || tokens[expression.end] && /^(?:;|:|to)$/.test(tokens[expression.end].text)) continue;
       // Source layout is significant; never collapse a multi-line expression.
       if (map.text.slice(begin, end).includes("\n")) continue;
-      matches.push({start: begin, end: end, model: model(expression)}); i = expression.end - 1;
+      matches.push({start: begin, end: end, model: model(expression,
+        (node, value) => colorAt(scope, tokens[node.origin].start, value))}); i = expression.end - 1;
     }
     // Work backwards so earlier source offsets and nodes remain valid.
     matches.reverse().forEach(function (match) {

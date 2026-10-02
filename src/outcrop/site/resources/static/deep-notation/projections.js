@@ -2,6 +2,7 @@
 import { excluded as skipped, makeBadge } from './source.js';
 import { text, subscript, mapText } from './presentation.js';
 import { presentation, sourceOffset } from './composition.js';
+import {colorAt} from './colors.js';
   function pairProjections(scope) {
     scope.querySelectorAll('a[data-pair-projection]').forEach(function (field) {
       if (field.closest(skipped)) return;
@@ -38,10 +39,12 @@ import { presentation, sourceOffset } from './composition.js';
       if (dot.nodeType === Node.TEXT_NODE) dot = dot.splitText(dot.length - 1);
       var placeholder = document.createComment('pair projection');
       dot.before(placeholder);
+      var label = '․' + (digit === '1' ? '₁' : '₂');
+      var model = colorAt(field, 0, text(label));
       var source = document.createElement('span');
       source.append(dot, field);
-      var label = '․' + (digit === '1' ? '₁' : '₂');
-      var badge = makeBadge(source, 'pair-projection', label);
+      var badge = makeBadge(source, 'pair-projection', label,
+        {model});
       placeholder.replaceWith(badge);
       // Remove only the painted horizontal separator, preserving source text,
       // line breaks, compiler offsets and copying. Each suffix is independent.
@@ -73,10 +76,12 @@ import { presentation, sourceOffset } from './composition.js';
       var width = context.measureText(compactArgument).width * .72;
       // Do not squeeze long instance expressions into illegible subscripts.
       if (width > size * 4.5) return;
+      var model = subscript(colorAt(node, node.textContent.indexOf(head), text(head)),
+        mapText(shown.model, value => value.replace(/\s+/gu, '')));
       var placeholder = document.createComment('record projection');
       node.replaceWith(placeholder);
       var badge = makeBadge(node, 'record-projection', head + ' (' + argument + ')',
-        {atomic: true, model: subscript(text(head), mapText(shown.model, value => value.replace(/\s+/gu, '')))});
+        {atomic: true, model});
       placeholder.replaceWith(badge);
     });
   }
